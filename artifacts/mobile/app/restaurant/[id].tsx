@@ -112,11 +112,13 @@ export default function RestaurantDetailScreen() {
   const restaurant = RESTAURANTS.find((r) => r.id === id);
   const packages = SUBSCRIPTION_PACKAGES[id ?? ""] ?? [];
 
-  const availableSlots: ("lunch" | "dinner")[] = [];
+  type Slot = "lunch" | "dinner" | "both";
+  const availableSlots: Slot[] = [];
   if (restaurant?.lunchAvailable) availableSlots.push("lunch");
   if (restaurant?.dinnerAvailable) availableSlots.push("dinner");
+  if (restaurant?.lunchAvailable && restaurant?.dinnerAvailable) availableSlots.push("both");
 
-  const [activeSlot, setActiveSlot] = useState<"lunch" | "dinner">(
+  const [activeSlot, setActiveSlot] = useState<Slot>(
     availableSlots[0] ?? "lunch"
   );
   const [selectedDays, setSelectedDays] = useState<number>(20);
@@ -134,6 +136,7 @@ export default function RestaurantDetailScreen() {
   const meals = MEALS.filter((m) => restaurant.mealIds.includes(m.id));
   const imgKey = RESTAURANT_IMAGE_MAP[restaurant.id];
   const slotPackages = packages.filter((p) => p.slot === activeSlot);
+
   const chosenPkg = slotPackages.find((p) => p.days === selectedDays) ?? slotPackages[0];
 
   return (
@@ -257,8 +260,13 @@ export default function RestaurantDetailScreen() {
                         },
                       ]}
                     >
-                      {slot === "lunch" ? "☀️ Lunch" : "🌙 Dinner"}
+                      {slot === "lunch" ? "☀️ Lunch" : slot === "dinner" ? "🌙 Dinner" : "🍽️ Both"}
                     </Text>
+                    {slot === "both" && (
+                      <View style={[styles.comboChip]}>
+                        <Text style={styles.comboChipText}>15% off</Text>
+                      </View>
+                    )}
                   </Pressable>
                 ))}
               </View>
@@ -391,7 +399,7 @@ export default function RestaurantDetailScreen() {
           <View style={styles.footerInfo}>
             <View>
               <Text style={[styles.footerLabel, { color: colors.mutedForeground }]}>
-                {activeSlot === "lunch" ? "Lunch" : "Dinner"} · {chosenPkg.days} days
+                {activeSlot === "lunch" ? "Lunch" : activeSlot === "dinner" ? "Dinner" : "Lunch + Dinner"} · {chosenPkg.days} days
               </Text>
               <Text style={[styles.footerPer, { color: colors.mutedForeground }]}>
                 ₹{chosenPkg.pricePerDay}/day
@@ -492,8 +500,10 @@ const styles = StyleSheet.create({
     padding: 3,
     marginBottom: 12,
   },
-  slotTab: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: "center" },
+  slotTab: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: "center", gap: 3 },
   slotTabText: { fontSize: 13 },
+  comboChip: { backgroundColor: "#DCFCE7", borderRadius: 100, paddingHorizontal: 6, paddingVertical: 1 },
+  comboChipText: { fontSize: 8, fontFamily: "Inter_700Bold", color: "#15803D" },
   mealCard: { borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 8 },
   mealHeader: {
     flexDirection: "row",

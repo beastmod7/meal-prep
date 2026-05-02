@@ -76,6 +76,14 @@ function NavigationController() {
       />
       <Stack.Screen name="payment-success" options={{ gestureEnabled: false }} />
       <Stack.Screen
+        name="checkout"
+        options={{
+          headerShown: true,
+          headerTitle: "Checkout",
+          headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
         name="order-tracking/[id]"
         options={{
           headerShown: true,

@@ -22,7 +22,7 @@ export interface RestaurantSubscription {
   id: string;
   restaurantId: string;
   restaurantName: string;
-  slot: "lunch" | "dinner";
+  slot: "lunch" | "dinner" | "both";
   totalDays: number;
   usedDays: number;
   remainingDays: number;
@@ -75,7 +75,7 @@ export interface LedgerEntry {
 interface SubscribeParams {
   restaurantId: string;
   restaurantName: string;
-  slot: "lunch" | "dinner";
+  slot: "lunch" | "dinner" | "both";
   days: number;
   pricePerDay: number;
   defaultMealId: string;
@@ -127,7 +127,7 @@ function makeOrdersForSub(
   mealId: string,
   mealName: string
 ): MealOrder[] {
-  const orders: MealOrder[] = [];
+  const result: MealOrder[] = [];
   const today = dateStr(new Date());
   const start = new Date(sub.startDate + "T12:00:00");
 
@@ -143,25 +143,59 @@ function makeOrdersForSub(
     prevDay.setDate(prevDay.getDate() - 1);
     prevDay.setHours(22, 0, 0, 0);
 
-    const mealDay = new Date(d);
-    mealDay.setHours(sub.slot === "lunch" ? 9 : 15, 0, 0, 0);
-
-    orders.push({
-      id: `${sub.id}_d${i}`,
-      subscriptionId: sub.id,
-      restaurantId: sub.restaurantId,
-      restaurantName: sub.restaurantName,
-      mealId,
-      mealName,
-      scheduledDate: ds,
-      slot: sub.slot,
-      status,
-      freeCancelUntil: prevDay.toISOString(),
-      lateCancelUntil: mealDay.toISOString(),
-      pricePerDay: sub.pricePerDay,
-    });
+    if (sub.slot === "both") {
+      const lunchCutoff = new Date(d);
+      lunchCutoff.setHours(9, 0, 0, 0);
+      result.push({
+        id: `${sub.id}_d${i}_l`,
+        subscriptionId: sub.id,
+        restaurantId: sub.restaurantId,
+        restaurantName: sub.restaurantName,
+        mealId,
+        mealName,
+        scheduledDate: ds,
+        slot: "lunch",
+        status,
+        freeCancelUntil: prevDay.toISOString(),
+        lateCancelUntil: lunchCutoff.toISOString(),
+        pricePerDay: Math.round(sub.pricePerDay / 2),
+      });
+      const dinnerCutoff = new Date(d);
+      dinnerCutoff.setHours(15, 0, 0, 0);
+      result.push({
+        id: `${sub.id}_d${i}_d`,
+        subscriptionId: sub.id,
+        restaurantId: sub.restaurantId,
+        restaurantName: sub.restaurantName,
+        mealId,
+        mealName,
+        scheduledDate: ds,
+        slot: "dinner",
+        status,
+        freeCancelUntil: prevDay.toISOString(),
+        lateCancelUntil: dinnerCutoff.toISOString(),
+        pricePerDay: Math.round(sub.pricePerDay / 2),
+      });
+    } else {
+      const mealDay = new Date(d);
+      mealDay.setHours(sub.slot === "lunch" ? 9 : 15, 0, 0, 0);
+      result.push({
+        id: `${sub.id}_d${i}`,
+        subscriptionId: sub.id,
+        restaurantId: sub.restaurantId,
+        restaurantName: sub.restaurantName,
+        mealId,
+        mealName,
+        scheduledDate: ds,
+        slot: sub.slot,
+        status,
+        freeCancelUntil: prevDay.toISOString(),
+        lateCancelUntil: mealDay.toISOString(),
+        pricePerDay: sub.pricePerDay,
+      });
+    }
   }
-  return orders;
+  return result;
 }
 
 function makeSeedData() {
@@ -350,7 +384,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         subscriptionId: newSub.id,
         restaurantName: params.restaurantName,
         type: "subscription_purchase",
-        description: `${params.restaurantName} ${params.slot} — ${params.days}-day subscription`,
+        description: `${params.restaurantName} ${params.slot === "both" ? "Lunch + Dinner" : params.slot} — ${params.days}-day subscription`,
         amountDelta: -(params.pricePerDay * params.days),
         createdAt: new Date().toISOString(),
       };

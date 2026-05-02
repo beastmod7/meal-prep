@@ -13,26 +13,26 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MEALS, RESTAURANTS, SUBSCRIPTION_PACKAGES } from "@/constants/mockData";
-import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+
+type Slot = "lunch" | "dinner" | "both";
 
 export default function BuyPassScreen() {
   const { restaurantId } = useLocalSearchParams<{ restaurantId?: string }>();
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { subscribe } = useApp();
 
   const restaurant = RESTAURANTS.find((r) => r.id === restaurantId) ?? RESTAURANTS[0];
   const packages = SUBSCRIPTION_PACKAGES[restaurant.id] ?? [];
 
-  const availableSlots: ("lunch" | "dinner")[] = [];
+  const availableSlots: Slot[] = [];
   if (restaurant.lunchAvailable) availableSlots.push("lunch");
   if (restaurant.dinnerAvailable) availableSlots.push("dinner");
+  if (restaurant.lunchAvailable && restaurant.dinnerAvailable) availableSlots.push("both");
 
-  const [selectedSlot, setSelectedSlot] = useState<"lunch" | "dinner">(availableSlots[0]);
+  const [selectedSlot, setSelectedSlot] = useState<Slot>(availableSlots[0]);
   const [selectedDays, setSelectedDays] = useState<10 | 20 | 30>(20);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const slotPackages = packages.filter((p) => p.slot === selectedSlot);
   const chosenPkg = slotPackages.find((p) => p.days === selectedDays) ?? slotPackages[0];
@@ -41,36 +41,42 @@ export default function BuyPassScreen() {
     MEALS.find(
       (m) =>
         m.restaurantId === restaurant.id &&
-        (m.type === selectedSlot || m.type === "both")
+        (m.type === (selectedSlot === "both" ? "both" : selectedSlot) || m.type === "both")
     ) ?? MEALS.find((m) => m.restaurantId === restaurant.id);
 
-  async function handleSubscribe() {
+  function slotColor(slot: Slot, which: "border" | "bg" | "text"): string {
+    if (slot === "lunch") {
+      return which === "border" ? "#3B82F6" : which === "bg" ? "#EFF6FF" : "#1E3A8A";
+    }
+    if (slot === "dinner") {
+      return which === "border" ? "#7C3AED" : which === "bg" ? "#F5F3FF" : "#4C1D95";
+    }
+    return which === "border" ? "#059669" : which === "bg" ? "#F0FDF4" : "#065F46";
+  }
+
+  function handleProceed() {
     if (!chosenPkg || !defaultMeal) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsSubmitting(true);
-    try {
-      await subscribe({
+    router.push({
+      pathname: "/checkout" as never,
+      params: {
         restaurantId: restaurant.id,
         restaurantName: restaurant.name,
         slot: selectedSlot,
-        days: chosenPkg.days,
-        pricePerDay: chosenPkg.pricePerDay,
-        defaultMealId: defaultMeal.id,
-        defaultMealName: defaultMeal.name,
-      });
-      router.replace({
-        pathname: "/payment-success",
-        params: {
-          restaurantName: restaurant.name,
-          slot: selectedSlot,
-          days: String(chosenPkg.days),
-          totalPaid: String(chosenPkg.totalPrice),
-        },
-      });
-    } catch {
-      setIsSubmitting(false);
-    }
+        days: String(chosenPkg.days),
+        pricePerDay: String(chosenPkg.pricePerDay),
+        totalPrice: String(chosenPkg.totalPrice),
+        mealId: defaultMeal.id,
+        mealName: defaultMeal.name,
+      },
+    });
   }
+
+  const SLOT_OPTS: { slot: Slot; emoji: string; label: string; time: string }[] = [
+    { slot: "lunch", emoji: "☀️", label: "Lunch", time: "12–2 PM" },
+    { slot: "dinner", emoji: "🌙", label: "Dinner", time: "7–9 PM" },
+    { slot: "both", emoji: "🍽️", label: "Both", time: "12 PM + 7 PM" },
+  ];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -82,18 +88,8 @@ export default function BuyPassScreen() {
         }}
       >
         {/* Restaurant header */}
-        <View
-          style={[
-            styles.restaurantHeader,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <View
-            style={[
-              styles.restIconBg,
-              { backgroundColor: restaurant.accentColor + "22" },
-            ]}
-          >
+        <View style={[styles.restaurantHeader, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.restIconBg, { backgroundColor: restaurant.accentColor + "22" }]}>
             <Feather name="coffee" size={22} color={restaurant.accentColor} />
           </View>
           <View style={styles.restInfo}>
@@ -117,79 +113,57 @@ export default function BuyPassScreen() {
               1. Choose slot
             </Text>
             <View style={styles.slotRow}>
-              {availableSlots.map((slot) => (
-                <Pressable
-                  key={slot}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setSelectedSlot(slot);
-                    const newPkgs = packages.filter((p) => p.slot === slot);
-                    const hasDays = newPkgs.find((p) => p.days === selectedDays);
-                    if (!hasDays && newPkgs.length > 0)
-                      setSelectedDays(newPkgs[0].days as 10 | 20 | 30);
-                  }}
-                  style={[
-                    styles.slotCard,
-                    { borderColor: colors.border, backgroundColor: colors.card },
-                    selectedSlot === slot && slot === "lunch" && {
-                      borderColor: "#3B82F6",
-                      backgroundColor: "#EFF6FF",
-                    },
-                    selectedSlot === slot && slot === "dinner" && {
-                      borderColor: "#7C3AED",
-                      backgroundColor: "#F5F3FF",
-                    },
-                  ]}
-                >
-                  <Text style={styles.slotEmoji}>
-                    {slot === "lunch" ? "☀️" : "🌙"}
-                  </Text>
-                  <Text
+              {SLOT_OPTS.filter((o) => availableSlots.includes(o.slot)).map((opt) => {
+                const isSelected = selectedSlot === opt.slot;
+                return (
+                  <Pressable
+                    key={opt.slot}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setSelectedSlot(opt.slot);
+                      const newPkgs = packages.filter((p) => p.slot === opt.slot);
+                      const hasDays = newPkgs.find((p) => p.days === selectedDays);
+                      if (!hasDays && newPkgs.length > 0)
+                        setSelectedDays(newPkgs[0].days as 10 | 20 | 30);
+                    }}
                     style={[
-                      styles.slotName,
-                      {
-                        color:
-                          selectedSlot === slot
-                            ? slot === "lunch"
-                              ? "#1E3A8A"
-                              : "#4C1D95"
-                            : colors.foreground,
+                      styles.slotCard,
+                      { borderColor: colors.border, backgroundColor: colors.card },
+                      isSelected && {
+                        borderColor: slotColor(opt.slot, "border"),
+                        backgroundColor: slotColor(opt.slot, "bg"),
                       },
                     ]}
                   >
-                    {slot === "lunch" ? "Lunch" : "Dinner"}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.slotTime,
-                      {
-                        color:
-                          selectedSlot === slot
-                            ? slot === "lunch"
-                              ? "#1E3A8A"
-                              : "#4C1D95"
-                            : colors.mutedForeground,
-                      },
-                    ]}
-                  >
-                    {slot === "lunch" ? "12–2 PM" : "7–9 PM"}
-                  </Text>
-                  {selectedSlot === slot && (
-                    <View
-                      style={[
-                        styles.slotCheck,
-                        {
-                          backgroundColor:
-                            slot === "lunch" ? "#3B82F6" : "#7C3AED",
-                        },
-                      ]}
-                    >
-                      <Feather name="check" size={10} color="#FFF" />
-                    </View>
-                  )}
-                </Pressable>
-              ))}
+                    {opt.slot === "both" && (
+                      <View style={[styles.comboBadge, { backgroundColor: "#DCFCE7" }]}>
+                        <Text style={styles.comboText}>Save 15%</Text>
+                      </View>
+                    )}
+                    <Text style={styles.slotEmoji}>{opt.emoji}</Text>
+                    <Text style={[styles.slotName, { color: isSelected ? slotColor(opt.slot, "text") : colors.foreground }]}>
+                      {opt.label}
+                    </Text>
+                    <Text style={[styles.slotTime, { color: isSelected ? slotColor(opt.slot, "text") : colors.mutedForeground }]}>
+                      {opt.time}
+                    </Text>
+                    {isSelected && (
+                      <View style={[styles.slotCheck, { backgroundColor: slotColor(opt.slot, "border") }]}>
+                        <Feather name="check" size={10} color="#FFF" />
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
             </View>
+            {selectedSlot === "both" && (
+              <View style={[styles.comboInfo, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
+                <Feather name="zap" size={13} color="#059669" />
+                <Text style={[styles.comboInfoText, { color: "#065F46" }]}>
+                  Combo deal — lunch + dinner together. Schedules 2 meals per day, cancel each independently.
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Step 2: Duration */}
@@ -209,17 +183,12 @@ export default function BuyPassScreen() {
                   style={[
                     styles.packageCard,
                     { borderColor: colors.border, backgroundColor: colors.card },
-                    isSelected && {
-                      borderColor: colors.primary,
-                      backgroundColor: "#EFF6FF",
-                    },
+                    isSelected && { borderColor: colors.primary, backgroundColor: "#EFF6FF" },
                   ]}
                 >
                   <View style={styles.packageLeft}>
                     <View style={styles.packageDaysRow}>
-                      <Text
-                        style={[styles.packageDays, { color: colors.foreground }]}
-                      >
+                      <Text style={[styles.packageDays, { color: colors.foreground }]}>
                         {pkg.days} days
                       </Text>
                       {pkg.popular && (
@@ -229,34 +198,27 @@ export default function BuyPassScreen() {
                       )}
                       {pkg.discountPct && (
                         <View style={styles.discountBadge}>
-                          <Text style={styles.discountText}>
-                            {pkg.discountPct}% off
-                          </Text>
+                          <Text style={styles.discountText}>{pkg.discountPct}% off</Text>
                         </View>
                       )}
                     </View>
-                    <Text
-                      style={[
-                        styles.packagePricePer,
-                        { color: colors.mutedForeground },
-                      ]}
-                    >
-                      ₹{pkg.pricePerDay}/day · {pkg.days} meals auto-scheduled
+                    <Text style={[styles.packagePricePer, { color: colors.mutedForeground }]}>
+                      ₹{pkg.pricePerDay}/day
+                      {pkg.slot === "both" ? " (both meals)" : ""}
+                      {" · "}
+                      {pkg.slot === "both" ? `${pkg.days * 2} meals` : `${pkg.days} meals`} auto-scheduled
                     </Text>
+                    {pkg.comboSaving && (
+                      <Text style={styles.savingText}>
+                        Save ₹{pkg.comboSaving.toLocaleString("en-IN")} vs separate plans
+                      </Text>
+                    )}
                   </View>
                   <View style={styles.packageRight}>
-                    <Text
-                      style={[styles.packageTotal, { color: colors.foreground }]}
-                    >
+                    <Text style={[styles.packageTotal, { color: colors.foreground }]}>
                       ₹{pkg.totalPrice.toLocaleString("en-IN")}
                     </Text>
-                    {isSelected && (
-                      <Feather
-                        name="check-circle"
-                        size={20}
-                        color={colors.primary}
-                      />
-                    )}
+                    {isSelected && <Feather name="check-circle" size={20} color={colors.primary} />}
                   </View>
                 </Pressable>
               );
@@ -264,38 +226,18 @@ export default function BuyPassScreen() {
           </View>
 
           {/* How it works */}
-          <View
-            style={[
-              styles.howItWorks,
-              { backgroundColor: colors.muted, borderColor: colors.border },
-            ]}
-          >
-            <Text style={[styles.howTitle, { color: colors.foreground }]}>
-              How it works
-            </Text>
+          <View style={[styles.howItWorks, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Text style={[styles.howTitle, { color: colors.foreground }]}>How it works</Text>
             {[
-              {
-                icon: "calendar" as const,
-                text: "One meal per day is auto-scheduled for your full subscription period",
-              },
-              {
-                icon: "bell" as const,
-                text: "Cancel any individual day for free before 10 PM the previous night",
-              },
-              {
-                icon: "rotate-ccw" as const,
-                text: "Cancel your whole subscription anytime — get a refund on unused days",
-              },
+              { icon: "calendar" as const, text: selectedSlot === "both" ? "Two meals per day (lunch + dinner) are auto-scheduled for your full period" : "One meal per day is auto-scheduled for your full subscription period" },
+              { icon: "bell" as const, text: "Cancel any individual meal for free before 10 PM the previous night" },
+              { icon: "rotate-ccw" as const, text: "Cancel your whole subscription anytime — get a refund on unused days" },
             ].map((item, i) => (
               <View key={i} style={styles.howRow}>
                 <View style={[styles.howIcon, { backgroundColor: "#EFF6FF" }]}>
                   <Feather name={item.icon} size={14} color="#3B82F6" />
                 </View>
-                <Text
-                  style={[styles.howText, { color: colors.mutedForeground }]}
-                >
-                  {item.text}
-                </Text>
+                <Text style={[styles.howText, { color: colors.mutedForeground }]}>{item.text}</Text>
               </View>
             ))}
           </View>
@@ -304,24 +246,21 @@ export default function BuyPassScreen() {
 
       {/* Sticky payment footer */}
       {chosenPkg && (
-        <View
-          style={[
-            styles.footer,
-            {
-              backgroundColor: colors.background,
-              borderTopColor: colors.border,
-              paddingBottom:
-                insets.bottom + (Platform.OS === "web" ? 24 : 0) + 8,
-            },
-          ]}
-        >
+        <View style={[
+          styles.footer,
+          {
+            backgroundColor: colors.background,
+            borderTopColor: colors.border,
+            paddingBottom: insets.bottom + (Platform.OS === "web" ? 24 : 0) + 8,
+          },
+        ]}>
           <View style={styles.footerInfo}>
             <View>
               <Text style={[styles.footerLabel, { color: colors.mutedForeground }]}>
-                {restaurant.name} · {selectedSlot === "lunch" ? "Lunch" : "Dinner"} · {selectedDays} days
+                {restaurant.name} · {selectedSlot === "both" ? "Lunch + Dinner" : selectedSlot === "lunch" ? "Lunch" : "Dinner"} · {selectedDays} days
               </Text>
               <Text style={[styles.footerPer, { color: colors.mutedForeground }]}>
-                ₹{chosenPkg.pricePerDay}/day
+                ₹{chosenPkg.pricePerDay}/day{selectedSlot === "both" ? " (both meals)" : ""}
               </Text>
             </View>
             <Text style={[styles.footerTotal, { color: colors.foreground }]}>
@@ -329,19 +268,16 @@ export default function BuyPassScreen() {
             </Text>
           </View>
           <Pressable
-            onPress={handleSubscribe}
-            disabled={isSubmitting}
+            onPress={handleProceed}
             style={({ pressed }) => [
               styles.payBtn,
               { backgroundColor: colors.primary },
               pressed && { opacity: 0.9 },
-              isSubmitting && { opacity: 0.6 },
             ]}
           >
+            <Feather name="lock" size={15} color="#FFF" style={{ marginRight: 6 }} />
             <Text style={styles.payBtnText}>
-              {isSubmitting
-                ? "Processing…"
-                : `Pay ₹${chosenPkg.totalPrice.toLocaleString("en-IN")}`}
+              Proceed to Pay ₹{chosenPkg.totalPrice.toLocaleString("en-IN")}
             </Text>
           </Pressable>
         </View>
@@ -353,21 +289,10 @@ export default function BuyPassScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   restaurantHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginHorizontal: 16,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
+    flexDirection: "row", alignItems: "center", gap: 12,
+    marginHorizontal: 16, padding: 14, borderRadius: 14, borderWidth: 1,
   },
-  restIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  restIconBg: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   restInfo: { flex: 1 },
   restName: { fontSize: 16, fontFamily: "Inter_700Bold", marginBottom: 1 },
   restTagline: { fontSize: 12, fontFamily: "Inter_400Regular" },
@@ -375,97 +300,54 @@ const styles = StyleSheet.create({
   ratingText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#F59E0B" },
   sections: { padding: 16, gap: 24 },
   stepLabel: { fontSize: 16, fontFamily: "Inter_700Bold", marginBottom: 12 },
-  slotRow: { flexDirection: "row", gap: 10 },
+  slotRow: { flexDirection: "row", gap: 8 },
   slotCard: {
-    flex: 1,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 14,
-    alignItems: "center",
-    gap: 4,
-    position: "relative",
+    flex: 1, borderRadius: 14, borderWidth: 1.5, padding: 12,
+    alignItems: "center", gap: 3, position: "relative",
   },
-  slotEmoji: { fontSize: 24, marginBottom: 2 },
-  slotName: { fontSize: 15, fontFamily: "Inter_700Bold" },
-  slotTime: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  comboBadge: {
+    position: "absolute", top: -1, right: -1,
+    borderRadius: 100, paddingHorizontal: 6, paddingVertical: 2,
+  },
+  comboText: { fontSize: 8, fontFamily: "Inter_700Bold", color: "#15803D" },
+  slotEmoji: { fontSize: 22, marginBottom: 2 },
+  slotName: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  slotTime: { fontSize: 10, fontFamily: "Inter_400Regular" },
   slotCheck: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
+    position: "absolute", top: 8, left: 8,
+    width: 16, height: 16, borderRadius: 8,
+    alignItems: "center", justifyContent: "center",
   },
+  comboInfo: {
+    flexDirection: "row", alignItems: "flex-start", gap: 8,
+    borderRadius: 10, borderWidth: 1, padding: 10, marginTop: 8,
+  },
+  comboInfoText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
   packageCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 14,
-    marginBottom: 10,
+    flexDirection: "row", alignItems: "center",
+    borderRadius: 14, borderWidth: 1.5, padding: 14, marginBottom: 10,
   },
   packageLeft: { flex: 1 },
-  packageDaysRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 4,
-  },
+  packageDaysRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
   packageDays: { fontSize: 15, fontFamily: "Inter_700Bold" },
-  popularBadge: {
-    backgroundColor: "#EFF6FF",
-    borderRadius: 100,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
+  popularBadge: { backgroundColor: "#EFF6FF", borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
   popularText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#2563EB" },
-  discountBadge: {
-    backgroundColor: "#DCFCE7",
-    borderRadius: 100,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
+  discountBadge: { backgroundColor: "#DCFCE7", borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
   discountText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#16A34A" },
   packagePricePer: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  savingText: { fontSize: 11, fontFamily: "Inter_500Medium", color: "#059669", marginTop: 2 },
   packageRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   packageTotal: { fontSize: 17, fontFamily: "Inter_700Bold" },
   howItWorks: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
   howTitle: { fontSize: 13, fontFamily: "Inter_700Bold", marginBottom: 2 },
   howRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  howIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  howText: {
-    flex: 1,
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 17,
-  },
-  footer: {
-    borderTopWidth: 1,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    gap: 10,
-  },
-  footerInfo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+  howIcon: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  howText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  footer: { borderTopWidth: 1, paddingHorizontal: 16, paddingTop: 12, gap: 10 },
+  footerInfo: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   footerLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
   footerPer: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
   footerTotal: { fontSize: 22, fontFamily: "Inter_700Bold" },
-  payBtn: {
-    height: 54,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  payBtn: { height: 54, borderRadius: 14, alignItems: "center", justifyContent: "center", flexDirection: "row" },
   payBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
 });

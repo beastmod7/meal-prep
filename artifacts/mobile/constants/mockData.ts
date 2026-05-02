@@ -299,12 +299,13 @@ export const MEALS = [
 ];
 
 export interface SubscriptionPackage {
-  slot: "lunch" | "dinner";
+  slot: "lunch" | "dinner" | "both";
   days: 10 | 20 | 30;
   pricePerDay: number;
   totalPrice: number;
   popular?: boolean;
   discountPct?: number;
+  comboSaving?: number;
 }
 
 export const SUBSCRIPTION_PACKAGES: Record<string, SubscriptionPackage[]> = {
@@ -315,6 +316,9 @@ export const SUBSCRIPTION_PACKAGES: Record<string, SubscriptionPackage[]> = {
     { slot: "dinner", days: 10, pricePerDay: 219, totalPrice: 2190 },
     { slot: "dinner", days: 20, pricePerDay: 208, totalPrice: 4160, popular: true, discountPct: 5 },
     { slot: "dinner", days: 30, pricePerDay: 197, totalPrice: 5910, discountPct: 10 },
+    { slot: "both", days: 10, pricePerDay: 347, totalPrice: 3470, comboSaving: 610 },
+    { slot: "both", days: 20, pricePerDay: 330, totalPrice: 6600, popular: true, discountPct: 5, comboSaving: 1720 },
+    { slot: "both", days: 30, pricePerDay: 312, totalPrice: 9360, discountPct: 10, comboSaving: 2640 },
   ],
   r2: [
     { slot: "lunch", days: 10, pricePerDay: 169, totalPrice: 1690 },
@@ -328,6 +332,9 @@ export const SUBSCRIPTION_PACKAGES: Record<string, SubscriptionPackage[]> = {
     { slot: "dinner", days: 10, pricePerDay: 229, totalPrice: 2290 },
     { slot: "dinner", days: 20, pricePerDay: 218, totalPrice: 4360, popular: true, discountPct: 5 },
     { slot: "dinner", days: 30, pricePerDay: 206, totalPrice: 6180, discountPct: 10 },
+    { slot: "both", days: 10, pricePerDay: 364, totalPrice: 3640, comboSaving: 640 },
+    { slot: "both", days: 20, pricePerDay: 345, totalPrice: 6900, popular: true, discountPct: 5, comboSaving: 1820 },
+    { slot: "both", days: 30, pricePerDay: 327, totalPrice: 9810, discountPct: 10, comboSaving: 2730 },
   ],
   r4: [
     { slot: "lunch", days: 10, pricePerDay: 229, totalPrice: 2290 },
@@ -336,6 +343,9 @@ export const SUBSCRIPTION_PACKAGES: Record<string, SubscriptionPackage[]> = {
     { slot: "dinner", days: 10, pricePerDay: 249, totalPrice: 2490 },
     { slot: "dinner", days: 20, pricePerDay: 237, totalPrice: 4740, popular: true, discountPct: 5 },
     { slot: "dinner", days: 30, pricePerDay: 224, totalPrice: 6720, discountPct: 10 },
+    { slot: "both", days: 10, pricePerDay: 406, totalPrice: 4060, comboSaving: 720 },
+    { slot: "both", days: 20, pricePerDay: 386, totalPrice: 7720, popular: true, discountPct: 5, comboSaving: 2080 },
+    { slot: "both", days: 30, pricePerDay: 365, totalPrice: 10950, discountPct: 10, comboSaving: 2970 },
   ],
   r5: [
     { slot: "lunch", days: 10, pricePerDay: 169, totalPrice: 1690 },
@@ -344,5 +354,8 @@ export const SUBSCRIPTION_PACKAGES: Record<string, SubscriptionPackage[]> = {
     { slot: "dinner", days: 10, pricePerDay: 199, totalPrice: 1990 },
     { slot: "dinner", days: 20, pricePerDay: 189, totalPrice: 3780, popular: true, discountPct: 5 },
     { slot: "dinner", days: 30, pricePerDay: 179, totalPrice: 5370, discountPct: 10 },
+    { slot: "both", days: 10, pricePerDay: 313, totalPrice: 3130, comboSaving: 550 },
+    { slot: "both", days: 20, pricePerDay: 297, totalPrice: 5940, popular: true, discountPct: 5, comboSaving: 1560 },
+    { slot: "both", days: 30, pricePerDay: 282, totalPrice: 8460, discountPct: 10, comboSaving: 2340 },
   ],
 };
