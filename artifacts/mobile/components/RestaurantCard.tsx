@@ -1,8 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 
 interface Restaurant {
@@ -13,6 +14,7 @@ interface Restaurant {
   rating: number;
   reviewCount: number;
   distance: string;
+  deliveryTime: string;
   isVeg: boolean;
   accentColor: string;
   lunchAvailable: boolean;
@@ -38,7 +40,10 @@ const IMAGE_MAP: Record<string, keyof typeof FOOD_IMAGES> = {
   r3: "tiffin",
 };
 
-export default function RestaurantCard({ restaurant, showSubscribeCta = true }: RestaurantCardProps) {
+export default function RestaurantCard({
+  restaurant,
+  showSubscribeCta = true,
+}: RestaurantCardProps) {
   const colors = useColors();
   const router = useRouter();
   const imgKey = IMAGE_MAP[restaurant.id];
@@ -52,76 +57,122 @@ export default function RestaurantCard({ restaurant, showSubscribeCta = true }: 
       style={({ pressed }) => [
         styles.card,
         { backgroundColor: colors.card, borderColor: colors.border },
-        pressed && { opacity: 0.95 },
+        pressed && { opacity: 0.96, transform: [{ scale: 0.99 }] },
       ]}
     >
-      <View style={styles.imageContainer}>
+      {/* Hero image */}
+      <View style={styles.imageWrap}>
         {imgKey ? (
-          <Image source={FOOD_IMAGES[imgKey]} style={styles.image} resizeMode="cover" />
+          <Image
+            source={FOOD_IMAGES[imgKey]}
+            style={styles.image}
+            contentFit="cover"
+          />
         ) : (
-          <View style={[styles.imagePlaceholder, { backgroundColor: restaurant.accentColor + "22" }]}>
-            <Feather name="coffee" size={28} color={restaurant.accentColor} />
+          <View
+            style={[
+              styles.imagePlaceholder,
+              { backgroundColor: restaurant.accentColor + "22" },
+            ]}
+          >
+            <Feather name="coffee" size={32} color={restaurant.accentColor} />
           </View>
         )}
+        {/* Veg indicator */}
         {restaurant.isVeg && (
           <View style={styles.vegBadge}>
             <View style={styles.vegDot} />
           </View>
         )}
+        {/* Cuisine tag */}
+        <View style={styles.cuisineTag}>
+          <Text style={styles.cuisineText}>{restaurant.cuisine}</Text>
+        </View>
       </View>
 
+      {/* Card content */}
       <View style={styles.content}>
         <View style={styles.topRow}>
-          <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
+          <Text
+            style={[styles.name, { color: colors.foreground }]}
+            numberOfLines={1}
+          >
             {restaurant.name}
           </Text>
-          <View style={styles.ratingRow}>
-            <Feather name="star" size={12} color="#F59E0B" />
-            <Text style={styles.rating}>{restaurant.rating}</Text>
+          <View style={styles.ratingPill}>
+            <Feather name="star" size={11} color="#F59E0B" />
+            <Text style={styles.ratingText}>{restaurant.rating}</Text>
           </View>
         </View>
 
-        <Text style={[styles.tagline, { color: colors.mutedForeground }]} numberOfLines={1}>
+        <Text
+          style={[styles.tagline, { color: colors.mutedForeground }]}
+          numberOfLines={1}
+        >
           {restaurant.tagline}
         </Text>
 
-        <View style={styles.pricingRow}>
-          {restaurant.lunchAvailable && (
-            <View style={styles.priceChip}>
-              <Text style={styles.priceSlot}>☀️ Lunch</Text>
-              <Text style={[styles.priceFrom, { color: colors.primary }]}>
-                from ₹{restaurant.lunchStartPrice}/day
-              </Text>
-            </View>
-          )}
-          {restaurant.dinnerAvailable && (
-            <View style={[styles.priceChip, styles.dinnerChip]}>
-              <Text style={styles.priceSlot}>🌙 Dinner</Text>
-              <Text style={[styles.priceFrom, { color: "#7C3AED" }]}>
-                from ₹{restaurant.dinnerStartPrice}/day
-              </Text>
-            </View>
-          )}
+        <View style={styles.metaRow}>
+          <View style={styles.metaItem}>
+            <Feather name="map-pin" size={11} color={colors.mutedForeground} />
+            <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+              {restaurant.distance}
+            </Text>
+          </View>
+          <View style={styles.metaDot} />
+          <View style={styles.metaItem}>
+            <Feather name="clock" size={11} color={colors.mutedForeground} />
+            <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+              {restaurant.deliveryTime}
+            </Text>
+          </View>
         </View>
 
-        {showSubscribeCta && (
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push({
-                pathname: "/buy-pass",
-                params: { restaurantId: restaurant.id },
-              });
-            }}
-            style={({ pressed }) => [
-              styles.subscribeBtn,
-              { backgroundColor: colors.primary },
-              pressed && { opacity: 0.85 },
-            ]}
-          >
-            <Text style={styles.subscribeBtnText}>Subscribe</Text>
-          </Pressable>
-        )}
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        <View style={styles.bottomRow}>
+          <View style={styles.priceRow}>
+            {restaurant.lunchAvailable && (
+              <View style={styles.priceBlock}>
+                <Text style={styles.priceSlotLabel}>☀️ Lunch</Text>
+                <Text style={[styles.priceValue, { color: "#EA580C" }]}>
+                  ₹{restaurant.lunchStartPrice}/day
+                </Text>
+              </View>
+            )}
+            {restaurant.lunchAvailable && restaurant.dinnerAvailable && (
+              <View style={[styles.priceSep, { backgroundColor: colors.border }]} />
+            )}
+            {restaurant.dinnerAvailable && (
+              <View style={styles.priceBlock}>
+                <Text style={styles.priceSlotLabel}>🌙 Dinner</Text>
+                <Text style={[styles.priceValue, { color: "#7C3AED" }]}>
+                  ₹{restaurant.dinnerStartPrice}/day
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {showSubscribeCta && (
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push({
+                  pathname: "/buy-pass",
+                  params: { restaurantId: restaurant.id },
+                });
+              }}
+              style={({ pressed }) => [
+                styles.subscribeBtn,
+                { backgroundColor: "#F97316" },
+                pressed && { opacity: 0.85 },
+              ]}
+            >
+              <Feather name="plus" size={13} color="#FFF" />
+              <Text style={styles.subscribeBtnText}>Subscribe</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
     </Pressable>
   );
@@ -129,109 +180,86 @@ export default function RestaurantCard({ restaurant, showSubscribeCta = true }: 
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 14,
     overflow: "hidden",
-    flexDirection: "row",
   },
-  imageContainer: {
-    width: 100,
+  imageWrap: {
+    height: 130,
     position: "relative",
   },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
+  image: { width: "100%", height: "100%" },
   imagePlaceholder: {
     width: "100%",
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 100,
   },
   vegBadge: {
     position: "absolute",
-    top: 6,
-    left: 6,
-    width: 16,
-    height: 16,
+    top: 8,
+    left: 8,
+    width: 18,
+    height: 18,
     backgroundColor: "#FFFFFF",
-    borderRadius: 3,
+    borderRadius: 4,
     borderWidth: 1.5,
     borderColor: "#16A34A",
     alignItems: "center",
     justifyContent: "center",
   },
-  vegDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#16A34A",
+  vegDot: { width: 9, height: 9, borderRadius: 4.5, backgroundColor: "#16A34A" },
+  cuisineTag: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 100,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
-  content: {
-    flex: 1,
-    padding: 12,
-    gap: 4,
+  cuisineText: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+    color: "#FFFFFF",
   },
+  content: { padding: 12, gap: 5 },
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
   },
-  name: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    flex: 1,
-    marginRight: 8,
-  },
-  ratingRow: {
+  name: { fontSize: 16, fontFamily: "Inter_700Bold", flex: 1, marginRight: 8 },
+  ratingPill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-  },
-  rating: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    color: "#F59E0B",
-  },
-  tagline: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-  },
-  pricingRow: {
-    flexDirection: "row",
-    gap: 6,
-    marginTop: 4,
-    flexWrap: "wrap",
-  },
-  priceChip: {
-    backgroundColor: "#FFF3E8",
-    borderRadius: 8,
+    backgroundColor: "#FFFBEB",
+    borderRadius: 100,
     paddingHorizontal: 7,
-    paddingVertical: 4,
+    paddingVertical: 3,
   },
-  dinnerChip: {
-    backgroundColor: "#F5F3FF",
-  },
-  priceSlot: {
-    fontSize: 10,
-    fontFamily: "Inter_500Medium",
-    color: "#71717A",
-  },
-  priceFrom: {
-    fontSize: 11,
-    fontFamily: "Inter_700Bold",
-  },
+  ratingText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#F59E0B" },
+  tagline: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 },
+  metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  metaText: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  metaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: "#D4D4D8" },
+  divider: { height: 1, marginVertical: 4 },
+  bottomRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  priceRow: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  priceBlock: { gap: 1 },
+  priceSlotLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: "#71717A" },
+  priceValue: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  priceSep: { width: 1, height: 28, marginHorizontal: 4 },
   subscribeBtn: {
-    marginTop: 6,
-    paddingVertical: 7,
-    borderRadius: 8,
+    flexDirection: "row",
     alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
-  subscribeBtnText: {
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-  },
+  subscribeBtnText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
 });
