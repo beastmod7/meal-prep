@@ -20,33 +20,16 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/" component={() => <Redirect to="/dashboard" />} />
 
-      <Route path="/dashboard">
+      <Route path="/dashboard/:rest*">
         <AppLayout>
-          <Overview />
-        </AppLayout>
-      </Route>
-
-      <Route path="/dashboard/packages">
-        <AppLayout>
-          <Packages />
-        </AppLayout>
-      </Route>
-
-      <Route path="/dashboard/upcoming-meals">
-        <AppLayout>
-          <UpcomingMeals />
-        </AppLayout>
-      </Route>
-
-      <Route path="/dashboard/cancellations">
-        <AppLayout>
-          <Cancellations />
-        </AppLayout>
-      </Route>
-
-      <Route path="/dashboard/settlements">
-        <AppLayout>
-          <Settlements />
+          <Switch>
+            <Route path="/dashboard" component={Overview} />
+            <Route path="/dashboard/packages" component={Packages} />
+            <Route path="/dashboard/upcoming-meals" component={UpcomingMeals} />
+            <Route path="/dashboard/cancellations" component={Cancellations} />
+            <Route path="/dashboard/settlements" component={Settlements} />
+            <Route component={NotFound} />
+          </Switch>
         </AppLayout>
       </Route>
 

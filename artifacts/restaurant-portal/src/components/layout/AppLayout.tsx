@@ -29,7 +29,7 @@ const menuItems = [
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { token, setToken, activeRestaurantId, setActiveRestaurantId } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
   const { data: user, isLoading, isError } = useRestaurantPortalMe({
     query: {
@@ -68,6 +68,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     setLocation("/login");
   };
 
+  const isActive = (url: string) => {
+    if (url === "/dashboard") return location === "/dashboard";
+    return location.startsWith(url);
+  };
+
   return (
     <SidebarProvider>
       <div className="flex h-screen w-full overflow-hidden bg-background">
@@ -98,9 +103,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <SidebarMenu>
                   {menuItems.map((item) => (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild tooltip={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        tooltip={item.title}
+                        isActive={isActive(item.url)}
+                      >
                         <Link href={item.url} className="flex items-center gap-3">
-                          <item.icon className="w-5 h-5 text-sidebar-primary" />
+                          <item.icon className="w-5 h-5" />
                           <span>{item.title}</span>
                         </Link>
                       </SidebarMenuButton>

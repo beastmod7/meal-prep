@@ -4,13 +4,15 @@ import {
   getGetRestaurantCancellationsQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, TrendingDown, AlertCircle, XCircle } from "lucide-react";
+import { Loader2, TrendingDown, XCircle, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { format } from "date-fns";
 import { inr } from "@/lib/fmt";
+import { useToast } from "@/hooks/use-toast";
 
 const typeStyle: Record<string, string> = {
   late_cancellation: "bg-orange-50 text-orange-700 border-orange-200",
@@ -26,9 +28,23 @@ const typeLabel: Record<string, string> = {
   restaurant_cancelled: "Rest. Cancelled",
 };
 
+function downloadCsv(headers: string[], rows: string[][], filename: string) {
+  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const lines = [headers.map(escape).join(","), ...rows.map((r) => r.map(escape).join(","))];
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function Cancellations() {
-  const { activeRestaurantId } = useAuth();
+  const { activeRestaurantId, token } = useAuth();
+  const { toast } = useToast();
   const [type, setType] = useState<string>("all");
+  const [exporting, setExporting] = useState(false);
 
   const { data, isLoading } = useGetRestaurantCancellations(
     activeRestaurantId!,
@@ -43,6 +59,25 @@ export default function Cancellations() {
     },
   );
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const params = new URLSearchParams({ reportType: "cancellations" });
+      const res = await fetch(
+        `${base}/api/restaurant-portal/restaurants/${activeRestaurantId}/reports/export?${params}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const json = await res.json();
+      const today = new Date().toISOString().split("T")[0];
+      downloadCsv(json.headers, json.rows, `cancellations-${today}.csv`);
+    } catch {
+      toast({ title: "Export failed", description: "Could not download report.", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (!activeRestaurantId) return null;
 
   return (
@@ -52,19 +87,25 @@ export default function Cancellations() {
           <h1 className="text-3xl font-bold tracking-tight">Cancellations</h1>
           <p className="text-muted-foreground mt-1">Deductions, no-shows and cancellation log (last 30 days).</p>
         </div>
-        <div className="w-[210px]">
-          <Select value={type} onValueChange={setType}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Cancellations</SelectItem>
-              <SelectItem value="free_cancellation">Free (Advance)</SelectItem>
-              <SelectItem value="late_cancellation">Late (After Lock)</SelectItem>
-              <SelectItem value="no_show">No Shows</SelectItem>
-              <SelectItem value="restaurant_cancelled">Restaurant Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-2">
+          <div className="w-[210px]">
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Cancellations</SelectItem>
+                <SelectItem value="free_cancellation">Free (Advance)</SelectItem>
+                <SelectItem value="late_cancellation">Late (After Lock)</SelectItem>
+                <SelectItem value="no_show">No Shows</SelectItem>
+                <SelectItem value="restaurant_cancelled">Restaurant Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+            {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            Export CSV
+          </Button>
         </div>
       </div>
 

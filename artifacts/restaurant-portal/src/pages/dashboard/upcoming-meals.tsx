@@ -5,7 +5,7 @@ import {
   useUpdateMealOrderStatus,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Calendar as CalendarIcon, CheckCircle2, Clock, UtensilsCrossed } from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, CheckCircle2, Clock, UtensilsCrossed, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -24,10 +24,23 @@ const statusStyle: Record<string, string> = {
   locked: "bg-orange-100 text-orange-700 border-orange-200",
 };
 
+function downloadCsv(headers: string[], rows: string[][], filename: string) {
+  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const lines = [headers.map(escape).join(","), ...rows.map((r) => r.map(escape).join(","))];
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function UpcomingMeals() {
-  const { activeRestaurantId } = useAuth();
+  const { activeRestaurantId, token } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [exporting, setExporting] = useState(false);
 
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
 
@@ -61,6 +74,24 @@ export default function UpcomingMeals() {
     );
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const params = new URLSearchParams({ reportType: "daily_prep", dateFrom: date, dateTo: date });
+      const res = await fetch(
+        `${base}/api/restaurant-portal/restaurants/${activeRestaurantId}/reports/export?${params}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const json = await res.json();
+      downloadCsv(json.headers, json.rows, `daily-prep-${date}.csv`);
+    } catch {
+      toast({ title: "Export failed", description: "Could not download report.", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (!activeRestaurantId) return null;
 
   return (
@@ -70,14 +101,20 @@ export default function UpcomingMeals() {
           <h1 className="text-3xl font-bold tracking-tight">Daily Prep</h1>
           <p className="text-muted-foreground mt-1">Kitchen locks, order count, and meal fulfillment.</p>
         </div>
-        <div className="flex items-center gap-2 bg-card border rounded-md p-1 shadow-sm">
-          <CalendarIcon className="w-4 h-4 ml-2 text-muted-foreground" />
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="border-0 shadow-none focus-visible:ring-0 w-[150px]"
-          />
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-card border rounded-md p-1 shadow-sm">
+            <CalendarIcon className="w-4 h-4 ml-2 text-muted-foreground" />
+            <Input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="border-0 shadow-none focus-visible:ring-0 w-[150px]"
+            />
+          </div>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+            {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            Export CSV
+          </Button>
         </div>
       </div>
 

@@ -1,10 +1,13 @@
 import { useAuth } from "@/lib/auth";
 import { useGetRestaurantPackages, getGetRestaurantPackagesQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Package as PackageIcon } from "lucide-react";
+import { Loader2, Package as PackageIcon, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { inr } from "@/lib/fmt";
+import { useToast } from "@/hooks/use-toast";
 
 const slotLabel: Record<string, string> = {
   lunch: "Lunch",
@@ -18,8 +21,22 @@ const statusStyle: Record<string, string> = {
   archived: "bg-slate-50 text-slate-500 border-slate-200",
 };
 
+function downloadCsv(headers: string[], rows: string[][], filename: string) {
+  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const lines = [headers.map(escape).join(","), ...rows.map((r) => r.map(escape).join(","))];
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function Packages() {
-  const { activeRestaurantId } = useAuth();
+  const { activeRestaurantId, token } = useAuth();
+  const { toast } = useToast();
+  const [exporting, setExporting] = useState(false);
 
   const { data: packages, isLoading } = useGetRestaurantPackages(
     activeRestaurantId!,
@@ -31,6 +48,25 @@ export default function Packages() {
       },
     },
   );
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const params = new URLSearchParams({ reportType: "package_performance" });
+      const res = await fetch(
+        `${base}/api/restaurant-portal/restaurants/${activeRestaurantId}/reports/export?${params}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const json = await res.json();
+      const today = new Date().toISOString().split("T")[0];
+      downloadCsv(json.headers, json.rows, `packages-${today}.csv`);
+    } catch {
+      toast({ title: "Export failed", description: "Could not download report.", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (!activeRestaurantId) return null;
 
@@ -49,9 +85,12 @@ export default function Packages() {
           <h1 className="text-3xl font-bold tracking-tight">Packages</h1>
           <p className="text-muted-foreground mt-1">Your meal subscription offerings and performance.</p>
         </div>
+        <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+          {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+          Export CSV
+        </Button>
       </div>
 
-      {/* Summary cards */}
       {packages && packages.length > 0 && (
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="bg-card">

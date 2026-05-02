@@ -1,11 +1,14 @@
 import { useAuth } from "@/lib/auth";
 import { useGetRestaurantSettlements, getGetRestaurantSettlementsQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, IndianRupee, TrendingUp, ReceiptText } from "lucide-react";
+import { Loader2, IndianRupee, TrendingUp, ReceiptText, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { format } from "date-fns";
 import { inr } from "@/lib/fmt";
+import { useToast } from "@/hooks/use-toast";
 
 const statusStyle: Record<string, string> = {
   paid: "bg-green-50 text-green-700 border-green-200",
@@ -15,8 +18,22 @@ const statusStyle: Record<string, string> = {
   on_hold: "bg-red-50 text-red-700 border-red-200",
 };
 
+function downloadCsv(headers: string[], rows: string[][], filename: string) {
+  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const lines = [headers.map(escape).join(","), ...rows.map((r) => r.map(escape).join(","))];
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function Settlements() {
-  const { activeRestaurantId } = useAuth();
+  const { activeRestaurantId, token } = useAuth();
+  const { toast } = useToast();
+  const [exporting, setExporting] = useState(false);
 
   const { data, isLoading } = useGetRestaurantSettlements(
     activeRestaurantId!,
@@ -29,13 +46,38 @@ export default function Settlements() {
     },
   );
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const params = new URLSearchParams({ reportType: "weekly_settlement" });
+      const res = await fetch(
+        `${base}/api/restaurant-portal/restaurants/${activeRestaurantId}/reports/export?${params}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const json = await res.json();
+      const today = new Date().toISOString().split("T")[0];
+      downloadCsv(json.headers, json.rows, `settlements-${today}.csv`);
+    } catch {
+      toast({ title: "Export failed", description: "Could not download report.", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (!activeRestaurantId) return null;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settlements</h1>
-        <p className="text-muted-foreground mt-1">Track weekly payouts, platform commission, and account balance.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Settlements</h1>
+          <p className="text-muted-foreground mt-1">Track weekly payouts, platform commission, and account balance.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+          {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+          Export CSV
+        </Button>
       </div>
 
       {isLoading ? (
