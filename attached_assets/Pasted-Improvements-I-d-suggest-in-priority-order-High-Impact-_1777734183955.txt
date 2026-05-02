@@ -1,0 +1,34 @@
+Improvements I'd suggest, in priority order
+High Impact — UX/Functionality gaps
+1. Sidebar active state missing
+When you navigate to Packages, the Packages link in the sidebar doesn't light up. There's no visual indicator of which page you're on. Easy fix — useLocation() + compare against item.url.
+
+2. AppLayout remounts on every navigation
+Each route renders its own <AppLayout>, which means every page change re-fetches /auth/me and flickers the sidebar. The layout should wrap the whole router once with a single shared instance.
+
+3. Reports/Export UI is missing
+The backend already has a fully-built CSV export endpoint (/reports/export) supporting 4 report types: daily prep, settlements, cancellations, and package performance. But there's no button in the UI to trigger it. It's ready — just needs a download button on each page.
+
+4. Overview has no trend chart
+The backend has a /upcoming-meals/counts endpoint that returns daily meal counts per date range — perfect for a bar or line chart. The overview shows only today's snapshot with no week-over-week context.
+
+5. Daily Prep: tomorrow's orders have no actions
+Orders for future dates never show Prep/Deliver buttons because isLocked = false. But restaurant owners genuinely want to see upcoming orders. Need to distinguish "view-only future" from "actionable today".
+
+Medium Impact — Data & Polish
+6. Settlement page has no date range filter
+The backend supports dateFrom / dateTo query params but the UI has no date picker. Users can only see the default 6-month window.
+
+7. Cancellations limited to 30 days
+Backend supports dateFrom/dateTo but the UI has no date range control. Owners need to look back further for GST/accounting purposes.
+
+8. Admin users can't switch between restaurants
+The admin@mealpass.com and super@mealpass.com accounts have access to all restaurants, but there's no UI to select which restaurant to view — it auto-picks the first one.
+
+9. Mobile app is a blank scaffold
+The artifacts/mobile Expo app has no screens built yet — it's just the default scaffold. The student-facing side of the marketplace (browsing packages, purchasing, viewing meal schedule) doesn't exist yet.
+
+10. Token expiry is silent
+JWT expires after 7 days with no refresh mechanism. When it expires, the user just gets redirected to login with no explanation. Should show a "Your session expired, please log in again" message.
+
+Which of these would you like me to tackle? I'd recommend starting with 1+2+3 (sidebar active state, layout fix, and export button) since they're quick wins that immediately improve the daily experience. Or I can start building the mobile app screens if that's the priority.
