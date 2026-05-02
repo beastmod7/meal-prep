@@ -6,7 +6,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { PASS_PLANS, RESTAURANTS } from "@/constants/mockData";
+import { MEALS, RESTAURANTS } from "@/constants/mockData";
 
 export interface User {
   id: string;
@@ -18,40 +18,34 @@ export interface User {
   address: string;
 }
 
-export interface MealPass {
+export interface RestaurantSubscription {
   id: string;
-  planId: string;
-  planName: string;
-  totalCredits: number;
-  remainingCredits: number;
-  paidAmount: number;
-  bonusCredits: number;
-  effectiveCreditValue: number;
-  validFrom: string;
-  validUntil: string;
-  status:
-    | "active"
-    | "paused"
-    | "exhausted"
-    | "expired"
-    | "refund_requested"
-    | "cancelled";
-  lateCancellationFees: number;
+  restaurantId: string;
+  restaurantName: string;
+  slot: "lunch" | "dinner";
+  totalDays: number;
+  usedDays: number;
+  remainingDays: number;
+  pricePerDay: number;
+  totalPaid: number;
+  startDate: string;
+  endDate: string;
+  status: "active" | "paused" | "cancelled" | "completed" | "refund_requested";
   pausedUntil?: string;
+  lateCancellationFees: number;
 }
 
 export interface MealOrder {
   id: string;
+  subscriptionId: string;
   restaurantId: string;
   restaurantName: string;
   mealId: string;
   mealName: string;
-  mealPassId: string;
   scheduledDate: string;
   slot: "lunch" | "dinner";
   status:
     | "scheduled"
-    | "locked"
     | "preparing"
     | "delivered"
     | "cancelled_free"
@@ -59,50 +53,55 @@ export interface MealOrder {
     | "cancelled_full";
   freeCancelUntil: string;
   lateCancelUntil: string;
-  creditValue: number;
-  premiumExtra: number;
+  pricePerDay: number;
 }
 
 export interface LedgerEntry {
   id: string;
+  subscriptionId?: string;
+  restaurantName?: string;
   type:
-    | "pass_purchase"
+    | "subscription_purchase"
     | "meal_used"
     | "free_cancel"
     | "late_cancel"
     | "full_charge"
-    | "refund"
-    | "bonus";
+    | "refund";
   description: string;
-  creditDelta: number;
   amountDelta: number;
   createdAt: string;
+}
+
+interface SubscribeParams {
+  restaurantId: string;
+  restaurantName: string;
+  slot: "lunch" | "dinner";
+  days: number;
+  pricePerDay: number;
+  defaultMealId: string;
+  defaultMealName: string;
 }
 
 interface AppContextType {
   isLoading: boolean;
   isOnboarded: boolean;
   user: User | null;
-  activePass: MealPass | null;
+  subscriptions: RestaurantSubscription[];
   orders: MealOrder[];
   ledger: LedgerEntry[];
   setOnboarded: () => Promise<void>;
   setUser: (user: User) => Promise<void>;
-  buyPass: (planId: string) => Promise<void>;
-  scheduleOrder: (params: {
-    restaurantId: string;
-    restaurantName: string;
-    mealId: string;
-    mealName: string;
-    scheduledDate: string;
-    slot: "lunch" | "dinner";
-    premiumExtra: number;
-  }) => Promise<void>;
+  subscribe: (params: SubscribeParams) => Promise<void>;
+  cancelSubscription: (
+    subscriptionId: string
+  ) => Promise<{ refundAmount: number }>;
+  pauseSubscription: (
+    subscriptionId: string,
+    pauseDays: number
+  ) => Promise<void>;
   cancelOrder: (
     orderId: string
   ) => Promise<{ type: "free" | "late" | "full"; fee: number }>;
-  pauseMeals: (days: number) => Promise<void>;
-  requestRefund: () => Promise<void>;
   getOrderCancelStatus: (
     order: MealOrder
   ) => "free" | "late" | "full" | "none";
@@ -114,202 +113,172 @@ const AppContext = createContext<AppContextType | null>(null);
 const STORAGE_KEYS = {
   IS_ONBOARDED: "mp_is_onboarded",
   USER: "mp_user",
-  ACTIVE_PASS: "mp_active_pass",
+  SUBSCRIPTIONS: "mp_subscriptions",
   ORDERS: "mp_orders",
   LEDGER: "mp_ledger",
 };
 
-function makeSeedOrders(passId: string): MealOrder[] {
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-  const dayAfter = new Date(today);
-  dayAfter.setDate(today.getDate() + 2);
-
-  const todayStr = today.toISOString().split("T")[0];
-  const tomorrowStr = tomorrow.toISOString().split("T")[0];
-  const dayAfterStr = dayAfter.toISOString().split("T")[0];
-
-  const freeCancelTomorrow = new Date(today);
-  freeCancelTomorrow.setHours(22, 0, 0, 0);
-  const lateCancelTomorrow = new Date(tomorrow);
-  lateCancelTomorrow.setHours(9, 0, 0, 0);
-
-  const freeCancelDayAfter = new Date(tomorrow);
-  freeCancelDayAfter.setHours(22, 0, 0, 0);
-  const lateCancelDayAfter = new Date(dayAfter);
-  lateCancelDayAfter.setHours(9, 0, 0, 0);
-
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const twoDaysAgo = new Date(today);
-  twoDaysAgo.setDate(today.getDate() - 2);
-  const threeDaysAgo = new Date(today);
-  threeDaysAgo.setDate(today.getDate() - 3);
-
-  return [
-    {
-      id: "o1",
-      restaurantId: "r1",
-      restaurantName: "Green Bowl",
-      mealId: "m1",
-      mealName: "Mini Thali",
-      mealPassId: passId,
-      scheduledDate: tomorrowStr,
-      slot: "lunch",
-      status: "scheduled",
-      freeCancelUntil: freeCancelTomorrow.toISOString(),
-      lateCancelUntil: lateCancelTomorrow.toISOString(),
-      creditValue: 190,
-      premiumExtra: 0,
-    },
-    {
-      id: "o2",
-      restaurantId: "r2",
-      restaurantName: "Spice Garden",
-      mealId: "m4",
-      mealName: "Masala Dosa",
-      mealPassId: passId,
-      scheduledDate: dayAfterStr,
-      slot: "lunch",
-      status: "scheduled",
-      freeCancelUntil: freeCancelDayAfter.toISOString(),
-      lateCancelUntil: lateCancelDayAfter.toISOString(),
-      creditValue: 190,
-      premiumExtra: 0,
-    },
-    {
-      id: "o3",
-      restaurantId: "r3",
-      restaurantName: "Annapurna Tiffin",
-      mealId: "m6",
-      mealName: "Veg Tiffin",
-      mealPassId: passId,
-      scheduledDate: yesterday.toISOString().split("T")[0],
-      slot: "lunch",
-      status: "delivered",
-      freeCancelUntil: new Date(twoDaysAgo.setHours(22, 0, 0, 0)).toISOString(),
-      lateCancelUntil: new Date(
-        yesterday.setHours(9, 0, 0, 0)
-      ).toISOString(),
-      creditValue: 190,
-      premiumExtra: 0,
-    },
-    {
-      id: "o4",
-      restaurantId: "r1",
-      restaurantName: "Green Bowl",
-      mealId: "m2",
-      mealName: "Rajma Rice",
-      mealPassId: passId,
-      scheduledDate: twoDaysAgo.toISOString().split("T")[0],
-      slot: "dinner",
-      status: "delivered",
-      freeCancelUntil: new Date(
-        threeDaysAgo.setHours(22, 0, 0, 0)
-      ).toISOString(),
-      lateCancelUntil: new Date(
-        twoDaysAgo.setHours(15, 0, 0, 0)
-      ).toISOString(),
-      creditValue: 190,
-      premiumExtra: 0,
-    },
-    {
-      id: "o5",
-      restaurantId: "r4",
-      restaurantName: "Protein Hub",
-      mealId: "m10",
-      mealName: "Paneer Power Bowl",
-      mealPassId: passId,
-      scheduledDate: threeDaysAgo.toISOString().split("T")[0],
-      slot: "lunch",
-      status: "cancelled_free",
-      freeCancelUntil: new Date(
-        new Date(threeDaysAgo).setHours(22, 0, 0, 0)
-      ).toISOString(),
-      lateCancelUntil: new Date(
-        new Date(threeDaysAgo).setHours(9, 0, 0, 0)
-      ).toISOString(),
-      creditValue: 190,
-      premiumExtra: 0,
-    },
-  ];
+function dateStr(d: Date): string {
+  return d.toISOString().split("T")[0];
 }
 
-function makeSeedLedger(passId: string): LedgerEntry[] {
+function makeOrdersForSub(
+  sub: RestaurantSubscription,
+  mealId: string,
+  mealName: string
+): MealOrder[] {
+  const orders: MealOrder[] = [];
+  const today = dateStr(new Date());
+  const start = new Date(sub.startDate + "T12:00:00");
+
+  for (let i = 0; i < sub.totalDays; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    const ds = dateStr(d);
+
+    let status: MealOrder["status"] = "scheduled";
+    if (ds < today) status = "delivered";
+
+    const prevDay = new Date(d);
+    prevDay.setDate(prevDay.getDate() - 1);
+    prevDay.setHours(22, 0, 0, 0);
+
+    const mealDay = new Date(d);
+    mealDay.setHours(sub.slot === "lunch" ? 9 : 15, 0, 0, 0);
+
+    orders.push({
+      id: `${sub.id}_d${i}`,
+      subscriptionId: sub.id,
+      restaurantId: sub.restaurantId,
+      restaurantName: sub.restaurantName,
+      mealId,
+      mealName,
+      scheduledDate: ds,
+      slot: sub.slot,
+      status,
+      freeCancelUntil: prevDay.toISOString(),
+      lateCancelUntil: mealDay.toISOString(),
+      pricePerDay: sub.pricePerDay,
+    });
+  }
+  return orders;
+}
+
+function makeSeedData() {
   const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const twoDaysAgo = new Date(today);
-  twoDaysAgo.setDate(today.getDate() - 2);
-  const threeDaysAgo = new Date(today);
-  threeDaysAgo.setDate(today.getDate() - 3);
+  const sub1Start = new Date(today);
+  sub1Start.setDate(today.getDate() - 3);
+  const sub1End = new Date(sub1Start);
+  sub1End.setDate(sub1Start.getDate() + 19);
+
+  const sub2Start = new Date(today);
+  sub2Start.setDate(today.getDate() - 4);
+  const sub2End = new Date(sub2Start);
+  sub2End.setDate(sub2Start.getDate() + 9);
+
+  const sub1: RestaurantSubscription = {
+    id: "sub1",
+    restaurantId: "r1",
+    restaurantName: "Green Bowl",
+    slot: "lunch",
+    totalDays: 20,
+    usedDays: 3,
+    remainingDays: 17,
+    pricePerDay: 179,
+    totalPaid: 3580,
+    startDate: dateStr(sub1Start),
+    endDate: dateStr(sub1End),
+    status: "active",
+    lateCancellationFees: 0,
+  };
+
+  const sub2: RestaurantSubscription = {
+    id: "sub2",
+    restaurantId: "r3",
+    restaurantName: "Annapurna Tiffin",
+    slot: "dinner",
+    totalDays: 10,
+    usedDays: 4,
+    remainingDays: 6,
+    pricePerDay: 218,
+    totalPaid: 2180,
+    startDate: dateStr(sub2Start),
+    endDate: dateStr(sub2End),
+    status: "active",
+    lateCancellationFees: 0,
+  };
+
+  const orders1 = makeOrdersForSub(sub1, "m1", "Mini Thali");
+  const orders2 = makeOrdersForSub(sub2, "m6", "Veg Tiffin");
+
   const sevenDaysAgo = new Date(today);
   sevenDaysAgo.setDate(today.getDate() - 7);
 
-  return [
+  const ledger: LedgerEntry[] = [
     {
       id: "l1",
-      type: "pass_purchase",
-      description: "Monthly Pass purchased — 30 meal credits added",
-      creditDelta: 30,
-      amountDelta: -5699,
-      createdAt: sevenDaysAgo.toISOString(),
+      subscriptionId: "sub1",
+      restaurantName: "Green Bowl",
+      type: "subscription_purchase",
+      description: "Green Bowl lunch — 20-day subscription",
+      amountDelta: -3580,
+      createdAt: new Date(today.getTime() - 7 * 86400000).toISOString(),
     },
     {
       id: "l2",
-      type: "free_cancel",
-      description: "Cancelled: Protein Hub Paneer Power Bowl — credit restored",
-      creditDelta: 1,
-      amountDelta: 0,
-      createdAt: threeDaysAgo.toISOString(),
+      subscriptionId: "sub2",
+      restaurantName: "Annapurna Tiffin",
+      type: "subscription_purchase",
+      description: "Annapurna Tiffin dinner — 10-day subscription",
+      amountDelta: -2180,
+      createdAt: new Date(today.getTime() - 6 * 86400000).toISOString(),
     },
     {
       id: "l3",
+      subscriptionId: "sub1",
+      restaurantName: "Green Bowl",
       type: "meal_used",
-      description: "Meal used: Green Bowl Rajma Rice",
-      creditDelta: -1,
-      amountDelta: -190,
-      createdAt: twoDaysAgo.toISOString(),
-    },
-    {
-      id: "l4",
-      type: "meal_used",
-      description: "Meal used: Annapurna Tiffin Veg Tiffin",
-      creditDelta: -1,
-      amountDelta: -190,
-      createdAt: yesterday.toISOString(),
+      description: "Meal delivered: Green Bowl Mini Thali",
+      amountDelta: -179,
+      createdAt: new Date(today.getTime() - 1 * 86400000).toISOString(),
     },
   ];
+
+  return {
+    subscriptions: [sub1, sub2],
+    orders: [...orders1, ...orders2],
+    ledger,
+  };
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [user, setUserState] = useState<User | null>(null);
-  const [activePass, setActivePass] = useState<MealPass | null>(null);
+  const [subscriptions, setSubscriptions] = useState<RestaurantSubscription[]>(
+    []
+  );
   const [orders, setOrders] = useState<MealOrder[]>([]);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
-        const [onboardedRaw, userRaw, passRaw, ordersRaw, ledgerRaw] =
+        const [onboardedRaw, userRaw, subsRaw, ordersRaw, ledgerRaw] =
           await Promise.all([
             AsyncStorage.getItem(STORAGE_KEYS.IS_ONBOARDED),
             AsyncStorage.getItem(STORAGE_KEYS.USER),
-            AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_PASS),
+            AsyncStorage.getItem(STORAGE_KEYS.SUBSCRIPTIONS),
             AsyncStorage.getItem(STORAGE_KEYS.ORDERS),
             AsyncStorage.getItem(STORAGE_KEYS.LEDGER),
           ]);
-
         if (onboardedRaw === "true") setIsOnboarded(true);
         if (userRaw) setUserState(JSON.parse(userRaw));
-        if (passRaw) setActivePass(JSON.parse(passRaw));
+        if (subsRaw) setSubscriptions(JSON.parse(subsRaw));
         if (ordersRaw) setOrders(JSON.parse(ordersRaw));
         if (ledgerRaw) setLedger(JSON.parse(ledgerRaw));
-      } catch (e) {
-        // ignore storage errors
+      } catch {
+        // ignore
       } finally {
         setIsLoading(false);
       }
@@ -325,140 +294,173 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(u));
     setUserState(u);
 
-    // seed demo pass + orders on first user set
-    const existingPass = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_PASS);
-    if (!existingPass) {
-      const validFrom = new Date();
-      const validUntil = new Date();
-      validUntil.setDate(validUntil.getDate() + 45);
-
-      const newPass: MealPass = {
-        id: "pass1",
-        planId: "monthly",
-        planName: "Monthly Pass",
-        totalCredits: 30,
-        remainingCredits: 14,
-        paidAmount: 5699,
-        bonusCredits: 0,
-        effectiveCreditValue: 190,
-        validFrom: validFrom.toISOString(),
-        validUntil: validUntil.toISOString(),
-        status: "active",
-        lateCancellationFees: 0,
-      };
-
-      const seedOrders = makeSeedOrders(newPass.id);
-      const seedLedger = makeSeedLedger(newPass.id);
-
+    const existingSubs = await AsyncStorage.getItem(STORAGE_KEYS.SUBSCRIPTIONS);
+    if (!existingSubs) {
+      const seed = makeSeedData();
       await Promise.all([
-        AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_PASS, JSON.stringify(newPass)),
+        AsyncStorage.setItem(
+          STORAGE_KEYS.SUBSCRIPTIONS,
+          JSON.stringify(seed.subscriptions)
+        ),
         AsyncStorage.setItem(
           STORAGE_KEYS.ORDERS,
-          JSON.stringify(seedOrders)
+          JSON.stringify(seed.orders)
         ),
         AsyncStorage.setItem(
           STORAGE_KEYS.LEDGER,
-          JSON.stringify(seedLedger)
+          JSON.stringify(seed.ledger)
         ),
       ]);
-
-      setActivePass(newPass);
-      setOrders(seedOrders);
-      setLedger(seedLedger);
+      setSubscriptions(seed.subscriptions);
+      setOrders(seed.orders);
+      setLedger(seed.ledger);
     }
   }, []);
 
-  const buyPass = useCallback(
-    async (planId: string) => {
-      const plan = PASS_PLANS.find((p) => p.id === planId);
-      if (!plan) return;
+  const subscribe = useCallback(
+    async (params: SubscribeParams) => {
+      const startDate = new Date();
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + params.days - 1);
 
-      const validUntil = new Date();
-      validUntil.setDate(validUntil.getDate() + plan.validDays);
-
-      const newPass: MealPass = {
-        id: `pass_${Date.now()}`,
-        planId: plan.id,
-        planName: plan.name,
-        totalCredits: plan.meals,
-        remainingCredits: plan.meals,
-        paidAmount: plan.price,
-        bonusCredits: 0,
-        effectiveCreditValue: Math.round(plan.price / plan.meals),
-        validFrom: new Date().toISOString(),
-        validUntil: validUntil.toISOString(),
+      const newSub: RestaurantSubscription = {
+        id: `sub_${Date.now()}`,
+        restaurantId: params.restaurantId,
+        restaurantName: params.restaurantName,
+        slot: params.slot,
+        totalDays: params.days,
+        usedDays: 0,
+        remainingDays: params.days,
+        pricePerDay: params.pricePerDay,
+        totalPaid: params.pricePerDay * params.days,
+        startDate: dateStr(startDate),
+        endDate: dateStr(endDate),
         status: "active",
         lateCancellationFees: 0,
       };
 
-      const newEntry: LedgerEntry = {
+      const newOrders = makeOrdersForSub(
+        newSub,
+        params.defaultMealId,
+        params.defaultMealName
+      );
+
+      const ledgerEntry: LedgerEntry = {
         id: `l_${Date.now()}`,
-        type: "pass_purchase",
-        description: `${plan.name} purchased — ${plan.meals} meal credits added`,
-        creditDelta: plan.meals,
-        amountDelta: -plan.price,
+        subscriptionId: newSub.id,
+        restaurantName: params.restaurantName,
+        type: "subscription_purchase",
+        description: `${params.restaurantName} ${params.slot} — ${params.days}-day subscription`,
+        amountDelta: -(params.pricePerDay * params.days),
         createdAt: new Date().toISOString(),
       };
 
-      const updatedLedger = [newEntry, ...ledger];
+      const updatedSubs = [...subscriptions, newSub];
+      const updatedOrders = [...orders, ...newOrders];
+      const updatedLedger = [ledgerEntry, ...ledger];
+
       await Promise.all([
-        AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_PASS, JSON.stringify(newPass)),
+        AsyncStorage.setItem(
+          STORAGE_KEYS.SUBSCRIPTIONS,
+          JSON.stringify(updatedSubs)
+        ),
+        AsyncStorage.setItem(
+          STORAGE_KEYS.ORDERS,
+          JSON.stringify(updatedOrders)
+        ),
         AsyncStorage.setItem(
           STORAGE_KEYS.LEDGER,
           JSON.stringify(updatedLedger)
         ),
       ]);
 
-      setActivePass(newPass);
+      setSubscriptions(updatedSubs);
+      setOrders(updatedOrders);
       setLedger(updatedLedger);
     },
-    [ledger]
+    [subscriptions, orders, ledger]
   );
 
-  const scheduleOrder = useCallback(
-    async (params: {
-      restaurantId: string;
-      restaurantName: string;
-      mealId: string;
-      mealName: string;
-      scheduledDate: string;
-      slot: "lunch" | "dinner";
-      premiumExtra: number;
-    }) => {
-      if (!activePass) return;
+  const cancelSubscription = useCallback(
+    async (subscriptionId: string): Promise<{ refundAmount: number }> => {
+      const sub = subscriptions.find((s) => s.id === subscriptionId);
+      if (!sub) return { refundAmount: 0 };
 
-      const scheduledDay = new Date(params.scheduledDate);
-      const prevDay = new Date(scheduledDay);
-      prevDay.setDate(prevDay.getDate() - 1);
-      const freeCancelUntil = new Date(prevDay);
-      freeCancelUntil.setHours(22, 0, 0, 0);
-      const lateCancelUntil = new Date(scheduledDay);
-      lateCancelUntil.setHours(params.slot === "lunch" ? 9 : 15, 0, 0, 0);
+      const refundAmount = Math.max(
+        0,
+        sub.remainingDays * sub.pricePerDay - sub.lateCancellationFees
+      );
 
-      const newOrder: MealOrder = {
-        id: `o_${Date.now()}`,
-        restaurantId: params.restaurantId,
-        restaurantName: params.restaurantName,
-        mealId: params.mealId,
-        mealName: params.mealName,
-        mealPassId: activePass.id,
-        scheduledDate: params.scheduledDate,
-        slot: params.slot,
-        status: "scheduled",
-        freeCancelUntil: freeCancelUntil.toISOString(),
-        lateCancelUntil: lateCancelUntil.toISOString(),
-        creditValue: activePass.effectiveCreditValue,
-        premiumExtra: params.premiumExtra,
+      const updatedSubs = subscriptions.map((s) =>
+        s.id === subscriptionId
+          ? { ...s, status: "cancelled" as const }
+          : s
+      );
+
+      const updatedOrders = orders.map((o) =>
+        o.subscriptionId === subscriptionId && o.status === "scheduled"
+          ? { ...o, status: "cancelled_free" as const }
+          : o
+      );
+
+      const ledgerEntry: LedgerEntry = {
+        id: `l_${Date.now()}`,
+        subscriptionId,
+        restaurantName: sub.restaurantName,
+        type: "refund",
+        description: `Subscription cancelled — ${sub.remainingDays} day refund: ${sub.restaurantName} ${sub.slot}`,
+        amountDelta: refundAmount,
+        createdAt: new Date().toISOString(),
       };
 
-      const updatedOrders = [newOrder, ...orders];
-      await AsyncStorage.setItem(
-        STORAGE_KEYS.ORDERS,
-        JSON.stringify(updatedOrders)
-      );
+      const updatedLedger = [ledgerEntry, ...ledger];
+
+      await Promise.all([
+        AsyncStorage.setItem(
+          STORAGE_KEYS.SUBSCRIPTIONS,
+          JSON.stringify(updatedSubs)
+        ),
+        AsyncStorage.setItem(
+          STORAGE_KEYS.ORDERS,
+          JSON.stringify(updatedOrders)
+        ),
+        AsyncStorage.setItem(
+          STORAGE_KEYS.LEDGER,
+          JSON.stringify(updatedLedger)
+        ),
+      ]);
+
+      setSubscriptions(updatedSubs);
       setOrders(updatedOrders);
+      setLedger(updatedLedger);
+
+      return { refundAmount };
     },
-    [activePass, orders]
+    [subscriptions, orders, ledger]
+  );
+
+  const pauseSubscription = useCallback(
+    async (subscriptionId: string, pauseDays: number) => {
+      const pausedUntil = new Date();
+      pausedUntil.setDate(pausedUntil.getDate() + pauseDays);
+
+      const updatedSubs = subscriptions.map((s) =>
+        s.id === subscriptionId
+          ? {
+              ...s,
+              status: "paused" as const,
+              pausedUntil: pausedUntil.toISOString(),
+            }
+          : s
+      );
+
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.SUBSCRIPTIONS,
+        JSON.stringify(updatedSubs)
+      );
+      setSubscriptions(updatedSubs);
+    },
+    [subscriptions]
   );
 
   const getOrderCancelStatus = useCallback(
@@ -472,11 +474,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return "none";
 
       const now = new Date();
-      const freeCancelTime = new Date(order.freeCancelUntil);
-      const lateCancelTime = new Date(order.lateCancelUntil);
-
-      if (now <= freeCancelTime) return "free";
-      if (now <= lateCancelTime) return "late";
+      if (now <= new Date(order.freeCancelUntil)) return "free";
+      if (now <= new Date(order.lateCancelUntil)) return "late";
       return "full";
     },
     []
@@ -487,60 +486,55 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       orderId: string
     ): Promise<{ type: "free" | "late" | "full"; fee: number }> => {
       const order = orders.find((o) => o.id === orderId);
-      if (!order || !activePass)
-        return { type: "free", fee: 0 };
+      if (!order) return { type: "free", fee: 0 };
 
       const cancelType = getOrderCancelStatus(order);
       if (cancelType === "none") return { type: "free", fee: 0 };
 
       let newStatus: MealOrder["status"] = "cancelled_free";
-      let creditDelta = 0;
       let fee = 0;
       let ledgerType: LedgerEntry["type"] = "free_cancel";
-      let ledgerDesc = `Cancelled: ${order.restaurantName} ${order.mealName} — credit restored`;
+      let ledgerDesc = `Free cancel: ${order.restaurantName} ${order.mealName}`;
+      let amountDelta = 0;
 
       if (cancelType === "late") {
         newStatus = "cancelled_late";
-        creditDelta = -0.5;
-        fee = Math.round(order.creditValue * 0.5);
+        fee = Math.round(order.pricePerDay * 0.5);
         ledgerType = "late_cancel";
-        ledgerDesc = `Late cancel: ${order.restaurantName} ${order.mealName} — 50% credit deducted`;
+        ledgerDesc = `Late cancel: ${order.restaurantName} — 50% fee ₹${fee}`;
+        amountDelta = -fee;
       } else if (cancelType === "full") {
         newStatus = "cancelled_full";
-        creditDelta = -1;
-        fee = order.creditValue;
+        fee = order.pricePerDay;
         ledgerType = "full_charge";
-        ledgerDesc = `Full charge: ${order.restaurantName} ${order.mealName} — meal credit used`;
-      } else {
-        // free cancel — restore the credit logically
-        creditDelta = 1;
+        ledgerDesc = `Full charge: ${order.restaurantName} — prep started ₹${fee}`;
+        amountDelta = -fee;
       }
 
       const updatedOrders = orders.map((o) =>
         o.id === orderId ? { ...o, status: newStatus } : o
       );
 
-      const remainingAfter = Math.max(
-        0,
-        activePass.remainingCredits + creditDelta
+      const updatedSubs = subscriptions.map((s) =>
+        s.id === order.subscriptionId
+          ? {
+              ...s,
+              lateCancellationFees: s.lateCancellationFees + fee,
+              remainingDays:
+                cancelType === "free"
+                  ? s.remainingDays + 1
+                  : s.remainingDays,
+            }
+          : s
       );
-      const updatedPass: MealPass = {
-        ...activePass,
-        remainingCredits: remainingAfter,
-        lateCancellationFees: activePass.lateCancellationFees + fee,
-        status:
-          remainingAfter === 0
-            ? ("exhausted" as const)
-            : activePass.status,
-      };
 
       const newEntry: LedgerEntry = {
         id: `l_${Date.now()}`,
+        subscriptionId: order.subscriptionId,
+        restaurantName: order.restaurantName,
         type: ledgerType,
         description: ledgerDesc,
-        creditDelta:
-          cancelType === "free" ? 0 : creditDelta,
-        amountDelta: -fee,
+        amountDelta,
         createdAt: new Date().toISOString(),
       };
 
@@ -552,8 +546,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           JSON.stringify(updatedOrders)
         ),
         AsyncStorage.setItem(
-          STORAGE_KEYS.ACTIVE_PASS,
-          JSON.stringify(updatedPass)
+          STORAGE_KEYS.SUBSCRIPTIONS,
+          JSON.stringify(updatedSubs)
         ),
         AsyncStorage.setItem(
           STORAGE_KEYS.LEDGER,
@@ -562,65 +556,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       setOrders(updatedOrders);
-      setActivePass(updatedPass);
+      setSubscriptions(updatedSubs);
       setLedger(updatedLedger);
 
-      return {
-        type: cancelType as "free" | "late" | "full",
-        fee,
-      };
+      return { type: cancelType as "free" | "late" | "full", fee };
     },
-    [orders, activePass, ledger, getOrderCancelStatus]
+    [orders, subscriptions, ledger, getOrderCancelStatus]
   );
-
-  const pauseMeals = useCallback(
-    async (days: number) => {
-      if (!activePass) return;
-      const pausedUntil = new Date();
-      pausedUntil.setDate(pausedUntil.getDate() + days);
-      const updated: MealPass = {
-        ...activePass,
-        status: "paused",
-        pausedUntil: pausedUntil.toISOString(),
-      };
-      await AsyncStorage.setItem(
-        STORAGE_KEYS.ACTIVE_PASS,
-        JSON.stringify(updated)
-      );
-      setActivePass(updated);
-    },
-    [activePass]
-  );
-
-  const requestRefund = useCallback(async () => {
-    if (!activePass) return;
-    const updated: MealPass = {
-      ...activePass,
-      status: "refund_requested",
-    };
-    const newEntry: LedgerEntry = {
-      id: `l_${Date.now()}`,
-      type: "refund",
-      description: "Refund requested for unused paid meal credits",
-      creditDelta: -activePass.remainingCredits,
-      amountDelta:
-        activePass.remainingCredits * activePass.effectiveCreditValue,
-      createdAt: new Date().toISOString(),
-    };
-    const updatedLedger = [newEntry, ...ledger];
-    await Promise.all([
-      AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_PASS, JSON.stringify(updated)),
-      AsyncStorage.setItem(
-        STORAGE_KEYS.LEDGER,
-        JSON.stringify(updatedLedger)
-      ),
-    ]);
-    setActivePass(updated);
-    setLedger(updatedLedger);
-  }, [activePass, ledger]);
 
   const refreshOrders = useCallback(() => {
-    // Force re-render to pick up date-based status changes
     setOrders((prev) => [...prev]);
   }, []);
 
@@ -630,16 +574,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         isOnboarded,
         user,
-        activePass,
+        subscriptions,
         orders,
         ledger,
         setOnboarded,
         setUser,
-        buyPass,
-        scheduleOrder,
+        subscribe,
+        cancelSubscription,
+        pauseSubscription,
         cancelOrder,
-        pauseMeals,
-        requestRefund,
         getOrderCancelStatus,
         refreshOrders,
       }}

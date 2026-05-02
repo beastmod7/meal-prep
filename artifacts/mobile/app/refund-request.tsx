@@ -1,10 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -18,178 +16,219 @@ import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
 export default function RefundRequestScreen() {
+  const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { activePass, requestRefund } = useApp();
-  const [loading, setLoading] = useState(false);
+  const { subscriptionId } = useLocalSearchParams<{ subscriptionId?: string }>();
+  const { subscriptions, cancelSubscription } = useApp();
 
-  if (!activePass) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [refundResult, setRefundResult] = useState<{ refundAmount: number } | null>(null);
+
+  const sub = subscriptions.find((s) => s.id === subscriptionId);
+
+  if (!sub) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text style={[styles.empty, { color: colors.mutedForeground }]}>
-          No active pass to refund.
-        </Text>
+        <View style={styles.notFound}>
+          <Feather name="alert-circle" size={32} color={colors.mutedForeground} />
+          <Text style={[styles.notFoundText, { color: colors.mutedForeground }]}>
+            Subscription not found.
+          </Text>
+          <Pressable onPress={() => router.back()} style={[styles.backBtn, { borderColor: colors.border }]}>
+            <Text style={{ color: colors.foreground, fontFamily: "Inter_500Medium" }}>Go back</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
 
-  const usedCredits = activePass.totalCredits - activePass.remainingCredits;
-  const usedAmount = usedCredits * activePass.effectiveCreditValue;
-  const lateFees = activePass.lateCancellationFees;
-  const refundableAmount = Math.max(
+  const refundAmount = Math.max(
     0,
-    activePass.paidAmount - usedAmount - lateFees
+    sub.remainingDays * sub.pricePerDay - sub.lateCancellationFees
   );
-  const bonusCredits = activePass.bonusCredits;
 
-  async function handleRequest() {
-    Alert.alert(
-      "Confirm refund",
-      `You'll receive ₹${refundableAmount.toLocaleString("en-IN")} back to your original payment method in 3–7 working days.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Request refund",
-          style: "destructive",
-          onPress: async () => {
-            setLoading(true);
-            Haptics.notificationAsync(
-              Haptics.NotificationFeedbackType.Warning
-            );
-            await requestRefund();
-            setLoading(false);
-            router.back();
-          },
-        },
-      ]
-    );
+  async function handleCancel() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsSubmitting(true);
+    const result = await cancelSubscription(sub!.id);
+    setIsSubmitting(false);
+    setRefundResult(result);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
-  const rows = [
-    { label: "Pass purchased", value: `₹${activePass.paidAmount.toLocaleString("en-IN")}` },
-    { label: "Meals included", value: `${activePass.totalCredits}` },
-    { label: "Meals used", value: `${usedCredits}`, negative: true },
-    { label: "Used amount", value: `−₹${usedAmount.toLocaleString("en-IN")}`, negative: true },
-    { label: "Late cancel charges", value: lateFees > 0 ? `−₹${lateFees}` : "₹0", negative: lateFees > 0 },
-    { label: "Bonus credits", value: bonusCredits > 0 ? `${bonusCredits} (non-refundable)` : "None" },
-  ];
+  if (refundResult) {
+    return (
+      <View
+        style={[
+          styles.container,
+          styles.successContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <View style={[styles.successIcon, { backgroundColor: "#DCFCE7" }]}>
+          <Feather name="check-circle" size={32} color="#16A34A" />
+        </View>
+        <Text style={[styles.successTitle, { color: colors.foreground }]}>
+          Subscription cancelled
+        </Text>
+        {refundResult.refundAmount > 0 ? (
+          <Text style={[styles.successBody, { color: colors.mutedForeground }]}>
+            A refund of{" "}
+            <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground }}>
+              ₹{refundResult.refundAmount.toLocaleString("en-IN")}
+            </Text>{" "}
+            for {sub.remainingDays} unused days has been initiated. It will appear in your account within 5–7 business days.
+          </Text>
+        ) : (
+          <Text style={[styles.successBody, { color: colors.mutedForeground }]}>
+            Your subscription has been cancelled. No refund is applicable after late cancellation fees.
+          </Text>
+        )}
+        <Pressable
+          onPress={() => router.replace("/(tabs)/pass")}
+          style={[styles.doneBtn, { backgroundColor: colors.primary }]}
+        >
+          <Text style={styles.doneBtnText}>Go to My Plans</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
-        contentContainerStyle={{
-          padding: 20,
-          paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 100,
-          gap: 16,
-        }}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          padding: 16,
+          paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 100,
+        }}
       >
-        {/* Refund amount highlight */}
-        <View style={[styles.refundHighlight, { backgroundColor: "#F0FDF4", borderColor: "#86EFAC" }]}>
-          <Text style={styles.refundAmountLabel}>Refund available</Text>
-          <Text style={styles.refundAmount}>
-            ₹{refundableAmount.toLocaleString("en-IN")}
+        {/* Subscription summary */}
+        <View
+          style={[
+            styles.subCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <Text style={styles.subEmoji}>
+            {sub.slot === "lunch" ? "☀️" : "🌙"}
           </Text>
-          <Text style={styles.refundSub}>
-            Goes back to your original payment method in 3–7 working days
-          </Text>
+          <View style={styles.subCardInfo}>
+            <Text style={[styles.subCardName, { color: colors.foreground }]}>
+              {sub.restaurantName}
+            </Text>
+            <Text style={[styles.subCardDetail, { color: colors.mutedForeground }]}>
+              {sub.slot === "lunch" ? "Lunch" : "Dinner"} · {sub.totalDays}-day pack
+            </Text>
+          </View>
+          <View style={[styles.subStatusBadge, { backgroundColor: "#DCFCE7" }]}>
+            <Text style={styles.subStatusText}>Active</Text>
+          </View>
         </View>
 
-        {/* Breakdown */}
-        <View style={[styles.breakdownCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.breakdownTitle, { color: colors.foreground }]}>
-            Breakdown
+        {/* Refund breakdown */}
+        <View
+          style={[
+            styles.refundCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <Text style={[styles.refundTitle, { color: colors.foreground }]}>
+            Refund breakdown
           </Text>
-          {rows.map((row, i) => (
-            <View
-              key={row.label}
-              style={[
-                styles.row,
-                i > 0 && { borderTopWidth: 1, borderTopColor: colors.border },
-              ]}
-            >
-              <Text style={[styles.rowLabel, { color: colors.mutedForeground }]}>
-                {row.label}
+
+          <View style={[styles.refundRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.refundLabel, { color: colors.mutedForeground }]}>
+              Unused days
+            </Text>
+            <Text style={[styles.refundValue, { color: colors.foreground }]}>
+              {sub.remainingDays} × ₹{sub.pricePerDay} = ₹{(sub.remainingDays * sub.pricePerDay).toLocaleString("en-IN")}
+            </Text>
+          </View>
+
+          {sub.lateCancellationFees > 0 && (
+            <View style={[styles.refundRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.refundLabel, { color: colors.mutedForeground }]}>
+                Late cancellation fees
               </Text>
-              <Text
-                style={[
-                  styles.rowValue,
-                  { color: row.negative ? "#EF4444" : colors.foreground },
-                ]}
-              >
-                {row.value}
+              <Text style={[styles.refundValue, { color: "#EF4444" }]}>
+                −₹{sub.lateCancellationFees.toLocaleString("en-IN")}
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.refundTotalRow}>
+            <Text style={[styles.refundTotalLabel, { color: colors.foreground }]}>
+              You'll receive
+            </Text>
+            <Text style={[styles.refundTotalValue, { color: "#16A34A" }]}>
+              ₹{refundAmount.toLocaleString("en-IN")}
+            </Text>
+          </View>
+        </View>
+
+        {/* Warning */}
+        <View style={[styles.warningBox, { backgroundColor: "#FEF2F2", borderColor: "#FEE2E2" }]}>
+          <Feather name="alert-triangle" size={16} color="#EF4444" />
+          <View style={styles.warningContent}>
+            <Text style={styles.warningTitle}>This action is irreversible</Text>
+            <Text style={styles.warningBody}>
+              All {sub.remainingDays} upcoming scheduled meals will be cancelled. You can subscribe to this restaurant again anytime.
+            </Text>
+          </View>
+        </View>
+
+        {/* Timeline */}
+        <View style={[styles.timelineBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+          <Text style={[styles.timelineTitle, { color: colors.foreground }]}>
+            What happens next
+          </Text>
+          {[
+            "Subscription is cancelled immediately",
+            "All upcoming meals are cancelled",
+            `Refund of ₹${refundAmount.toLocaleString("en-IN")} is initiated`,
+            "Refund appears in your account in 5–7 days",
+          ].map((step, i) => (
+            <View key={i} style={styles.timelineRow}>
+              <View style={[styles.timelineNum, { backgroundColor: colors.primary }]}>
+                <Text style={styles.timelineNumText}>{i + 1}</Text>
+              </View>
+              <Text style={[styles.timelineStep, { color: colors.mutedForeground }]}>
+                {step}
               </Text>
             </View>
           ))}
-          <View
-            style={[
-              styles.totalRow,
-              { borderTopWidth: 2, borderTopColor: colors.border },
-            ]}
-          >
-            <Text style={[styles.totalLabel, { color: colors.foreground }]}>
-              Refundable amount
-            </Text>
-            <Text style={styles.totalValue}>
-              ₹{refundableAmount.toLocaleString("en-IN")}
-            </Text>
-          </View>
         </View>
-
-        {/* Info boxes */}
-        <View style={[styles.infoBox, { backgroundColor: "#FFF3E8", borderColor: "#FDBA74" }]}>
-          <Feather name="info" size={14} color="#F97316" />
-          <Text style={styles.infoText}>
-            Refund only applies to unused paid meal credits. Bonus credits and
-            late cancellation fees are non-refundable.
-          </Text>
-        </View>
-
-        {activePass.status === "refund_requested" && (
-          <View style={[styles.infoBox, { backgroundColor: "#FFFBEB", borderColor: "#FCD34D" }]}>
-            <Feather name="clock" size={14} color="#F59E0B" />
-            <Text style={[styles.infoText, { color: "#92400E" }]}>
-              A refund request is already pending for this pass.
-            </Text>
-          </View>
-        )}
       </ScrollView>
 
-      {/* CTA */}
       <View
         style={[
-          styles.ctaBar,
+          styles.footer,
           {
-            paddingBottom: insets.bottom + 12,
             backgroundColor: colors.background,
             borderTopColor: colors.border,
+            paddingBottom: insets.bottom + (Platform.OS === "web" ? 24 : 0) + 8,
           },
         ]}
       >
         <Pressable
-          onPress={handleRequest}
-          disabled={
-            loading ||
-            refundableAmount === 0 ||
-            activePass.status === "refund_requested"
-          }
+          onPress={handleCancel}
+          disabled={isSubmitting}
           style={({ pressed }) => [
-            styles.ctaBtn,
-            (loading || refundableAmount === 0 || activePass.status === "refund_requested") &&
-              styles.btnDisabled,
-            pressed && { opacity: 0.85 },
+            styles.cancelBtn,
+            pressed && { opacity: 0.9 },
+            isSubmitting && { opacity: 0.6 },
           ]}
         >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.ctaBtnText}>
-              {activePass.status === "refund_requested"
-                ? "Refund requested"
-                : "Request refund"}
-            </Text>
-          )}
+          <Text style={styles.cancelBtnText}>
+            {isSubmitting ? "Processing…" : `Cancel & Get ₹${refundAmount.toLocaleString("en-IN")} Refund`}
+          </Text>
+        </Pressable>
+        <Pressable onPress={() => router.back()} style={styles.keepBtn}>
+          <Text style={[styles.keepBtnText, { color: colors.mutedForeground }]}>
+            Keep subscription
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -198,100 +237,43 @@ export default function RefundRequestScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  empty: {
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    padding: 40,
-  },
-  refundHighlight: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 20,
-    alignItems: "center",
-    gap: 6,
-  },
-  refundAmountLabel: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    color: "#166534",
-  },
-  refundAmount: {
-    fontSize: 36,
-    fontFamily: "Inter_700Bold",
-    color: "#166534",
-  },
-  refundSub: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: "#4ADE80",
-    textAlign: "center",
-  },
-  breakdownCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  breakdownTitle: {
-    fontSize: 15,
-    fontFamily: "Inter_700Bold",
-    padding: 14,
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  rowLabel: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  rowValue: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  totalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-  },
-  totalLabel: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  totalValue: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    color: "#16A34A",
-  },
-  infoBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "#92400E",
-    lineHeight: 18,
-  },
-  ctaBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    borderTopWidth: 1,
-  },
-  ctaBtn: {
-    height: 54,
-    backgroundColor: "#EF4444",
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  btnDisabled: { backgroundColor: "#D4D4D8" },
-  ctaBtnText: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-  },
+  notFound: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
+  notFoundText: { fontSize: 15, fontFamily: "Inter_400Regular" },
+  backBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, borderWidth: 1 },
+  successContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32, gap: 12 },
+  successIcon: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  successTitle: { fontSize: 24, fontFamily: "Inter_700Bold", textAlign: "center" },
+  successBody: { fontSize: 15, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22, maxWidth: 280 },
+  doneBtn: { marginTop: 12, paddingHorizontal: 40, paddingVertical: 14, borderRadius: 14 },
+  doneBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+  subCard: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 16 },
+  subEmoji: { fontSize: 24 },
+  subCardInfo: { flex: 1 },
+  subCardName: { fontSize: 15, fontFamily: "Inter_700Bold", marginBottom: 1 },
+  subCardDetail: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  subStatusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100 },
+  subStatusText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#16A34A" },
+  refundCard: { borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 16, gap: 0 },
+  refundTitle: { fontSize: 14, fontFamily: "Inter_700Bold", marginBottom: 12 },
+  refundRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1 },
+  refundLabel: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  refundValue: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  refundTotalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: 10 },
+  refundTotalLabel: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  refundTotalValue: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  warningBox: { flexDirection: "row", gap: 10, alignItems: "flex-start", borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 14 },
+  warningContent: { flex: 1, gap: 4 },
+  warningTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#991B1B" },
+  warningBody: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#991B1B", lineHeight: 17 },
+  timelineBox: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 10 },
+  timelineTitle: { fontSize: 13, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  timelineRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  timelineNum: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  timelineNumText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#FFF" },
+  timelineStep: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular" },
+  footer: { borderTopWidth: 1, paddingHorizontal: 16, paddingTop: 12, gap: 8 },
+  cancelBtn: { height: 54, backgroundColor: "#EF4444", borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  cancelBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+  keepBtn: { height: 44, alignItems: "center", justifyContent: "center" },
+  keepBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
 });

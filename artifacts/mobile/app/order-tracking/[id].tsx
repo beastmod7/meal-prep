@@ -111,7 +111,7 @@ export default function OrderTrackingScreen() {
             <View style={styles.metaItem}>
               <Feather name="credit-card" size={13} color={colors.mutedForeground} />
               <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                {order.creditValue > 0 ? `1 credit` : "Free"}{order.premiumExtra > 0 ? ` + ₹${order.premiumExtra}` : ""}
+                ₹{order.pricePerDay}/day
               </Text>
             </View>
           </View>

@@ -28,13 +28,17 @@ const FILTERS = [
 export default function MealsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [activeFilter, setActiveFilter] = useState("all");
   const [search, setSearch] = useState("");
 
   const filtered = RESTAURANTS.filter((r) => {
-    if (search && !r.name.toLowerCase().includes(search.toLowerCase()) && !r.cuisine.toLowerCase().includes(search.toLowerCase())) {
+    if (
+      search &&
+      !r.name.toLowerCase().includes(search.toLowerCase()) &&
+      !r.cuisine.toLowerCase().includes(search.toLowerCase())
+    )
       return false;
-    }
     if (activeFilter === "veg" && !r.isVeg) return false;
     if (activeFilter === "lunch" && !r.lunchAvailable) return false;
     if (activeFilter === "dinner" && !r.dinnerAvailable) return false;
@@ -44,13 +48,11 @@ export default function MealsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
       <View
         style={[
           styles.header,
           {
-            paddingTop:
-              insets.top + (Platform.OS === "web" ? 67 : 0) + 16,
+            paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) + 16,
             borderBottomColor: colors.border,
           },
         ]}
@@ -59,7 +61,7 @@ export default function MealsScreen() {
           Restaurants
         </Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          All partner restaurants near your campus
+          Tap a restaurant to see meal options and subscribe
         </Text>
 
         <View
@@ -84,7 +86,6 @@ export default function MealsScreen() {
         </View>
       </View>
 
-      {/* Filters */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -122,7 +123,6 @@ export default function MealsScreen() {
         ))}
       </ScrollView>
 
-      {/* Restaurant list */}
       <ScrollView
         style={styles.list}
         contentContainerStyle={[
@@ -134,6 +134,14 @@ export default function MealsScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        {/* How it works banner */}
+        <View style={[styles.howItWorks, { backgroundColor: "#FFF3E8", borderColor: "#FDBA74" }]}>
+          <Feather name="info" size={14} color="#EA580C" />
+          <Text style={styles.howItWorksText}>
+            Subscribe to a restaurant for <Text style={{ fontFamily: "Inter_700Bold" }}>10, 20, or 30 days</Text> — choose lunch or dinner. Every meal is auto-scheduled for you daily.
+          </Text>
+        </View>
+
         {filtered.length === 0 ? (
           <View style={styles.empty}>
             <Feather name="search" size={32} color={colors.mutedForeground} />
@@ -142,7 +150,9 @@ export default function MealsScreen() {
             </Text>
           </View>
         ) : (
-          filtered.map((r) => <RestaurantCard key={r.id} restaurant={r} />)
+          filtered.map((r) => (
+            <RestaurantCard key={r.id} restaurant={r} showSubscribeCta />
+          ))
         )}
       </ScrollView>
     </View>
@@ -150,9 +160,7 @@ export default function MealsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     paddingHorizontal: 16,
     paddingBottom: 12,
@@ -182,38 +190,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
   },
-  filtersScroll: {
-    flexGrow: 0,
-    marginVertical: 10,
-  },
-  filtersContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
+  filtersScroll: { flexGrow: 0, marginVertical: 10 },
+  filtersContent: { paddingHorizontal: 16, gap: 8 },
   filterChip: {
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 100,
     borderWidth: 1,
   },
-  filterText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
+  filterText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  list: { flex: 1 },
+  listContent: { paddingHorizontal: 16, paddingTop: 4 },
+  howItWorks: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 12,
   },
-  list: {
+  howItWorksText: {
     flex: 1,
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-  },
-  empty: {
-    alignItems: "center",
-    paddingTop: 60,
-    gap: 12,
-  },
-  emptyText: {
-    fontSize: 15,
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
+    color: "#92400E",
+    lineHeight: 17,
   },
+  empty: { alignItems: "center", paddingTop: 60, gap: 12 },
+  emptyText: { fontSize: 15, fontFamily: "Inter_400Regular" },
 });

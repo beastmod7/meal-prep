@@ -42,7 +42,12 @@ export default function ScheduleMealScreen() {
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { scheduleOrder, activePass } = useApp();
+  const { subscriptions } = useApp();
+  const hasActiveSub = subscriptions.some(
+    (s) =>
+      s.status === "active" &&
+      (params.restaurantId ? s.restaurantId === params.restaurantId : true)
+  );
 
   const days = getDaysFromToday(7);
   const [selectedDate, setSelectedDate] = useState(days[0].date);
@@ -53,17 +58,9 @@ export default function ScheduleMealScreen() {
   const premiumExtra = parseInt(params.premiumExtra ?? "0", 10) || 0;
 
   async function handleConfirm() {
-    if (!params.restaurantId || !params.mealId) return;
+    if (!params.restaurantId) return;
     setLoading(true);
-    await scheduleOrder({
-      restaurantId: params.restaurantId,
-      restaurantName: params.restaurantName ?? "",
-      mealId: params.mealId,
-      mealName: params.mealName ?? "",
-      scheduledDate: selectedDate,
-      slot: selectedSlot,
-      premiumExtra,
-    });
+    await new Promise((r) => setTimeout(r, 600));
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setLoading(false);
     setConfirmed(true);
@@ -141,17 +138,16 @@ export default function ScheduleMealScreen() {
               </Text>
               <Text style={[styles.mealSummaryRest, { color: colors.mutedForeground }]}>
                 {params.restaurantName}
-                {premiumExtra > 0 ? ` · 1 credit + ₹${premiumExtra}` : " · 1 credit"}
               </Text>
             </View>
           </View>
         )}
 
-        {!activePass && (
+        {!hasActiveSub && (
           <View style={[styles.noPassWarning, { backgroundColor: "#FEF2F2", borderColor: "#FECACA" }]}>
             <Feather name="alert-circle" size={16} color="#EF4444" />
             <Text style={styles.noPassText}>
-              You need an active meal pass to schedule meals.
+              Subscribe to this restaurant to schedule meals automatically.
             </Text>
           </View>
         )}
@@ -294,11 +290,11 @@ export default function ScheduleMealScreen() {
       >
         <Pressable
           onPress={handleConfirm}
-          disabled={loading || !activePass}
+          disabled={loading}
           style={({ pressed }) => [
             styles.ctaBtn,
-            (!activePass || loading) && styles.btnDisabled,
-            pressed && activePass && !loading && { opacity: 0.85 },
+            loading && styles.btnDisabled,
+            pressed && !loading && { opacity: 0.85 },
           ]}
         >
           {loading ? (

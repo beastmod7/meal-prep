@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -12,7 +12,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { MEALS, RESTAURANTS } from "@/constants/mockData";
+import {
+  MEALS,
+  RESTAURANTS,
+  SUBSCRIPTION_PACKAGES,
+  SubscriptionPackage,
+} from "@/constants/mockData";
 import { useColors } from "@/hooks/useColors";
 
 const FOOD_IMAGES: Record<string, any> = {
@@ -27,6 +32,77 @@ const RESTAURANT_IMAGE_MAP: Record<string, keyof typeof FOOD_IMAGES> = {
   r3: "tiffin",
 };
 
+function PackageCard({
+  pkg,
+  selected,
+  onSelect,
+}: {
+  pkg: SubscriptionPackage;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const colors = useColors();
+  return (
+    <Pressable
+      onPress={() => {
+        Haptics.selectionAsync();
+        onSelect();
+      }}
+      style={[
+        pkgStyles.card,
+        { borderColor: colors.border, backgroundColor: colors.card },
+        selected && {
+          borderColor: colors.primary,
+          backgroundColor: "#FFF3E8",
+        },
+      ]}
+    >
+      <View style={pkgStyles.left}>
+        <View style={pkgStyles.daysRow}>
+          <Text style={[pkgStyles.days, { color: colors.foreground }]}>
+            {pkg.days} days
+          </Text>
+          {pkg.popular && (
+            <View style={pkgStyles.popularBadge}>
+              <Text style={pkgStyles.popularText}>Popular</Text>
+            </View>
+          )}
+          {pkg.discountPct && (
+            <View style={pkgStyles.discountBadge}>
+              <Text style={pkgStyles.discountText}>{pkg.discountPct}% off</Text>
+            </View>
+          )}
+        </View>
+        <Text style={[pkgStyles.perDay, { color: colors.mutedForeground }]}>
+          ₹{pkg.pricePerDay}/day · {pkg.days} meals included
+        </Text>
+      </View>
+      <View style={pkgStyles.right}>
+        <Text style={[pkgStyles.total, { color: colors.foreground }]}>
+          ₹{pkg.totalPrice.toLocaleString("en-IN")}
+        </Text>
+        {selected && (
+          <Feather name="check-circle" size={18} color={colors.primary} />
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
+const pkgStyles = StyleSheet.create({
+  card: { flexDirection: "row", alignItems: "center", borderRadius: 12, borderWidth: 1.5, padding: 12, marginBottom: 8 },
+  left: { flex: 1 },
+  daysRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 3 },
+  days: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  popularBadge: { backgroundColor: "#FFF3E8", borderRadius: 100, paddingHorizontal: 7, paddingVertical: 2 },
+  popularText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#EA580C" },
+  discountBadge: { backgroundColor: "#DCFCE7", borderRadius: 100, paddingHorizontal: 7, paddingVertical: 2 },
+  discountText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#16A34A" },
+  perDay: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  right: { flexDirection: "row", alignItems: "center", gap: 6 },
+  total: { fontSize: 15, fontFamily: "Inter_700Bold" },
+});
+
 export default function RestaurantDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -34,6 +110,17 @@ export default function RestaurantDetailScreen() {
   const insets = useSafeAreaInsets();
 
   const restaurant = RESTAURANTS.find((r) => r.id === id);
+  const packages = SUBSCRIPTION_PACKAGES[id ?? ""] ?? [];
+
+  const availableSlots: ("lunch" | "dinner")[] = [];
+  if (restaurant?.lunchAvailable) availableSlots.push("lunch");
+  if (restaurant?.dinnerAvailable) availableSlots.push("dinner");
+
+  const [activeSlot, setActiveSlot] = useState<"lunch" | "dinner">(
+    availableSlots[0] ?? "lunch"
+  );
+  const [selectedDays, setSelectedDays] = useState<number>(20);
+
   if (!restaurant) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -46,12 +133,14 @@ export default function RestaurantDetailScreen() {
 
   const meals = MEALS.filter((m) => restaurant.mealIds.includes(m.id));
   const imgKey = RESTAURANT_IMAGE_MAP[restaurant.id];
+  const slotPackages = packages.filter((p) => p.slot === activeSlot);
+  const chosenPkg = slotPackages.find((p) => p.days === selectedDays) ?? slotPackages[0];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
       >
         {/* Hero */}
         <View style={styles.hero}>
@@ -68,222 +157,275 @@ export default function RestaurantDetailScreen() {
                 { backgroundColor: restaurant.accentColor + "22" },
               ]}
             >
-              <Feather name="coffee" size={48} color={restaurant.accentColor} />
+              <Feather name="coffee" size={40} color={restaurant.accentColor} />
             </View>
           )}
-          {restaurant.isVeg && (
-            <View style={styles.vegBadge}>
-              <View style={styles.vegDot} />
-              <Text style={styles.vegText}>Pure Veg</Text>
+          <View style={[styles.heroOverlay, StyleSheet.absoluteFill]} />
+          <View style={[styles.heroContent, { paddingTop: insets.top + 60 }]}>
+            <Text style={styles.heroName}>{restaurant.name}</Text>
+            <Text style={styles.heroTagline}>{restaurant.tagline}</Text>
+            <View style={styles.heroMeta}>
+              <View style={styles.metaChip}>
+                <Feather name="star" size={12} color="#F59E0B" />
+                <Text style={styles.metaChipText}>
+                  {restaurant.rating} ({restaurant.reviewCount})
+                </Text>
+              </View>
+              <View style={styles.metaChip}>
+                <Feather name="map-pin" size={12} color="#FFFFFF" />
+                <Text style={styles.metaChipText}>{restaurant.distance}</Text>
+              </View>
+              <View style={styles.metaChip}>
+                <Feather name="clock" size={12} color="#FFFFFF" />
+                <Text style={styles.metaChipText}>{restaurant.deliveryTime}</Text>
+              </View>
             </View>
-          )}
+          </View>
         </View>
 
         <View style={styles.content}>
-          {/* Restaurant info */}
-          <View
-            style={[
-              styles.infoCard,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <View style={styles.infoTop}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.name, { color: colors.foreground }]}>
-                  {restaurant.name}
-                </Text>
-                <Text
-                  style={[
-                    styles.tagline,
-                    { color: colors.mutedForeground },
-                  ]}
-                >
-                  {restaurant.tagline}
-                </Text>
-              </View>
-              <View style={styles.ratingBadge}>
-                <Feather name="star" size={14} color="#F59E0B" />
-                <Text style={styles.rating}>{restaurant.rating}</Text>
-                <Text style={styles.reviews}>
-                  ({restaurant.reviewCount})
-                </Text>
-              </View>
-            </View>
-
-            <Text
-              style={[styles.description, { color: colors.mutedForeground }]}
-            >
+          {/* About */}
+          <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>About</Text>
+            <Text style={[styles.description, { color: colors.mutedForeground }]}>
               {restaurant.description}
             </Text>
-
-            <View style={styles.metaRow}>
-              <View style={styles.metaItem}>
-                <Feather
-                  name="map-pin"
-                  size={13}
-                  color={colors.mutedForeground}
-                />
-                <Text
-                  style={[styles.metaText, { color: colors.mutedForeground }]}
-                >
-                  {restaurant.distance}
-                </Text>
-              </View>
-              <View style={styles.metaItem}>
-                <Feather
-                  name="clock"
-                  size={13}
-                  color={colors.mutedForeground}
-                />
-                <Text
-                  style={[styles.metaText, { color: colors.mutedForeground }]}
-                >
-                  {restaurant.deliveryTime}
-                </Text>
-              </View>
-              <View style={styles.metaItem}>
-                <Feather
-                  name="calendar"
-                  size={13}
-                  color={colors.mutedForeground}
-                />
-                <Text
-                  style={[styles.metaText, { color: colors.mutedForeground }]}
-                >
-                  {restaurant.days.slice(0, 3).join(", ")}
-                  {restaurant.days.length > 3 ? "…" : ""}
-                </Text>
-              </View>
+            <View style={styles.infoRow}>
+              {[
+                { icon: "map-pin" as const, text: restaurant.address },
+                { icon: "clock" as const, text: `Cancel by ${restaurant.cancelCutoff}` },
+                {
+                  icon: "calendar" as const,
+                  text: restaurant.days.join(", "),
+                },
+              ].map((item, i) => (
+                <View key={i} style={styles.infoItem}>
+                  <Feather name={item.icon} size={13} color={colors.mutedForeground} />
+                  <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
+                    {item.text}
+                  </Text>
+                </View>
+              ))}
             </View>
           </View>
 
-          {/* Cancellation policy */}
-          <View
-            style={[
-              styles.policyRow,
-              { backgroundColor: "#FFF3E8", borderColor: "#FDBA74" },
-            ]}
-          >
-            <Feather name="info" size={14} color="#F97316" />
-            <Text style={styles.policyText}>
-              Free cancellation: {restaurant.cancelCutoff}
+          {/* Subscription plans */}
+          <View>
+            <Text style={[styles.plansTitle, { color: colors.foreground }]}>
+              Subscription plans
             </Text>
-          </View>
+            <Text style={[styles.plansSubtitle, { color: colors.mutedForeground }]}>
+              Minimum 10 days. Each plan auto-schedules one meal per day.
+            </Text>
 
-          {/* Menu */}
-          <Text style={[styles.menuTitle, { color: colors.foreground }]}>
-            Menu
-          </Text>
-
-          {meals.map((meal) => (
-            <Pressable
-              key={meal.id}
-              onPress={() => {
-                Haptics.selectionAsync();
-                router.push(`/meal/${meal.id}`);
-              }}
-              style={({ pressed }) => [
-                styles.mealRow,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                },
-                pressed && { opacity: 0.9 },
-              ]}
-            >
-              <View style={styles.mealLeft}>
-                <View style={styles.mealVegRow}>
-                  <View
+            {/* Slot tabs */}
+            {availableSlots.length > 1 && (
+              <View style={[styles.slotTabs, { backgroundColor: colors.muted }]}>
+                {availableSlots.map((slot) => (
+                  <Pressable
+                    key={slot}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setActiveSlot(slot);
+                      const pkgs = packages.filter((p) => p.slot === slot);
+                      if (!pkgs.find((p) => p.days === selectedDays))
+                        setSelectedDays(pkgs[0]?.days ?? 20);
+                    }}
                     style={[
-                      styles.vegIndicator,
-                      {
-                        borderColor:
-                          meal.vegType === "veg" || meal.vegType === "egg"
-                            ? "#16A34A"
-                            : "#EF4444",
+                      styles.slotTab,
+                      activeSlot === slot && {
+                        backgroundColor: colors.card,
+                        shadowColor: "#000",
+                        shadowOpacity: 0.06,
+                        shadowRadius: 4,
+                        elevation: 2,
                       },
                     ]}
                   >
-                    <View
+                    <Text
                       style={[
-                        styles.vegIndicatorDot,
+                        styles.slotTabText,
                         {
-                          backgroundColor:
-                            meal.vegType === "veg" || meal.vegType === "egg"
-                              ? "#16A34A"
-                              : "#EF4444",
+                          color:
+                            activeSlot === slot
+                              ? colors.foreground
+                              : colors.mutedForeground,
+                          fontFamily:
+                            activeSlot === slot
+                              ? "Inter_600SemiBold"
+                              : "Inter_400Regular",
                         },
                       ]}
-                    />
-                  </View>
-                  <Text
-                    style={[styles.mealName, { color: colors.foreground }]}
-                  >
-                    {meal.name}
-                  </Text>
-                </View>
-                <Text
-                  style={[styles.mealDesc, { color: colors.mutedForeground }]}
-                  numberOfLines={2}
-                >
-                  {meal.description}
-                </Text>
-                <View style={styles.mealMeta}>
-                  <Text
-                    style={[
-                      styles.mealMetaText,
-                      { color: colors.mutedForeground },
-                    ]}
-                  >
-                    {meal.calories} cal · {meal.protein} protein
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.mealRight}>
-                {meal.passEligible ? (
-                  <View style={styles.includedBadge}>
-                    <Text style={styles.includedText}>1 credit</Text>
-                  </View>
-                ) : (
-                  <View style={styles.premiumBadge}>
-                    <Text style={styles.premiumText}>
-                      1 credit + ₹{meal.premiumExtra}
+                    >
+                      {slot === "lunch" ? "☀️ Lunch" : "🌙 Dinner"}
                     </Text>
-                  </View>
-                )}
-                <Pressable
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    router.push({
-                      pathname: "/schedule-meal",
-                      params: {
-                        restaurantId: restaurant.id,
-                        restaurantName: restaurant.name,
-                        mealId: meal.id,
-                        mealName: meal.name,
-                        premiumExtra: meal.premiumExtra,
-                      },
-                    });
-                  }}
-                  style={styles.scheduleBtn}
-                >
-                  <Text style={styles.scheduleBtnText}>Schedule</Text>
-                </Pressable>
+                  </Pressable>
+                ))}
               </View>
-            </Pressable>
-          ))}
+            )}
+
+            {slotPackages.map((pkg) => (
+              <PackageCard
+                key={`${pkg.slot}-${pkg.days}`}
+                pkg={pkg}
+                selected={selectedDays === pkg.days}
+                onSelect={() => setSelectedDays(pkg.days)}
+              />
+            ))}
+          </View>
+
+          {/* Meals section */}
+          {meals.length > 0 && (
+            <View>
+              <Text style={[styles.plansTitle, { color: colors.foreground }]}>
+                What you'll eat
+              </Text>
+              <Text style={[styles.plansSubtitle, { color: colors.mutedForeground }]}>
+                Meals rotate daily — these are example options
+              </Text>
+              {meals.map((meal) => (
+                <View
+                  key={meal.id}
+                  style={[
+                    styles.mealCard,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <View style={styles.mealHeader}>
+                    <View style={styles.mealHeaderLeft}>
+                      <Text style={[styles.mealName, { color: colors.foreground }]}>
+                        {meal.name}
+                      </Text>
+                      <View style={styles.mealMeta}>
+                        <View
+                          style={[
+                            styles.vegDot,
+                            {
+                              backgroundColor:
+                                meal.vegType === "veg"
+                                  ? "#16A34A"
+                                  : meal.vegType === "egg"
+                                    ? "#D97706"
+                                    : "#EF4444",
+                            },
+                          ]}
+                        />
+                        <Text
+                          style={[styles.mealType, { color: colors.mutedForeground }]}
+                        >
+                          {meal.vegType}
+                        </Text>
+                        <Text style={[styles.metaDot, { color: colors.mutedForeground }]}>
+                          ·
+                        </Text>
+                        <Text
+                          style={[styles.mealType, { color: colors.mutedForeground }]}
+                        >
+                          {meal.calories} cal
+                        </Text>
+                        <Text style={[styles.metaDot, { color: colors.mutedForeground }]}>
+                          ·
+                        </Text>
+                        <Text
+                          style={[styles.mealType, { color: colors.mutedForeground }]}
+                        >
+                          {meal.protein} protein
+                        </Text>
+                      </View>
+                    </View>
+                    <View
+                      style={[
+                        styles.spiceBadge,
+                        {
+                          backgroundColor:
+                            meal.spice === "hot"
+                              ? "#FEE2E2"
+                              : meal.spice === "medium"
+                                ? "#FEF9C3"
+                                : "#DCFCE7",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.spiceText,
+                          {
+                            color:
+                              meal.spice === "hot"
+                                ? "#991B1B"
+                                : meal.spice === "medium"
+                                  ? "#854D0E"
+                                  : "#166534",
+                          },
+                        ]}
+                      >
+                        {meal.spice}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.mealDesc, { color: colors.mutedForeground }]}>
+                    {meal.description}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
+
+      {/* Subscribe footer */}
+      {chosenPkg && (
+        <View
+          style={[
+            styles.footer,
+            {
+              backgroundColor: colors.background,
+              borderTopColor: colors.border,
+              paddingBottom: insets.bottom + 8,
+            },
+          ]}
+        >
+          <View style={styles.footerInfo}>
+            <View>
+              <Text style={[styles.footerLabel, { color: colors.mutedForeground }]}>
+                {activeSlot === "lunch" ? "Lunch" : "Dinner"} · {chosenPkg.days} days
+              </Text>
+              <Text style={[styles.footerPer, { color: colors.mutedForeground }]}>
+                ₹{chosenPkg.pricePerDay}/day
+              </Text>
+            </View>
+            <Text style={[styles.footerTotal, { color: colors.foreground }]}>
+              ₹{chosenPkg.totalPrice.toLocaleString("en-IN")}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push({
+                pathname: "/buy-pass",
+                params: { restaurantId: restaurant.id },
+              });
+            }}
+            style={({ pressed }) => [
+              styles.subscribeBtn,
+              { backgroundColor: colors.primary },
+              pressed && { opacity: 0.9 },
+            ]}
+          >
+            <Text style={styles.subscribeBtnText}>Subscribe now</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  hero: {
-    height: 220,
-    position: "relative",
-  },
+  hero: { height: 240, position: "relative" },
   heroImage: { width: "100%", height: "100%" },
   heroPlaceholder: {
     width: "100%",
@@ -291,190 +433,109 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  vegBadge: {
+  heroOverlay: {
+    backgroundColor: "rgba(0,0,0,0.35)",
+    zIndex: 1,
+  },
+  heroContent: {
     position: "absolute",
-    bottom: 12,
-    left: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 100,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  vegDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#16A34A",
-  },
-  vegText: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    color: "#16A34A",
-  },
-  content: { padding: 16, gap: 12 },
-  infoCard: {
-    borderRadius: 14,
-    borderWidth: 1,
+    bottom: 0,
+    left: 0,
+    right: 0,
     padding: 16,
-    gap: 10,
+    zIndex: 2,
   },
-  infoTop: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-  },
-  name: {
-    fontSize: 20,
+  heroName: {
+    fontSize: 26,
     fontFamily: "Inter_700Bold",
+    color: "#FFFFFF",
     marginBottom: 2,
   },
-  tagline: {
+  heroTagline: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.85)",
+    marginBottom: 8,
   },
-  ratingBadge: {
+  heroMeta: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  metaChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
-    backgroundColor: "#FFFBEB",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    borderRadius: 100,
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingVertical: 3,
   },
-  rating: {
-    fontSize: 14,
-    fontFamily: "Inter_700Bold",
-    color: "#F59E0B",
-  },
-  reviews: {
+  metaChipText: {
     fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    color: "#A16207",
+    fontFamily: "Inter_500Medium",
+    color: "#FFFFFF",
   },
+  content: { padding: 16, gap: 20 },
+  section: { borderRadius: 14, borderWidth: 1, padding: 14 },
+  sectionTitle: { fontSize: 15, fontFamily: "Inter_700Bold", marginBottom: 8 },
   description: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     lineHeight: 19,
+    marginBottom: 12,
   },
-  metaRow: {
+  infoRow: { gap: 8 },
+  infoItem: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  infoText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  plansTitle: { fontSize: 17, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  plansSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 12 },
+  slotTabs: {
     flexDirection: "row",
-    gap: 16,
-    flexWrap: "wrap",
+    borderRadius: 12,
+    padding: 3,
+    marginBottom: 12,
   },
-  metaItem: {
+  slotTab: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: "center" },
+  slotTabText: { fontSize: 13 },
+  mealCard: { borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 8 },
+  mealHeader: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
+    justifyContent: "space-between",
+    marginBottom: 6,
   },
-  metaText: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-  policyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  policyText: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    color: "#92400E",
-  },
-  menuTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  mealRow: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    flexDirection: "row",
-    gap: 12,
-  },
-  mealLeft: { flex: 1 },
-  mealVegRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 4,
-  },
-  vegIndicator: {
-    width: 14,
-    height: 14,
-    borderRadius: 3,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  vegIndicatorDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  mealName: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-  },
+  mealHeaderLeft: { flex: 1, marginRight: 8 },
+  mealName: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 4 },
+  mealMeta: { flexDirection: "row", alignItems: "center", gap: 5 },
+  vegDot: { width: 8, height: 8, borderRadius: 4 },
+  mealType: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  metaDot: { fontSize: 11 },
+  spiceBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 100 },
+  spiceText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
   mealDesc: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     lineHeight: 17,
-    marginBottom: 6,
   },
-  mealMeta: { flexDirection: "row", gap: 8 },
-  mealMetaText: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
+  footer: {
+    borderTopWidth: 1,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    gap: 10,
   },
-  mealRight: {
-    alignItems: "flex-end",
-    gap: 8,
+  footerInfo: {
+    flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
   },
-  includedBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: "#DCFCE7",
-    borderRadius: 100,
+  footerLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  footerPer: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  footerTotal: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  subscribeBtn: {
+    height: 52,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  includedText: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    color: "#166534",
-  },
-  premiumBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: "#FEF9C3",
-    borderRadius: 100,
-  },
-  premiumText: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    color: "#713F12",
-  },
-  scheduleBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: "#F97316",
-    borderRadius: 10,
-  },
-  scheduleBtnText: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
+  subscribeBtnText: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
     color: "#FFFFFF",
   },
 });

@@ -12,217 +12,252 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useApp } from "@/context/AppContext";
-import { PASS_PLANS } from "@/constants/mockData";
-
 export default function PaymentSuccessScreen() {
-  const { planId } = useLocalSearchParams<{ planId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { activePass } = useApp();
+  const { restaurantName, slot, days, totalPaid } = useLocalSearchParams<{
+    restaurantName?: string;
+    slot?: string;
+    days?: string;
+    totalPaid?: string;
+  }>();
 
-  const plan = PASS_PLANS.find((p) => p.id === planId);
   const scaleAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      friction: 4,
-      tension: 60,
-      useNativeDriver: true,
-    }).start();
+    Animated.sequence([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 6,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
 
-  const validUntil = activePass
-    ? new Date(activePass.validUntil).toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "long",
-      })
-    : "";
+  const daysNum = parseInt(days ?? "20", 10);
+  const totalNum = parseInt(totalPaid ?? "0", 10);
+
+  const startDate = new Date();
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + daysNum - 1);
+
+  function fmt(d: Date) {
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  }
 
   return (
-    <LinearGradient
-      colors={["#F97316", "#EA580C"]}
+    <View
       style={[
         styles.container,
         {
           paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0),
-          paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0),
+          paddingBottom: insets.bottom + (Platform.OS === "web" ? 24 : 0),
         },
       ]}
     >
+      <LinearGradient
+        colors={["#FFFFFF", "#FFF7ED"]}
+        style={StyleSheet.absoluteFill}
+      />
+
       <View style={styles.content}>
         <Animated.View
-          style={[styles.iconContainer, { transform: [{ scale: scaleAnim }] }]}
+          style={[styles.iconWrap, { transform: [{ scale: scaleAnim }] }]}
         >
-          <Feather name="check" size={48} color="#F97316" />
+          <LinearGradient
+            colors={["#F97316", "#EA580C"]}
+            style={styles.iconGradient}
+          >
+            <Feather name="check" size={36} color="#FFFFFF" />
+          </LinearGradient>
         </Animated.View>
 
-        <Text style={styles.title}>Your Meal Pass is active</Text>
-        <Text style={styles.subtitle}>
-          {plan ? `${plan.meals} meals added` : "Pass activated"}
-          {validUntil ? `\nValid till ${validUntil}` : ""}
-        </Text>
+        <Animated.View style={[styles.textBlock, { opacity: fadeAnim }]}>
+          <Text style={styles.title}>You're subscribed!</Text>
+          <Text style={styles.subtitle}>
+            Daily {slot === "lunch" ? "lunch" : "dinner"} meals from{" "}
+            <Text style={styles.highlight}>{restaurantName}</Text> have been
+            auto-scheduled for you.
+          </Text>
 
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{plan?.meals ?? 0}</Text>
-            <Text style={styles.statLabel}>meals</Text>
+          <View style={styles.summaryCard}>
+            <SummaryRow
+              icon="coffee"
+              label="Restaurant"
+              value={restaurantName ?? ""}
+            />
+            <SummaryRow
+              icon={slot === "lunch" ? "sun" : "moon"}
+              label="Slot"
+              value={slot === "lunch" ? "Lunch · 12–2 PM" : "Dinner · 7–9 PM"}
+            />
+            <SummaryRow
+              icon="calendar"
+              label="Duration"
+              value={`${days} days (${fmt(startDate)} – ${fmt(endDate)})`}
+            />
+            <SummaryRow
+              icon="credit-card"
+              label="Amount paid"
+              value={`₹${totalNum.toLocaleString("en-IN")}`}
+              highlight
+            />
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>
-              ₹{plan ? Math.round(plan.price / plan.meals) : 0}
+
+          <View style={styles.tip}>
+            <Feather name="bell" size={14} color="#EA580C" />
+            <Text style={styles.tipText}>
+              Cancel any day for free before 10 PM the previous night. Manage
+              your subscription in <Text style={styles.tipBold}>My Plans</Text>.
             </Text>
-            <Text style={styles.statLabel}>per meal</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{plan?.validDays ?? 0}</Text>
-            <Text style={styles.statLabel}>days valid</Text>
-          </View>
-        </View>
+        </Animated.View>
+      </View>
 
-        <View style={styles.featureList}>
-          {[
-            "Cancel before 10 PM for free",
-            "Unused meals carry forward",
-            "Unused paid value refundable",
-          ].map((f) => (
-            <View key={f} style={styles.featureRow}>
-              <Feather name="check-circle" size={16} color="#4ADE80" />
-              <Text style={styles.featureText}>{f}</Text>
-            </View>
-          ))}
-        </View>
-
+      <Animated.View style={[styles.actions, { opacity: fadeAnim }]}>
         <Pressable
-          onPress={() =>
-            router.replace({ pathname: "/(tabs)", params: { tab: "meals" } })
-          }
           style={({ pressed }) => [
             styles.primaryBtn,
             pressed && { opacity: 0.9 },
           ]}
+          onPress={() => router.replace("/(tabs)/pass")}
         >
-          <Text style={styles.primaryBtnText}>Schedule first meal</Text>
+          <Text style={styles.primaryBtnText}>View my plans</Text>
         </Pressable>
-
         <Pressable
-          onPress={() => router.replace("/(tabs)")}
           style={({ pressed }) => [
             styles.secondaryBtn,
             pressed && { opacity: 0.7 },
           ]}
+          onPress={() => router.replace("/(tabs)/orders")}
         >
-          <Text style={styles.secondaryBtnText}>Go to home</Text>
+          <Text style={styles.secondaryBtnText}>See scheduled meals</Text>
         </Pressable>
-      </View>
-    </LinearGradient>
+      </Animated.View>
+    </View>
   );
 }
 
+function SummaryRow({
+  icon,
+  label,
+  value,
+  highlight,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <View style={summaryStyles.row}>
+      <Feather name={icon} size={14} color="#71717A" />
+      <Text style={summaryStyles.label}>{label}</Text>
+      <Text
+        style={[
+          summaryStyles.value,
+          highlight && { color: "#F97316", fontFamily: "Inter_700Bold" },
+        ]}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+const summaryStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 8,
+  },
+  label: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: "#71717A" },
+  value: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#1A1A1A" },
+});
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  content: {
-    alignItems: "center",
-    paddingHorizontal: 32,
-    width: "100%",
-  },
-  iconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: "#FFFFFF",
+  container: { flex: 1 },
+  content: { flex: 1, paddingHorizontal: 24, justifyContent: "center", alignItems: "center" },
+  iconWrap: { marginBottom: 24 },
+  iconGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
   },
+  textBlock: { width: "100%", alignItems: "center" },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-    textAlign: "center",
+    color: "#1A1A1A",
     marginBottom: 8,
+    textAlign: "center",
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.8)",
+    color: "#71717A",
     textAlign: "center",
-    lineHeight: 23,
+    lineHeight: 22,
     marginBottom: 24,
+    maxWidth: 280,
   },
-  statsRow: {
+  highlight: { fontFamily: "Inter_700Bold", color: "#1A1A1A" },
+  summaryCard: {
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E4E4E7",
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    marginBottom: 16,
+  },
+  tip: {
     flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    marginBottom: 24,
+    gap: 8,
+    alignItems: "flex-start",
+    backgroundColor: "#FFF7ED",
+    borderRadius: 12,
+    padding: 12,
     width: "100%",
   },
-  stat: { flex: 1, alignItems: "center" },
-  statValue: {
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-  },
-  statLabel: {
-    fontSize: 11,
+  tipText: {
+    flex: 1,
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.7)",
+    color: "#92400E",
+    lineHeight: 17,
   },
-  statDivider: {
-    width: 1,
-    backgroundColor: "rgba(255,255,255,0.25)",
-  },
-  featureList: {
-    width: "100%",
+  tipBold: { fontFamily: "Inter_700Bold" },
+  actions: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 16,
     gap: 10,
-    marginBottom: 32,
-  },
-  featureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  featureText: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.9)",
   },
   primaryBtn: {
     height: 54,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    width: "100%",
+    backgroundColor: "#F97316",
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
   },
-  primaryBtnText: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    color: "#F97316",
-  },
+  primaryBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
   secondaryBtn: {
-    height: 48,
-    width: "100%",
+    height: 50,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
-  secondaryBtnText: {
-    fontSize: 15,
-    fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.75)",
-  },
+  secondaryBtnText: { fontSize: 15, fontFamily: "Inter_500Medium", color: "#71717A" },
 });

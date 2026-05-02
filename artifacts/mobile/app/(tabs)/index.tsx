@@ -15,7 +15,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import MealOrderCard from "@/components/MealOrderCard";
-import PassCard from "@/components/PassCard";
 import RestaurantCard from "@/components/RestaurantCard";
 import { MealOrder, useApp } from "@/context/AppContext";
 import { RESTAURANTS } from "@/constants/mockData";
@@ -28,39 +27,41 @@ function getGreeting(): string {
   return "Good evening";
 }
 
+function formatDate(isoDate: string): string {
+  return new Date(isoDate + "T12:00:00").toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, activePass, orders, cancelOrder, getOrderCancelStatus } =
-    useApp();
+  const { user, subscriptions, orders, cancelOrder, getOrderCancelStatus } = useApp();
 
   const [cancelTarget, setCancelTarget] = useState<MealOrder | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
-  const [cancelResult, setCancelResult] = useState<{
-    type: string;
-    fee: number;
-  } | null>(null);
+  const [cancelResult, setCancelResult] = useState<{ type: string; fee: number } | null>(null);
+
+  const today = new Date().toISOString().split("T")[0];
+  const activeSubs = subscriptions.filter((s) => s.status === "active" || s.status === "paused");
+
+  const todaysMeals = orders
+    .filter((o) => o.scheduledDate === today && o.status === "scheduled")
+    .sort((a, b) => (a.slot === "lunch" ? -1 : 1));
 
   const upcomingOrders = orders
     .filter(
       (o) =>
-        !["delivered", "cancelled_free", "cancelled_late", "cancelled_full"].includes(
-          o.status
-        )
+        o.scheduledDate > today &&
+        !["delivered", "cancelled_free", "cancelled_late", "cancelled_full"].includes(o.status)
     )
-    .sort(
-      (a, b) =>
-        new Date(a.scheduledDate).getTime() -
-        new Date(b.scheduledDate).getTime()
-    )
+    .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate))
     .slice(0, 3);
 
   const firstName = user?.name?.split(" ")[0] ?? "there";
-
-  const cancelStatus = cancelTarget
-    ? getOrderCancelStatus(cancelTarget)
-    : null;
+  const cancelStatus = cancelTarget ? getOrderCancelStatus(cancelTarget) : null;
 
   async function confirmCancel() {
     if (!cancelTarget) return;
@@ -82,25 +83,25 @@ export default function HomeScreen() {
 
   const QUICK_ACTIONS = [
     {
-      icon: "calendar" as const,
-      label: "Schedule",
+      icon: "plus-circle" as const,
+      label: "Subscribe",
       color: "#F97316",
       bg: "#FFF3E8",
-      onPress: () => router.push("/schedule-meal"),
+      onPress: () => router.push("/(tabs)/meals"),
     },
     {
-      icon: "pause-circle" as const,
-      label: "Pause",
+      icon: "credit-card" as const,
+      label: "My Plans",
       color: "#8B5CF6",
       bg: "#EDE9FE",
-      onPress: () => router.push("/pause-meals"),
+      onPress: () => router.push("/(tabs)/pass"),
     },
     {
-      icon: "plus-circle" as const,
-      label: "Buy More",
+      icon: "list" as const,
+      label: "Orders",
       color: "#16A34A",
       bg: "#DCFCE7",
-      onPress: () => router.push("/buy-pass"),
+      onPress: () => router.push("/(tabs)/orders"),
     },
     {
       icon: "help-circle" as const,
@@ -116,8 +117,7 @@ export default function HomeScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingBottom:
-            insets.bottom + (Platform.OS === "web" ? 34 : 0) + 90,
+          paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 90,
         }}
       >
         {/* Header */}
@@ -125,10 +125,7 @@ export default function HomeScreen() {
           colors={["#F97316", "#EA580C"]}
           style={[
             styles.header,
-            {
-              paddingTop:
-                insets.top + (Platform.OS === "web" ? 67 : 0) + 16,
-            },
+            { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) + 16 },
           ]}
         >
           <View style={styles.headerContent}>
@@ -136,16 +133,11 @@ export default function HomeScreen() {
               <Text style={styles.greeting}>
                 {getGreeting()}, {firstName}
               </Text>
-              {activePass ? (
-                <Text style={styles.passCount}>
-                  You're covered for{" "}
-                  <Text style={styles.passCountBold}>
-                    {activePass.remainingCredits} more meals
-                  </Text>
-                </Text>
-              ) : (
-                <Text style={styles.passCount}>No active pass</Text>
-              )}
+              <Text style={styles.subLine}>
+                {activeSubs.length === 0
+                  ? "No active subscriptions"
+                  : `${activeSubs.length} active subscription${activeSubs.length > 1 ? "s" : ""}`}
+              </Text>
             </View>
             <Pressable
               onPress={() => router.push("/(tabs)/profile")}
@@ -156,23 +148,46 @@ export default function HomeScreen() {
               </Text>
             </Pressable>
           </View>
+
+          {/* Active subscriptions summary pills */}
+          {activeSubs.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.subPillsScroll}
+              contentContainerStyle={styles.subPillsContent}
+            >
+              {activeSubs.map((sub) => (
+                <Pressable
+                  key={sub.id}
+                  onPress={() => router.push("/(tabs)/pass")}
+                  style={styles.subPill}
+                >
+                  <Text style={styles.subPillName}>{sub.restaurantName}</Text>
+                  <Text style={styles.subPillDetail}>
+                    {sub.slot === "lunch" ? "☀️" : "🌙"} {sub.remainingDays} days left
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
         </LinearGradient>
 
         <View style={styles.content}>
-          {/* Pass Card */}
-          {activePass ? (
-            <PassCard pass={activePass} compact />
-          ) : (
-            <Pressable
-              onPress={() => router.push("/buy-pass")}
-              style={[styles.noPassCard, { borderColor: colors.border }]}
-            >
-              <Feather name="credit-card" size={20} color={colors.primary} />
-              <Text style={[styles.noPassText, { color: colors.foreground }]}>
-                Buy a Meal Pass to get started
+          {/* Today's meals */}
+          {todaysMeals.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                Today's meals
               </Text>
-              <Feather name="chevron-right" size={18} color={colors.primary} />
-            </Pressable>
+              {todaysMeals.map((order) => (
+                <MealOrderCard
+                  key={order.id}
+                  order={order}
+                  onCancel={setCancelTarget}
+                />
+              ))}
+            </View>
           )}
 
           {/* Quick Actions */}
@@ -186,20 +201,10 @@ export default function HomeScreen() {
                   pressed && { opacity: 0.8 },
                 ]}
               >
-                <View
-                  style={[
-                    styles.quickActionIcon,
-                    { backgroundColor: action.bg },
-                  ]}
-                >
+                <View style={[styles.quickActionIcon, { backgroundColor: action.bg }]}>
                   <Feather name={action.icon} size={20} color={action.color} />
                 </View>
-                <Text
-                  style={[
-                    styles.quickActionLabel,
-                    { color: colors.foreground },
-                  ]}
-                >
+                <Text style={[styles.quickActionLabel, { color: colors.foreground }]}>
                   {action.label}
                 </Text>
               </Pressable>
@@ -210,41 +215,34 @@ export default function HomeScreen() {
           {upcomingOrders.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text
-                  style={[styles.sectionTitle, { color: colors.foreground }]}
-                >
-                  Upcoming meals
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                  Coming up
                 </Text>
                 <Pressable onPress={() => router.push("/(tabs)/orders")}>
-                  <Text style={[styles.seeAll, { color: colors.primary }]}>
-                    See all
-                  </Text>
+                  <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
                 </Pressable>
               </View>
               {upcomingOrders.map((order) => (
-                <MealOrderCard
-                  key={order.id}
-                  order={order}
-                  onCancel={setCancelTarget}
-                />
+                <MealOrderCard key={order.id} order={order} onCancel={setCancelTarget} />
               ))}
             </View>
           )}
 
-          {upcomingOrders.length === 0 && (
+          {/* No subscriptions empty state */}
+          {activeSubs.length === 0 && (
             <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Feather name="calendar" size={28} color={colors.mutedForeground} />
+              <Feather name="coffee" size={28} color={colors.mutedForeground} />
               <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-                No upcoming meals
+                Subscribe to a restaurant
               </Text>
               <Text style={[styles.emptyBody, { color: colors.mutedForeground }]}>
-                Schedule your first meal from restaurants nearby
+                Pick a restaurant, choose lunch or dinner, pick a 10, 20, or 30-day pack — and every meal is auto-scheduled.
               </Text>
               <Pressable
                 onPress={() => router.push("/(tabs)/meals")}
-                style={styles.scheduleBtn}
+                style={styles.discoverBtn}
               >
-                <Text style={styles.scheduleBtnText}>Browse restaurants</Text>
+                <Text style={styles.discoverBtnText}>Discover restaurants</Text>
               </Pressable>
             </View>
           )}
@@ -252,15 +250,11 @@ export default function HomeScreen() {
           {/* Explore restaurants */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text
-                style={[styles.sectionTitle, { color: colors.foreground }]}
-              >
-                Restaurants near you
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                Partner restaurants
               </Text>
               <Pressable onPress={() => router.push("/(tabs)/meals")}>
-                <Text style={[styles.seeAll, { color: colors.primary }]}>
-                  See all
-                </Text>
+                <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
               </Pressable>
             </View>
             {RESTAURANTS.slice(0, 3).map((r) => (
@@ -283,18 +277,14 @@ export default function HomeScreen() {
               <>
                 <View style={styles.sheetHandle} />
                 <Text style={styles.sheetTitle}>
-                  {cancelResult.type === "free"
-                    ? "Meal cancelled"
-                    : cancelResult.type === "late"
-                      ? "Late cancellation"
-                      : "Meal charged"}
+                  {cancelResult.type === "free" ? "Day cancelled" : cancelResult.type === "late" ? "Late cancellation" : "Meal charged"}
                 </Text>
                 <Text style={styles.sheetBody}>
                   {cancelResult.type === "free"
-                    ? "Your meal credit has been restored to your pass."
+                    ? "This day has been cancelled. No charge applied."
                     : cancelResult.type === "late"
-                      ? `50% credit deducted (₹${cancelResult.fee}). The restaurant had started planning.`
-                      : `Full credit used (₹${cancelResult.fee}). Preparation had already started.`}
+                      ? `Late cancellation fee: ₹${cancelResult.fee} (50% of day rate).`
+                      : `Full charge: ₹${cancelResult.fee}. Preparation had already started.`}
                 </Text>
                 <Pressable style={styles.doneBtn} onPress={closeCancelSheet}>
                   <Text style={styles.doneBtnText}>Done</Text>
@@ -304,18 +294,16 @@ export default function HomeScreen() {
               <>
                 <View style={styles.sheetHandle} />
                 <Text style={styles.sheetTitle}>
-                  Cancel {cancelTarget?.slot} meal?
+                  Cancel {cancelTarget?.slot} on {cancelTarget ? formatDate(cancelTarget.scheduledDate) : ""}?
                 </Text>
                 <Text style={styles.sheetMealName}>
                   {cancelTarget?.restaurantName} · {cancelTarget?.mealName}
                 </Text>
-
                 {cancelStatus === "free" && (
                   <View style={styles.freeInfo}>
                     <Feather name="check-circle" size={16} color="#16A34A" />
                     <Text style={styles.freeInfoText}>
-                      Free cancellation available.{"\n"}
-                      Your meal credit will stay in your pass.
+                      Free cancellation available.{"\n"}No charge for this day.
                     </Text>
                   </View>
                 )}
@@ -323,8 +311,7 @@ export default function HomeScreen() {
                   <View style={styles.lateInfo}>
                     <Feather name="alert-triangle" size={16} color="#F59E0B" />
                     <Text style={styles.lateInfoText}>
-                      Late cancellation fee applies.{"\n"}
-                      Cancelling will deduct 50% of your meal credit.
+                      Late cancellation fee applies.{"\n"}₹{cancelTarget ? Math.round(cancelTarget.pricePerDay * 0.5) : 0} (50% of day rate) will be charged.
                     </Text>
                   </View>
                 )}
@@ -332,20 +319,13 @@ export default function HomeScreen() {
                   <View style={styles.fullInfo}>
                     <Feather name="alert-circle" size={16} color="#EF4444" />
                     <Text style={styles.fullInfoText}>
-                      Meal preparation has started.{"\n"}
-                      Cancelling now will use the full meal credit.
+                      Preparation has started.{"\n"}Full day charge ₹{cancelTarget?.pricePerDay} applies.
                     </Text>
                   </View>
                 )}
-
                 <View style={styles.sheetActions}>
-                  <Pressable
-                    style={[styles.keepBtn, { borderColor: colors.border }]}
-                    onPress={closeCancelSheet}
-                  >
-                    <Text style={[styles.keepBtnText, { color: colors.foreground }]}>
-                      Keep meal
-                    </Text>
+                  <Pressable style={[styles.keepBtn, { borderColor: colors.border }]} onPress={closeCancelSheet}>
+                    <Text style={[styles.keepBtnText, { color: colors.foreground }]}>Keep</Text>
                   </Pressable>
                   <Pressable
                     style={[
@@ -358,11 +338,7 @@ export default function HomeScreen() {
                     disabled={cancelLoading}
                   >
                     <Text style={styles.cancelConfirmText}>
-                      {cancelStatus === "free"
-                        ? "Cancel meal"
-                        : cancelStatus === "late"
-                          ? "Cancel with fee"
-                          : "Cancel anyway"}
+                      {cancelStatus === "free" ? "Cancel day" : cancelStatus === "late" ? "Cancel with fee" : "Cancel anyway"}
                     </Text>
                   </Pressable>
                 </View>
@@ -376,12 +352,10 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: 20,
   },
   headerContent: {
     flexDirection: "row",
@@ -391,16 +365,13 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.8)",
+    color: "rgba(255,255,255,0.85)",
     marginBottom: 2,
   },
-  passCount: {
+  subLine: {
     fontSize: 18,
-    fontFamily: "Inter_400Regular",
-    color: "#FFFFFF",
-  },
-  passCountBold: {
     fontFamily: "Inter_700Bold",
+    color: "#FFFFFF",
   },
   avatar: {
     width: 40,
@@ -415,25 +386,51 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     color: "#FFFFFF",
   },
+  subPillsScroll: {
+    marginTop: 14,
+  },
+  subPillsContent: {
+    gap: 8,
+    paddingRight: 4,
+  },
+  subPill: {
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  subPillName: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    color: "#FFFFFF",
+    marginBottom: 1,
+  },
+  subPillDetail: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.8)",
+  },
   content: {
     paddingHorizontal: 16,
     paddingTop: 16,
     gap: 16,
   },
-  noPassCard: {
+  section: {},
+  sectionHeader: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    gap: 10,
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderStyle: "dashed",
-    backgroundColor: "#FFFFFF",
+    marginBottom: 10,
   },
-  noPassText: {
-    flex: 1,
+  sectionTitle: {
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    marginBottom: 10,
+  },
+  seeAll: {
     fontSize: 14,
     fontFamily: "Inter_500Medium",
+    marginBottom: 10,
   },
   quickActions: {
     flexDirection: "row",
@@ -454,21 +451,7 @@ const styles = StyleSheet.create({
   quickActionLabel: {
     fontSize: 11,
     fontFamily: "Inter_500Medium",
-  },
-  section: {},
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontFamily: "Inter_700Bold",
-  },
-  seeAll: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
+    textAlign: "center",
   },
   emptyState: {
     borderRadius: 16,
@@ -486,21 +469,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
-    lineHeight: 18,
+    lineHeight: 19,
   },
-  scheduleBtn: {
+  discoverBtn: {
     marginTop: 8,
     paddingHorizontal: 20,
     paddingVertical: 10,
     backgroundColor: "#F97316",
     borderRadius: 10,
   },
-  scheduleBtnText: {
+  discoverBtnText: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
     color: "#FFFFFF",
   },
-  // Modal / Sheet styles
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -523,7 +505,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sheetTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontFamily: "Inter_700Bold",
     color: "#1A1A1A",
     marginBottom: 4,
@@ -532,7 +514,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     color: "#71717A",
-    marginBottom: 20,
+    marginBottom: 18,
   },
   sheetBody: {
     fontSize: 15,
@@ -541,92 +523,17 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 24,
   },
-  freeInfo: {
-    flexDirection: "row",
-    gap: 10,
-    backgroundColor: "#F0FDF4",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 24,
-    alignItems: "flex-start",
-  },
-  freeInfoText: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: "#166534",
-    lineHeight: 20,
-  },
-  lateInfo: {
-    flexDirection: "row",
-    gap: 10,
-    backgroundColor: "#FFFBEB",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 24,
-    alignItems: "flex-start",
-  },
-  lateInfoText: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: "#92400E",
-    lineHeight: 20,
-  },
-  fullInfo: {
-    flexDirection: "row",
-    gap: 10,
-    backgroundColor: "#FEF2F2",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 24,
-    alignItems: "flex-start",
-  },
-  fullInfoText: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: "#991B1B",
-    lineHeight: 20,
-  },
-  sheetActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  keepBtn: {
-    flex: 1,
-    height: 52,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  keepBtnText: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-  },
-  cancelConfirmBtn: {
-    flex: 1,
-    height: 52,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cancelConfirmText: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    color: "#FFFFFF",
-  },
-  doneBtn: {
-    height: 52,
-    backgroundColor: "#F97316",
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  doneBtnText: {
-    fontSize: 15,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-  },
+  freeInfo: { flexDirection: "row", gap: 10, backgroundColor: "#F0FDF4", borderRadius: 12, padding: 14, marginBottom: 20, alignItems: "flex-start" },
+  freeInfoText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: "#166534", lineHeight: 20 },
+  lateInfo: { flexDirection: "row", gap: 10, backgroundColor: "#FFFBEB", borderRadius: 12, padding: 14, marginBottom: 20, alignItems: "flex-start" },
+  lateInfoText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: "#92400E", lineHeight: 20 },
+  fullInfo: { flexDirection: "row", gap: 10, backgroundColor: "#FEF2F2", borderRadius: 12, padding: 14, marginBottom: 20, alignItems: "flex-start" },
+  fullInfoText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: "#991B1B", lineHeight: 20 },
+  sheetActions: { flexDirection: "row", gap: 10 },
+  keepBtn: { flex: 1, height: 52, borderRadius: 14, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  keepBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  cancelConfirmBtn: { flex: 1, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  cancelConfirmText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#FFFFFF" },
+  doneBtn: { height: 52, backgroundColor: "#F97316", borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  doneBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
 });

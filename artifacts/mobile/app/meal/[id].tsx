@@ -158,9 +158,9 @@ export default function MealDetailScreen() {
               {
                 label: "Serves",
                 value:
-                  meal.type === "lunch"
+                  (meal.type as string) === "lunch"
                     ? "Lunch"
-                    : meal.type === "dinner"
+                    : (meal.type as string) === "dinner"
                       ? "Dinner"
                       : "Lunch & Dinner",
               },
@@ -192,41 +192,20 @@ export default function MealDetailScreen() {
             ))}
           </View>
 
-          {/* Pass cost */}
+          {/* Subscription info */}
           <View
             style={[
               styles.costCard,
-              {
-                backgroundColor: meal.passEligible ? "#F0FDF4" : "#FFFBEB",
-                borderColor: meal.passEligible ? "#86EFAC" : "#FCD34D",
-              },
+              { backgroundColor: "#FFF3E8", borderColor: "#FDBA74" },
             ]}
           >
-            <Feather
-              name="credit-card"
-              size={16}
-              color={meal.passEligible ? "#16A34A" : "#F59E0B"}
-            />
+            <Feather name="calendar" size={16} color="#F97316" />
             <View style={{ flex: 1 }}>
-              <Text
-                style={[
-                  styles.costTitle,
-                  { color: meal.passEligible ? "#166534" : "#92400E" },
-                ]}
-              >
-                {meal.passEligible
-                  ? "Included in pass"
-                  : `1 meal credit + ₹${meal.premiumExtra}`}
+              <Text style={[styles.costTitle, { color: "#92400E" }]}>
+                Available via subscription
               </Text>
-              <Text
-                style={[
-                  styles.costSub,
-                  { color: meal.passEligible ? "#4ADE80" : "#F59E0B" },
-                ]}
-              >
-                {meal.passEligible
-                  ? "Uses 1 meal credit from your pass"
-                  : `Premium meal — 1 credit + ₹${meal.premiumExtra} extra`}
+              <Text style={[styles.costSub, { color: "#B45309" }]}>
+                Subscribe to {restaurant.name} to get this meal auto-scheduled daily
               </Text>
             </View>
           </View>
@@ -261,14 +240,8 @@ export default function MealDetailScreen() {
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             router.push({
-              pathname: "/schedule-meal",
-              params: {
-                restaurantId: restaurant.id,
-                restaurantName: restaurant.name,
-                mealId: meal.id,
-                mealName: meal.name,
-                premiumExtra: meal.premiumExtra,
-              },
+              pathname: "/buy-pass",
+              params: { restaurantId: restaurant.id },
             });
           }}
           style={({ pressed }) => [
@@ -276,7 +249,7 @@ export default function MealDetailScreen() {
             pressed && { opacity: 0.85 },
           ]}
         >
-          <Text style={styles.ctaBtnText}>Add to schedule</Text>
+          <Text style={styles.ctaBtnText}>Subscribe to {restaurant.name}</Text>
         </Pressable>
       </View>
     </View>

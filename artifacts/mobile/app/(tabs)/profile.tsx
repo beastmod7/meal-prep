@@ -29,7 +29,8 @@ export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, activePass } = useApp();
+  const { user, subscriptions } = useApp();
+  const activeSubs = subscriptions.filter((s) => s.status === "active");
 
   const firstName = user?.name?.split(" ")[0] ?? "Student";
 
@@ -182,20 +183,20 @@ export default function ProfileScreen() {
           <Text style={styles.name}>{user?.name ?? "Student"}</Text>
           <Text style={styles.campus}>{user?.campusName ?? "Campus"}</Text>
 
-          {activePass && (
+          {activeSubs.length > 0 && (
             <View style={styles.passStats}>
               <View style={styles.passStat}>
                 <Text style={styles.passStatValue}>
-                  {activePass.remainingCredits}
+                  {activeSubs.length}
                 </Text>
-                <Text style={styles.passStatLabel}>meals left</Text>
+                <Text style={styles.passStatLabel}>active plans</Text>
               </View>
               <View style={styles.passStatDivider} />
               <View style={styles.passStat}>
                 <Text style={styles.passStatValue}>
-                  ₹{(activePass.remainingCredits * activePass.effectiveCreditValue).toLocaleString("en-IN")}
+                  {activeSubs.reduce((sum, s) => sum + s.remainingDays, 0)}
                 </Text>
-                <Text style={styles.passStatLabel}>unused value</Text>
+                <Text style={styles.passStatLabel}>meals left</Text>
               </View>
             </View>
           )}

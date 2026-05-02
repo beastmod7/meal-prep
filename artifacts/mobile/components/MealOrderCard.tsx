@@ -18,16 +18,21 @@ function formatDate(isoDate: string): string {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
-
   if (isoDate === today.toISOString().split("T")[0]) return "Today";
   if (isoDate === tomorrow.toISOString().split("T")[0]) return "Tomorrow";
-
-  return date.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+  return date.toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 }
 
 function formatCancelTime(isoString: string): string {
-  const d = new Date(isoString);
-  return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+  return new Date(isoString).toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
 export default function MealOrderCard({
@@ -59,12 +64,9 @@ export default function MealOrderCard({
     if (order.status === "cancelled_late") return "Late cancel";
     if (order.status === "cancelled_full") return "Full charge";
     if (order.status === "preparing") return "Preparing";
-    if (cancelStatus === "free") {
-      const time = formatCancelTime(order.freeCancelUntil);
-      return `Free cancel by ${time}`;
-    }
+    if (cancelStatus === "free") return `Free cancel by ${formatCancelTime(order.freeCancelUntil)}`;
     if (cancelStatus === "late") return "Late fee applies";
-    if (cancelStatus === "full") return "Locked";
+    if (cancelStatus === "full") return "Locked in";
     return "Scheduled";
   }
 
@@ -75,7 +77,7 @@ export default function MealOrderCard({
         styles.card,
         { backgroundColor: colors.card, borderColor: colors.border },
         pressed && { opacity: 0.95 },
-        isCancelled && { opacity: 0.6 },
+        isCancelled && { opacity: 0.55 },
       ]}
     >
       <View style={styles.topRow}>
@@ -95,15 +97,11 @@ export default function MealOrderCard({
                 { color: order.slot === "lunch" ? "#92400E" : "#4C1D95" },
               ]}
             >
-              {order.slot === "lunch" ? "Lunch" : "Dinner"}
+              {order.slot === "lunch" ? "☀️ Lunch" : "🌙 Dinner"}
             </Text>
           </View>
         </View>
-        <StatusBadge
-          variant={getBadgeVariant()}
-          label={getBadgeLabel()}
-          small
-        />
+        <StatusBadge variant={getBadgeVariant()} label={getBadgeLabel()} small />
       </View>
 
       <View style={styles.mealRow}>
@@ -118,16 +116,9 @@ export default function MealOrderCard({
             {order.restaurantName}
           </Text>
         </View>
-        <View style={styles.creditInfo}>
-          <Text style={[styles.credit, { color: colors.foreground }]}>
-            1 credit
-          </Text>
-          {order.premiumExtra > 0 && (
-            <Text style={[styles.extra, { color: colors.warning }]}>
-              +₹{order.premiumExtra}
-            </Text>
-          )}
-        </View>
+        <Text style={[styles.price, { color: colors.mutedForeground }]}>
+          ₹{order.pricePerDay}/day
+        </Text>
       </View>
 
       {showActions && isActive && onCancel && (
@@ -139,26 +130,12 @@ export default function MealOrderCard({
             }}
             style={({ pressed }) => [
               styles.cancelBtn,
+              { borderColor: colors.border },
               pressed && { opacity: 0.7 },
             ]}
           >
-            <Text style={styles.cancelBtnText}>Cancel meal</Text>
-          </Pressable>
-          <Pressable
-            onPress={() =>
-              router.push({
-                pathname: "/schedule-meal",
-                params: { editOrderId: order.id },
-              })
-            }
-            style={({ pressed }) => [
-              styles.changeBtn,
-              { backgroundColor: colors.secondary },
-              pressed && { opacity: 0.7 },
-            ]}
-          >
-            <Text style={[styles.changeBtnText, { color: colors.primary }]}>
-              Change
+            <Text style={[styles.cancelBtnText, { color: colors.mutedForeground }]}>
+              Cancel this day
             </Text>
           </Pressable>
         </View>
@@ -215,9 +192,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  mealInfo: {
-    flex: 1,
-  },
+  mealInfo: { flex: 1 },
   mealName: {
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
@@ -227,46 +202,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
   },
-  creditInfo: {
-    alignItems: "flex-end",
-  },
-  credit: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-  },
-  extra: {
+  price: {
     fontSize: 12,
     fontFamily: "Inter_500Medium",
   },
   actionsRow: {
-    flexDirection: "row",
     borderTopWidth: 1,
     padding: 12,
-    gap: 8,
   },
   cancelBtn: {
-    flex: 1,
     height: 36,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E4E4E7",
   },
   cancelBtnText: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
-    color: "#71717A",
-  },
-  changeBtn: {
-    flex: 1,
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 8,
-  },
-  changeBtnText: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
   },
 });

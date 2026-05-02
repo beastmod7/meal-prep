@@ -1,10 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -14,197 +15,225 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
-const OPTIONS = [
-  { days: 3, label: "3 days", sub: "Quick pause, back soon" },
-  { days: 5, label: "5 days", sub: "Going home for a bit" },
-  { days: 7, label: "7 days", sub: "Full week away" },
-  { days: 14, label: "2 weeks", sub: "Extended break" },
+const PAUSE_OPTIONS = [
+  { days: 1, label: "1 day", desc: "Back tomorrow" },
+  { days: 2, label: "2 days", desc: "Skip the weekend" },
+  { days: 3, label: "3 days", desc: "Short break" },
+  { days: 5, label: "5 days", desc: "Work week" },
+  { days: 7, label: "7 days", desc: "Full week" },
+  { days: 14, label: "14 days", desc: "Two weeks" },
 ];
 
 export default function PauseMealsScreen() {
+  const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { activePass, pauseMeals, orders, getOrderCancelStatus } = useApp();
-  const [selected, setSelected] = useState(3);
-  const [loading, setLoading] = useState(false);
+  const { subscriptionId } = useLocalSearchParams<{ subscriptionId?: string }>();
+  const { subscriptions, pauseSubscription } = useApp();
 
-  const upcomingOrders = orders.filter(
-    (o) =>
-      !["delivered", "cancelled_free", "cancelled_late", "cancelled_full"].includes(
-        o.status
-      )
-  );
+  const [selectedDays, setSelectedDays] = useState(3);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  const lockedOrders = upcomingOrders.filter((o) => {
-    const cs = getOrderCancelStatus(o);
-    return cs === "full";
-  });
-
-  const freePausable = upcomingOrders.filter((o) => {
-    const cs = getOrderCancelStatus(o);
-    return cs === "free" || cs === "late";
-  });
+  const sub = subscriptions.find((s) => s.id === subscriptionId);
 
   const resumeDate = new Date();
-  resumeDate.setDate(resumeDate.getDate() + selected);
-  const resumeLabel = resumeDate.toLocaleDateString("en-IN", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+  resumeDate.setDate(resumeDate.getDate() + selectedDays);
 
   async function handlePause() {
-    setLoading(true);
+    if (!sub) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await pauseMeals(selected);
-    setLoading(false);
+    setIsSubmitting(true);
+    await pauseSubscription(sub.id, selectedDays);
+    setIsSubmitting(false);
+    setSuccess(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.back();
+  }
+
+  if (!sub) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.foreground, padding: 20 }}>
+          Subscription not found.
+        </Text>
+      </View>
+    );
+  }
+
+  if (success) {
+    return (
+      <View
+        style={[
+          styles.container,
+          styles.successContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <View style={[styles.successIcon, { backgroundColor: "#FFF3E8" }]}>
+          <Feather name="pause-circle" size={32} color="#F97316" />
+        </View>
+        <Text style={[styles.successTitle, { color: colors.foreground }]}>
+          Subscription paused
+        </Text>
+        <Text style={[styles.successBody, { color: colors.mutedForeground }]}>
+          {sub.restaurantName} {sub.slot} is paused for {selectedDays} day
+          {selectedDays > 1 ? "s" : ""}. It will resume on{" "}
+          {resumeDate.toLocaleDateString("en-IN", {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+          })}
+          .
+        </Text>
+        <Text style={[styles.successNote, { color: colors.mutedForeground }]}>
+          Your subscription end date will be extended automatically.
+        </Text>
+        <Pressable
+          onPress={() => router.back()}
+          style={[styles.doneBtn, { backgroundColor: colors.primary }]}
+        >
+          <Text style={styles.doneBtnText}>Done</Text>
+        </Pressable>
+      </View>
+    );
   }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.content}>
-        {/* Duration options */}
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-          Pause duration
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          padding: 16,
+          paddingBottom:
+            insets.bottom + (Platform.OS === "web" ? 34 : 0) + 100,
+        }}
+      >
+        {/* Subscription info */}
+        <View
+          style={[
+            styles.subInfo,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <Text style={[styles.subInfoEmoji]}>
+            {sub.slot === "lunch" ? "☀️" : "🌙"}
+          </Text>
+          <View>
+            <Text style={[styles.subInfoName, { color: colors.foreground }]}>
+              {sub.restaurantName}
+            </Text>
+            <Text
+              style={[styles.subInfoDetail, { color: colors.mutedForeground }]}
+            >
+              {sub.slot === "lunch" ? "Lunch" : "Dinner"} ·{" "}
+              {sub.remainingDays} days remaining
+            </Text>
+          </View>
+        </View>
+
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+          How long to pause?
         </Text>
+        <Text style={[styles.sectionHint, { color: colors.mutedForeground }]}>
+          Your subscription end date will extend by the same number of days.
+        </Text>
+
         <View style={styles.optionsGrid}>
-          {OPTIONS.map((opt) => (
+          {PAUSE_OPTIONS.map((opt) => (
             <Pressable
               key={opt.days}
               onPress={() => {
                 Haptics.selectionAsync();
-                setSelected(opt.days);
+                setSelectedDays(opt.days);
               }}
               style={[
                 styles.optionCard,
-                {
-                  backgroundColor:
-                    selected === opt.days ? "#FFF3E8" : colors.card,
-                  borderColor:
-                    selected === opt.days ? "#F97316" : colors.border,
+                { borderColor: colors.border, backgroundColor: colors.card },
+                selectedDays === opt.days && {
+                  borderColor: colors.primary,
+                  backgroundColor: "#FFF3E8",
                 },
               ]}
             >
               <Text
                 style={[
-                  styles.optionLabel,
+                  styles.optionDays,
                   {
                     color:
-                      selected === opt.days ? "#F97316" : colors.foreground,
+                      selectedDays === opt.days
+                        ? colors.primary
+                        : colors.foreground,
                   },
                 ]}
               >
                 {opt.label}
               </Text>
               <Text
-                style={[styles.optionSub, { color: colors.mutedForeground }]}
+                style={[
+                  styles.optionDesc,
+                  { color: colors.mutedForeground },
+                ]}
               >
-                {opt.sub}
+                {opt.desc}
               </Text>
             </Pressable>
           ))}
         </View>
 
-        {/* Summary */}
         <View
           style={[
-            styles.summaryCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
+            styles.resumeBox,
+            { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" },
           ]}
         >
-          <View style={styles.summaryRow}>
-            <Feather name="pause-circle" size={16} color="#8B5CF6" />
-            <Text style={[styles.summaryText, { color: colors.foreground }]}>
-              Meals paused from tomorrow to{" "}
-              <Text style={{ fontFamily: "Inter_700Bold" }}>{resumeLabel}</Text>
+          <Feather name="play-circle" size={16} color="#16A34A" />
+          <Text style={styles.resumeText}>
+            Meals will auto-resume on{" "}
+            <Text style={styles.resumeDate}>
+              {resumeDate.toLocaleDateString("en-IN", {
+                weekday: "long",
+                day: "numeric",
+                month: "short",
+              })}
             </Text>
-          </View>
-          {freePausable.length > 0 && (
-            <View style={styles.summaryRow}>
-              <Feather name="check-circle" size={16} color="#16A34A" />
-              <Text
-                style={[styles.summaryText, { color: colors.foreground }]}
-              >
-                {freePausable.length} upcoming meal
-                {freePausable.length > 1 ? "s" : ""} will be cancelled for free
-              </Text>
-            </View>
-          )}
-          {lockedOrders.length > 0 && (
-            <View style={styles.summaryRow}>
-              <Feather name="alert-circle" size={16} color="#F59E0B" />
-              <Text
-                style={[styles.summaryText, { color: colors.foreground }]}
-              >
-                {lockedOrders.length} locked meal
-                {lockedOrders.length > 1 ? "s" : ""} may still be charged
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Info */}
-        <View
-          style={[
-            styles.infoBox,
-            { backgroundColor: "#FFF3E8", borderColor: "#FDBA74" },
-          ]}
-        >
-          <Feather name="info" size={14} color="#F97316" />
-          <Text style={styles.infoText}>
-            Meals already past the free cancellation window may still be
-            charged. Your meal pass validity is not extended during a pause.
+            .
           </Text>
         </View>
+      </ScrollView>
 
-        {!activePass && (
-          <View
-            style={[
-              styles.infoBox,
-              { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
-            ]}
-          >
-            <Feather name="alert-circle" size={16} color="#EF4444" />
-            <Text style={[styles.infoText, { color: "#991B1B" }]}>
-              You don't have an active pass to pause.
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* CTA */}
+      {/* Footer */}
       <View
         style={[
-          styles.ctaBar,
+          styles.footer,
           {
-            paddingBottom: insets.bottom + 12,
             backgroundColor: colors.background,
             borderTopColor: colors.border,
+            paddingBottom:
+              insets.bottom + (Platform.OS === "web" ? 24 : 0) + 8,
           },
         ]}
       >
         <Pressable
           onPress={handlePause}
-          disabled={loading || !activePass || activePass.status === "paused"}
+          disabled={isSubmitting}
           style={({ pressed }) => [
-            styles.ctaBtn,
-            (!activePass || loading || activePass.status === "paused") &&
-              styles.btnDisabled,
-            pressed && activePass && !loading && { opacity: 0.85 },
+            styles.pauseBtn,
+            { backgroundColor: colors.primary },
+            pressed && { opacity: 0.9 },
+            isSubmitting && { opacity: 0.6 },
           ]}
         >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.ctaBtnText}>
-              {activePass?.status === "paused"
-                ? "Already paused"
-                : `Pause for ${OPTIONS.find((o) => o.days === selected)?.label}`}
-            </Text>
-          )}
+          <Feather name="pause-circle" size={18} color="#FFF" />
+          <Text style={styles.pauseBtnText}>
+            {isSubmitting
+              ? "Pausing…"
+              : `Pause for ${selectedDays} day${selectedDays > 1 ? "s" : ""}`}
+          </Text>
+        </Pressable>
+        <Pressable onPress={() => router.back()} style={styles.cancelBtn}>
+          <Text style={[styles.cancelBtnText, { color: colors.mutedForeground }]}>
+            Cancel
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -213,81 +242,102 @@ export default function PauseMealsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { flex: 1, padding: 20, gap: 16 },
-  sectionLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  optionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  optionCard: {
-    width: "47%",
-    borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 14,
-    gap: 4,
-  },
-  optionLabel: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-  },
-  optionSub: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-  summaryCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    gap: 10,
-  },
-  summaryRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-  },
-  summaryText: {
+  successContainer: {
     flex: 1,
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 18,
-  },
-  infoBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "#92400E",
-    lineHeight: 18,
-  },
-  ctaBar: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    borderTopWidth: 1,
-  },
-  ctaBtn: {
-    height: 54,
-    backgroundColor: "#8B5CF6",
-    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 32,
+    gap: 12,
   },
-  btnDisabled: { backgroundColor: "#D4D4D8" },
-  ctaBtnText: {
-    fontSize: 16,
+  successIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  successTitle: {
+    fontSize: 24,
     fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
+    textAlign: "center",
   },
+  successBody: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  successNote: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  doneBtn: {
+    marginTop: 12,
+    paddingHorizontal: 40,
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  doneBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+  subInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 20,
+  },
+  subInfoEmoji: { fontSize: 24 },
+  subInfoName: { fontSize: 15, fontFamily: "Inter_700Bold", marginBottom: 1 },
+  subInfoDetail: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  sectionTitle: { fontSize: 16, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  sectionHint: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17, marginBottom: 14 },
+  optionsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 16 },
+  optionCard: {
+    width: "30%",
+    flexGrow: 1,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    padding: 12,
+    alignItems: "center",
+    gap: 3,
+  },
+  optionDays: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  optionDesc: { fontSize: 10, fontFamily: "Inter_400Regular" },
+  resumeBox: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "flex-start",
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+  },
+  resumeText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#166534",
+    lineHeight: 18,
+  },
+  resumeDate: { fontFamily: "Inter_700Bold" },
+  footer: {
+    borderTopWidth: 1,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    gap: 8,
+  },
+  pauseBtn: {
+    height: 54,
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  pauseBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+  cancelBtn: { height: 44, alignItems: "center", justifyContent: "center" },
+  cancelBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
 });

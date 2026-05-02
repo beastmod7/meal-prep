@@ -2,10 +2,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { MealPass } from "@/context/AppContext";
+import { RestaurantSubscription } from "@/context/AppContext";
 
 interface PassCardProps {
-  pass: MealPass;
+  subscription: RestaurantSubscription;
   compact?: boolean;
 }
 
@@ -14,13 +14,9 @@ function formatDate(isoString: string): string {
   return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
-export default function PassCard({ pass, compact = false }: PassCardProps) {
+export default function PassCard({ subscription: sub, compact = false }: PassCardProps) {
   const router = useRouter();
-  const progress = pass.remainingCredits / pass.totalCredits;
-  const refundableValue = Math.round(
-    pass.remainingCredits * pass.effectiveCreditValue -
-      pass.lateCancellationFees
-  );
+  const progress = sub.remainingDays / sub.totalDays;
 
   if (compact) {
     return (
@@ -36,17 +32,17 @@ export default function PassCard({ pass, compact = false }: PassCardProps) {
         >
           <View style={styles.compactLeft}>
             <Text style={styles.compactMeals}>
-              {pass.remainingCredits} meals left
+              {sub.remainingDays} meals left
             </Text>
             <Text style={styles.compactSubtitle}>
-              Valid till {formatDate(pass.validUntil)}
+              {sub.restaurantName} · {sub.slot === "lunch" ? "Lunch" : "Dinner"}
             </Text>
           </View>
           <View style={styles.compactRight}>
             <Text style={styles.compactValue}>
-              ₹{refundableValue.toLocaleString("en-IN")}
+              ₹{sub.pricePerDay}/day
             </Text>
-            <Text style={styles.compactValueLabel}>unused value</Text>
+            <Text style={styles.compactValueLabel}>until {formatDate(sub.endDate)}</Text>
           </View>
         </LinearGradient>
         <View style={styles.compactProgressBg}>
@@ -69,31 +65,27 @@ export default function PassCard({ pass, compact = false }: PassCardProps) {
       style={styles.card}
     >
       <View style={styles.headerRow}>
-        <Text style={styles.planName}>{pass.planName}</Text>
+        <Text style={styles.planName}>
+          {sub.restaurantName} · {sub.slot === "lunch" ? "Lunch" : "Dinner"}
+        </Text>
         <View
           style={[
             styles.statusPill,
-            pass.status === "paused" && { backgroundColor: "#FEF3C7" },
+            sub.status === "paused" && { backgroundColor: "#FEF3C7" },
           ]}
         >
           <Text
             style={[
               styles.statusText,
-              pass.status === "paused" && { color: "#92400E" },
+              sub.status === "paused" && { color: "#92400E" },
             ]}
           >
-            {pass.status === "active"
-              ? "Active"
-              : pass.status === "paused"
-                ? "Paused"
-                : pass.status === "refund_requested"
-                  ? "Refund pending"
-                  : "Active"}
+            {sub.status === "active" ? "Active" : sub.status === "paused" ? "Paused" : "Active"}
           </Text>
         </View>
       </View>
 
-      <Text style={styles.credits}>{pass.remainingCredits}</Text>
+      <Text style={styles.credits}>{sub.remainingDays}</Text>
       <Text style={styles.creditsLabel}>meals remaining</Text>
 
       <View style={styles.progressBg}>
@@ -105,31 +97,27 @@ export default function PassCard({ pass, compact = false }: PassCardProps) {
         />
       </View>
       <Text style={styles.progressText}>
-        {pass.totalCredits - pass.remainingCredits} of {pass.totalCredits} used
+        {sub.usedDays} of {sub.totalDays} used
       </Text>
 
       <View style={styles.divider} />
 
       <View style={styles.statsRow}>
         <View style={styles.stat}>
-          <Text style={styles.statValue}>
-            ₹{refundableValue.toLocaleString("en-IN")}
-          </Text>
-          <Text style={styles.statLabel}>refundable value</Text>
+          <Text style={styles.statValue}>₹{sub.pricePerDay}/day</Text>
+          <Text style={styles.statLabel}>rate</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.stat}>
           <Text style={styles.statValue}>
-            ₹{pass.effectiveCreditValue}/meal
+            ₹{(sub.remainingDays * sub.pricePerDay).toLocaleString("en-IN")}
           </Text>
-          <Text style={styles.statLabel}>credit value</Text>
+          <Text style={styles.statLabel}>unused value</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.stat}>
-          <Text style={styles.statValue}>
-            {formatDate(pass.validUntil)}
-          </Text>
-          <Text style={styles.statLabel}>valid till</Text>
+          <Text style={styles.statValue}>{formatDate(sub.endDate)}</Text>
+          <Text style={styles.statLabel}>ends on</Text>
         </View>
       </View>
     </LinearGradient>
@@ -137,10 +125,7 @@ export default function PassCard({ pass, compact = false }: PassCardProps) {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: 16,
-    padding: 20,
-  },
+  card: { borderRadius: 16, padding: 20 },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -148,11 +133,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   planName: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_600SemiBold",
     color: "rgba(255,255,255,0.85)",
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
     textTransform: "uppercase",
+    flex: 1,
+    marginRight: 8,
   },
   statusPill: {
     backgroundColor: "rgba(255,255,255,0.2)",
@@ -160,17 +147,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 100,
   },
-  statusText: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    color: "#FFFFFF",
-  },
-  credits: {
-    fontSize: 52,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-    lineHeight: 56,
-  },
+  statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#FFFFFF" },
+  credits: { fontSize: 52, fontFamily: "Inter_700Bold", color: "#FFFFFF", lineHeight: 56 },
   creditsLabel: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
@@ -184,92 +162,37 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     overflow: "hidden",
   },
-  progressBar: {
-    height: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 3,
-  },
+  progressBar: { height: "100%", backgroundColor: "#FFFFFF", borderRadius: 3 },
   progressText: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.7)",
     marginBottom: 16,
   },
-  divider: {
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    marginBottom: 16,
-  },
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  stat: {
-    flex: 1,
-    alignItems: "center",
-  },
-  statValue: {
-    fontSize: 13,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-    marginBottom: 2,
-  },
+  divider: { height: 1, backgroundColor: "rgba(255,255,255,0.2)", marginBottom: 16 },
+  statsRow: { flexDirection: "row", justifyContent: "space-between" },
+  stat: { flex: 1, alignItems: "center" },
+  statValue: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#FFFFFF", marginBottom: 2 },
   statLabel: {
     fontSize: 10,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.65)",
     textAlign: "center",
   },
-  statDivider: {
-    width: 1,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    marginHorizontal: 4,
-  },
-  // Compact variant
-  compact: {
-    borderRadius: 14,
-    overflow: "hidden",
-  },
+  statDivider: { width: 1, backgroundColor: "rgba(255,255,255,0.2)", marginHorizontal: 4 },
+  compact: { borderRadius: 14, overflow: "hidden" },
   compactGradient: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
   },
-  compactLeft: {
-    flex: 1,
-  },
-  compactMeals: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-    marginBottom: 2,
-  },
-  compactSubtitle: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.75)",
-  },
-  compactRight: {
-    alignItems: "flex-end",
-  },
-  compactValue: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-  },
-  compactValueLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.75)",
-  },
-  compactProgressBg: {
-    height: 4,
-    backgroundColor: "#E4E4E7",
-    overflow: "hidden",
-  },
-  compactProgressBar: {
-    height: "100%",
-    backgroundColor: "#F97316",
-  },
+  compactLeft: { flex: 1 },
+  compactMeals: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFFFFF", marginBottom: 2 },
+  compactSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)" },
+  compactRight: { alignItems: "flex-end" },
+  compactValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+  compactValueLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)" },
+  compactProgressBg: { height: 4, backgroundColor: "#E4E4E7", overflow: "hidden" },
+  compactProgressBar: { height: "100%", backgroundColor: "#F97316" },
 });

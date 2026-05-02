@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
@@ -12,16 +13,17 @@ interface Restaurant {
   rating: number;
   reviewCount: number;
   distance: string;
-  deliveryTime: string;
   isVeg: boolean;
   accentColor: string;
-  days: string[];
   lunchAvailable: boolean;
   dinnerAvailable: boolean;
+  lunchStartPrice: number;
+  dinnerStartPrice: number;
 }
 
 interface RestaurantCardProps {
   restaurant: Restaurant;
+  showSubscribeCta?: boolean;
 }
 
 const FOOD_IMAGES: Record<string, any> = {
@@ -36,14 +38,17 @@ const IMAGE_MAP: Record<string, keyof typeof FOOD_IMAGES> = {
   r3: "tiffin",
 };
 
-export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
+export default function RestaurantCard({ restaurant, showSubscribeCta = true }: RestaurantCardProps) {
   const colors = useColors();
   const router = useRouter();
   const imgKey = IMAGE_MAP[restaurant.id];
 
   return (
     <Pressable
-      onPress={() => router.push(`/restaurant/${restaurant.id}`)}
+      onPress={() => {
+        Haptics.selectionAsync();
+        router.push(`/restaurant/${restaurant.id}`);
+      }}
       style={({ pressed }) => [
         styles.card,
         { backgroundColor: colors.card, borderColor: colors.border },
@@ -52,18 +57,9 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
     >
       <View style={styles.imageContainer}>
         {imgKey ? (
-          <Image
-            source={FOOD_IMAGES[imgKey]}
-            style={styles.image}
-            resizeMode="cover"
-          />
+          <Image source={FOOD_IMAGES[imgKey]} style={styles.image} resizeMode="cover" />
         ) : (
-          <View
-            style={[
-              styles.imagePlaceholder,
-              { backgroundColor: restaurant.accentColor + "22" },
-            ]}
-          >
+          <View style={[styles.imagePlaceholder, { backgroundColor: restaurant.accentColor + "22" }]}>
             <Feather name="coffee" size={28} color={restaurant.accentColor} />
           </View>
         )}
@@ -76,7 +72,7 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
 
       <View style={styles.content}>
         <View style={styles.topRow}>
-          <Text style={[styles.name, { color: colors.foreground }]}>
+          <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
             {restaurant.name}
           </Text>
           <View style={styles.ratingRow}>
@@ -85,44 +81,47 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
           </View>
         </View>
 
-        <Text style={[styles.tagline, { color: colors.mutedForeground }]}>
+        <Text style={[styles.tagline, { color: colors.mutedForeground }]} numberOfLines={1}>
           {restaurant.tagline}
         </Text>
 
-        <View style={styles.metaRow}>
-          <View style={styles.metaItem}>
-            <Feather name="map-pin" size={11} color={colors.mutedForeground} />
-            <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-              {restaurant.distance}
-            </Text>
-          </View>
-          <View style={styles.metaDot} />
-          <View style={styles.metaItem}>
-            <Feather name="clock" size={11} color={colors.mutedForeground} />
-            <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-              {restaurant.deliveryTime}
-            </Text>
-          </View>
-          <View style={styles.metaDot} />
-          <Text style={[styles.cuisine, { color: colors.mutedForeground }]}>
-            {restaurant.cuisine}
-          </Text>
-        </View>
-
-        <View style={styles.slotsRow}>
+        <View style={styles.pricingRow}>
           {restaurant.lunchAvailable && (
-            <View style={styles.slotTag}>
-              <Text style={styles.slotTagText}>Lunch</Text>
+            <View style={styles.priceChip}>
+              <Text style={styles.priceSlot}>☀️ Lunch</Text>
+              <Text style={[styles.priceFrom, { color: colors.primary }]}>
+                from ₹{restaurant.lunchStartPrice}/day
+              </Text>
             </View>
           )}
           {restaurant.dinnerAvailable && (
-            <View style={[styles.slotTag, styles.dinnerTag]}>
-              <Text style={[styles.slotTagText, styles.dinnerTagText]}>
-                Dinner
+            <View style={[styles.priceChip, styles.dinnerChip]}>
+              <Text style={styles.priceSlot}>🌙 Dinner</Text>
+              <Text style={[styles.priceFrom, { color: "#7C3AED" }]}>
+                from ₹{restaurant.dinnerStartPrice}/day
               </Text>
             </View>
           )}
         </View>
+
+        {showSubscribeCta && (
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push({
+                pathname: "/buy-pass",
+                params: { restaurantId: restaurant.id },
+              });
+            }}
+            style={({ pressed }) => [
+              styles.subscribeBtn,
+              { backgroundColor: colors.primary },
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            <Text style={styles.subscribeBtnText}>Subscribe</Text>
+          </Pressable>
+        )}
       </View>
     </Pressable>
   );
@@ -137,8 +136,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   imageContainer: {
-    width: 96,
-    height: 96,
+    width: 100,
     position: "relative",
   },
   image: {
@@ -150,6 +148,7 @@ const styles = StyleSheet.create({
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
+    minHeight: 100,
   },
   vegBadge: {
     position: "absolute",
@@ -173,7 +172,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 12,
-    justifyContent: "space-between",
+    gap: 4,
   },
   topRow: {
     flexDirection: "row",
@@ -197,55 +196,42 @@ const styles = StyleSheet.create({
     color: "#F59E0B",
   },
   tagline: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    marginTop: 2,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 6,
-    gap: 6,
-  },
-  metaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  metaText: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
   },
-  metaDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: "#D4D4D8",
-  },
-  cuisine: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-  },
-  slotsRow: {
+  pricingRow: {
     flexDirection: "row",
     gap: 6,
-    marginTop: 8,
+    marginTop: 4,
+    flexWrap: "wrap",
   },
-  slotTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 100,
+  priceChip: {
     backgroundColor: "#FFF3E8",
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
   },
-  slotTagText: {
+  dinnerChip: {
+    backgroundColor: "#F5F3FF",
+  },
+  priceSlot: {
     fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-    color: "#92400E",
+    fontFamily: "Inter_500Medium",
+    color: "#71717A",
   },
-  dinnerTag: {
-    backgroundColor: "#EDE9FE",
+  priceFrom: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
   },
-  dinnerTagText: {
-    color: "#4C1D95",
+  subscribeBtn: {
+    marginTop: 6,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  subscribeBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    color: "#FFFFFF",
   },
 });

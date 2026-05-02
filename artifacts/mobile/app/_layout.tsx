@@ -70,7 +70,7 @@ function NavigationController() {
         name="buy-pass"
         options={{
           headerShown: true,
-          headerTitle: "Buy Pass",
+          headerTitle: "Subscribe",
           headerBackTitle: "Back",
         }}
       />

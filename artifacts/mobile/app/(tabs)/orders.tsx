@@ -25,39 +25,28 @@ export default function OrdersScreen() {
   const [activeTab, setActiveTab] = useState<Tab>("upcoming");
   const [cancelTarget, setCancelTarget] = useState<MealOrder | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
-  const [cancelResult, setCancelResult] = useState<{
-    type: string;
-    fee: number;
-  } | null>(null);
+  const [cancelResult, setCancelResult] = useState<{ type: string; fee: number } | null>(null);
 
-  const upcoming = orders.filter(
-    (o) =>
-      !["delivered", "cancelled_free", "cancelled_late", "cancelled_full"].includes(
-        o.status
-      )
-  ).sort(
-    (a, b) =>
-      new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime()
-  );
+  const upcoming = orders
+    .filter((o) =>
+      !["delivered", "cancelled_free", "cancelled_late", "cancelled_full"].includes(o.status)
+    )
+    .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
 
-  const past = orders.filter((o) => o.status === "delivered").sort(
-    (a, b) =>
-      new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime()
-  );
+  const past = orders
+    .filter((o) => o.status === "delivered")
+    .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
 
-  const cancelled = orders.filter((o) =>
-    ["cancelled_free", "cancelled_late", "cancelled_full"].includes(o.status)
-  ).sort(
-    (a, b) =>
-      new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime()
-  );
+  const cancelled = orders
+    .filter((o) =>
+      ["cancelled_free", "cancelled_late", "cancelled_full"].includes(o.status)
+    )
+    .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
 
-  const tabData = { upcoming, past, cancelled };
+  const tabData: Record<Tab, MealOrder[]> = { upcoming, past, cancelled };
   const current = tabData[activeTab];
 
-  const cancelStatus = cancelTarget
-    ? getOrderCancelStatus(cancelTarget)
-    : null;
+  const cancelStatus = cancelTarget ? getOrderCancelStatus(cancelTarget) : null;
 
   async function confirmCancel() {
     if (!cancelTarget) return;
@@ -79,7 +68,6 @@ export default function OrdersScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
       <View
         style={[
           styles.header,
@@ -89,8 +77,9 @@ export default function OrdersScreen() {
           },
         ]}
       >
-        <Text style={[styles.title, { color: colors.foreground }]}>
-          Orders
+        <Text style={[styles.title, { color: colors.foreground }]}>Orders</Text>
+        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+          Daily meals from your subscriptions
         </Text>
 
         <View style={[styles.tabs, { backgroundColor: colors.muted }]}>
@@ -113,21 +102,13 @@ export default function OrdersScreen() {
                 style={[
                   styles.tabText,
                   {
-                    color:
-                      activeTab === tab
-                        ? colors.foreground
-                        : colors.mutedForeground,
-                    fontFamily:
-                      activeTab === tab
-                        ? "Inter_600SemiBold"
-                        : "Inter_400Regular",
+                    color: activeTab === tab ? colors.foreground : colors.mutedForeground,
+                    fontFamily: activeTab === tab ? "Inter_600SemiBold" : "Inter_400Regular",
                   },
                 ]}
               >
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                {tab === "upcoming" && upcoming.length > 0
-                  ? ` (${upcoming.length})`
-                  : ""}
+                {tab === "upcoming" && upcoming.length > 0 ? ` (${upcoming.length})` : ""}
               </Text>
             </Pressable>
           ))}
@@ -138,8 +119,7 @@ export default function OrdersScreen() {
         contentContainerStyle={[
           styles.listContent,
           {
-            paddingBottom:
-              insets.bottom + (Platform.OS === "web" ? 34 : 0) + 90,
+            paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 90,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -147,19 +127,18 @@ export default function OrdersScreen() {
         {current.length === 0 ? (
           <View style={styles.empty}>
             <Feather
-              name={
-                activeTab === "upcoming"
-                  ? "calendar"
-                  : activeTab === "past"
-                    ? "check-circle"
-                    : "x-circle"
-              }
+              name={activeTab === "upcoming" ? "calendar" : activeTab === "past" ? "check-circle" : "x-circle"}
               size={32}
               color={colors.mutedForeground}
             />
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              No {activeTab} orders
+              No {activeTab} meals
             </Text>
+            {activeTab === "upcoming" && (
+              <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
+                Subscribe to a restaurant to get daily meals auto-scheduled
+              </Text>
+            )}
           </View>
         ) : (
           current.map((order) => (
@@ -173,7 +152,6 @@ export default function OrdersScreen() {
         )}
       </ScrollView>
 
-      {/* Cancel Sheet */}
       <Modal
         visible={!!cancelTarget}
         transparent
@@ -187,17 +165,17 @@ export default function OrdersScreen() {
                 <View style={styles.handle} />
                 <Text style={styles.sheetTitle}>
                   {cancelResult.type === "free"
-                    ? "Meal cancelled"
+                    ? "Day cancelled"
                     : cancelResult.type === "late"
                       ? "Late cancellation"
                       : "Meal charged"}
                 </Text>
                 <Text style={styles.sheetBody}>
                   {cancelResult.type === "free"
-                    ? "Your meal credit has been restored to your pass."
+                    ? "This meal day has been cancelled at no charge."
                     : cancelResult.type === "late"
-                      ? `50% credit deducted (₹${cancelResult.fee}). Restaurant was planning.`
-                      : `Full credit used (₹${cancelResult.fee}). Preparation had started.`}
+                      ? `Late cancellation fee: ₹${cancelResult.fee} (50% of day rate).`
+                      : `Full day charge: ₹${cancelResult.fee}. Meal preparation had started.`}
                 </Text>
                 <Pressable style={styles.doneBtn} onPress={closeCancelSheet}>
                   <Text style={styles.doneBtnText}>Done</Text>
@@ -217,7 +195,7 @@ export default function OrdersScreen() {
                   <View style={[styles.infoBox, { backgroundColor: "#F0FDF4" }]}>
                     <Feather name="check-circle" size={16} color="#16A34A" />
                     <Text style={[styles.infoText, { color: "#166534" }]}>
-                      Free cancellation available.{"\n"}Your meal credit stays in your pass.
+                      Free cancellation — no charge for this day.
                     </Text>
                   </View>
                 )}
@@ -225,7 +203,7 @@ export default function OrdersScreen() {
                   <View style={[styles.infoBox, { backgroundColor: "#FFFBEB" }]}>
                     <Feather name="alert-triangle" size={16} color="#F59E0B" />
                     <Text style={[styles.infoText, { color: "#92400E" }]}>
-                      Late cancellation fee applies.{"\n"}50% of your meal credit will be deducted.
+                      Late cancel fee: ₹{cancelTarget ? Math.round(cancelTarget.pricePerDay * 0.5) : 0} (50% of ₹{cancelTarget?.pricePerDay}/day).
                     </Text>
                   </View>
                 )}
@@ -233,7 +211,7 @@ export default function OrdersScreen() {
                   <View style={[styles.infoBox, { backgroundColor: "#FEF2F2" }]}>
                     <Feather name="alert-circle" size={16} color="#EF4444" />
                     <Text style={[styles.infoText, { color: "#991B1B" }]}>
-                      Meal preparation has started.{"\n"}Cancelling will use the full meal credit.
+                      Full charge ₹{cancelTarget?.pricePerDay} — meal preparation has started.
                     </Text>
                   </View>
                 )}
@@ -243,9 +221,7 @@ export default function OrdersScreen() {
                     style={[styles.keepBtn, { borderColor: colors.border }]}
                     onPress={closeCancelSheet}
                   >
-                    <Text style={[styles.keepText, { color: colors.foreground }]}>
-                      Keep meal
-                    </Text>
+                    <Text style={[styles.keepText, { color: colors.foreground }]}>Keep meal</Text>
                   </Pressable>
                   <Pressable
                     onPress={confirmCancel}
@@ -258,11 +234,7 @@ export default function OrdersScreen() {
                     ]}
                   >
                     <Text style={styles.cancelText}>
-                      {cancelStatus === "free"
-                        ? "Cancel meal"
-                        : cancelStatus === "late"
-                          ? "Cancel with fee"
-                          : "Cancel anyway"}
+                      {cancelStatus === "free" ? "Cancel day" : cancelStatus === "late" ? "Cancel (50% fee)" : "Cancel anyway"}
                     </Text>
                   </Pressable>
                 </View>
@@ -282,130 +254,28 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
   },
-  title: {
-    fontSize: 26,
-    fontFamily: "Inter_700Bold",
-    marginBottom: 14,
-  },
-  tabs: {
-    flexDirection: "row",
-    borderRadius: 12,
-    padding: 3,
-    gap: 2,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  tabText: {
-    fontSize: 13,
-  },
-  listContent: {
-    padding: 16,
-  },
-  empty: {
-    alignItems: "center",
-    paddingTop: 60,
-    gap: 12,
-  },
-  emptyText: {
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  sheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 40,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: "#E4E4E7",
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: 20,
-  },
-  sheetTitle: {
-    fontSize: 20,
-    fontFamily: "Inter_700Bold",
-    color: "#1A1A1A",
-    marginBottom: 4,
-  },
-  sheetMeal: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: "#71717A",
-    marginBottom: 16,
-  },
-  sheetBody: {
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    color: "#71717A",
-    lineHeight: 22,
-    marginBottom: 24,
-  },
-  infoBox: {
-    flexDirection: "row",
-    gap: 10,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 20,
-    alignItems: "flex-start",
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 20,
-  },
-  actions: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  keepBtn: {
-    flex: 1,
-    height: 52,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  keepText: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-  },
-  cancelBtn: {
-    flex: 1,
-    height: 52,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cancelText: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    color: "#FFFFFF",
-  },
-  doneBtn: {
-    height: 52,
-    backgroundColor: "#F97316",
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  doneBtnText: {
-    fontSize: 15,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-  },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold", marginBottom: 2 },
+  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 14 },
+  tabs: { flexDirection: "row", borderRadius: 12, padding: 3, gap: 2 },
+  tab: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: "center" },
+  tabText: { fontSize: 13 },
+  listContent: { padding: 16 },
+  empty: { alignItems: "center", paddingTop: 60, gap: 10 },
+  emptyText: { fontSize: 15, fontFamily: "Inter_400Regular" },
+  emptyHint: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", maxWidth: 240, lineHeight: 18 },
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  sheet: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 40 },
+  handle: { width: 40, height: 4, backgroundColor: "#E4E4E7", borderRadius: 2, alignSelf: "center", marginBottom: 20 },
+  sheetTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#1A1A1A", marginBottom: 4 },
+  sheetMeal: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#71717A", marginBottom: 16 },
+  sheetBody: { fontSize: 15, fontFamily: "Inter_400Regular", color: "#71717A", lineHeight: 22, marginBottom: 24 },
+  infoBox: { flexDirection: "row", gap: 10, borderRadius: 12, padding: 14, marginBottom: 20, alignItems: "flex-start" },
+  infoText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 },
+  actions: { flexDirection: "row", gap: 10 },
+  keepBtn: { flex: 1, height: 52, borderRadius: 14, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  keepText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  cancelBtn: { flex: 1, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  cancelText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#FFFFFF" },
+  doneBtn: { height: 52, backgroundColor: "#F97316", borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  doneBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
 });

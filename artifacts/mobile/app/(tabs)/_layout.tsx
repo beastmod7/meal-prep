@@ -68,7 +68,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="pass"
         options={{
-          title: "Pass",
+          title: "Plans",
           tabBarIcon: ({ color }) => (
             <Feather name="credit-card" size={22} color={color} />
           ),
