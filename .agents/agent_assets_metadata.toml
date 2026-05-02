@@ -1,0 +1,26 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "hPrdAz5cf2wOHqizBDJWp"
+uri = "file://artifacts/mobile/assets/images/icon.png"
+type = "image"
+title = "meal pass app icon"
+
+[[generated]]
+id = "hqLLV67JhTOedKrRiDESn"
+uri = "file://artifacts/mobile/assets/images/meal_thali.png"
+type = "image"
+title = "north indian thali"
+
+[[generated]]
+id = "laDyr0ra0VLie55JEj7Hg"
+uri = "file://artifacts/mobile/assets/images/meal_dosa.png"
+type = "image"
+title = "masala dosa"
+
+[[generated]]
+id = "ENBAwThxW5sulcPEYmwwq"
+uri = "file://artifacts/mobile/assets/images/meal_tiffin.png"
+type = "image"
+title = "tiffin meal"

@@ -1,0 +1,1929 @@
+# PRD: Student Meal Pass Marketplace App
+
+## 1. Product summary
+
+**Product concept:**
+A mobile-first meal pass app for students where they can buy prepaid meal passes, schedule meals from partner restaurants, cancel upcoming meals one day before for free, and get unused meal value carried forward or refunded.
+
+**Core promise:**
+
+> Pay once. Eat flexibly. Cancel tomorrow’s meal by tonight. Your unused meals stay yours.
+
+This should **not** feel like Zomato/Swiggy ordering every day. It should feel like a **student food operating system**.
+
+## 2. Product positioning
+
+### Current market problem
+
+Students have three bad options:
+
+1. Order every day on food delivery apps and pay per order.
+2. Eat hostel/mess food even when they hate it.
+3. Negotiate manually with restaurants/tiffin providers over WhatsApp.
+
+The missing product is:
+
+> A flexible monthly meal system where students can subscribe to food access without being punished for skipped meals.
+
+### Product category
+
+Not exactly food delivery. Not exactly wallet. Not exactly subscription.
+
+Best category:
+
+```txt
+Student Meal Pass Platform
+```
+
+Internally:
+
+```txt
+Meal pass + scheduled ordering + restaurant settlement ledger
+```
+
+## 3. Important payment assumption
+
+For iOS/Android, you should use **Razorpay / PhonePe / PayU / similar payment gateway**, not RevenueCat. Apple’s guideline says apps selling physical goods or services consumed outside the app must use payment methods other than in-app purchase, such as Apple Pay or credit card entry. Google Play says Play Billing is for digital goods, and specifically lists physical goods and food delivery as not supported by Google Play Billing. ([Apple Developer][1])
+
+For India, be careful with the “stored balance” design. RBI says non-bank PPI issuers generally require authorization, while closed-system instruments used only to buy goods/services from the issuing entity and without cash withdrawal are not classified as a regulated payment system. Your design should be reviewed by a payments lawyer/CA before launch, because “meal balance across restaurants” can accidentally start smelling like a wallet. ([Reserve Bank of India][2])
+
+## 4. Product goal
+
+Build a trusted meal pass system where:
+
+```txt
+Student buys meal pass
+↓
+Student schedules meals
+↓
+Student cancels tomorrow’s meal before cutoff for free
+↓
+Late cancellations incur fee
+↓
+Restaurant gets predictable demand
+↓
+Platform settles restaurants weekly
+↓
+Unused paid meal value carries forward or is refundable
+```
+
+## 5. MVP decision
+
+Do **not** launch as:
+
+```txt
+Add ₹6,000 to wallet
+```
+
+Launch as:
+
+```txt
+Buy a Meal Pass
+```
+
+Because “wallet” creates regulatory, trust, and accounting complexity.
+
+Better user-facing language:
+
+```txt
+30 Meal Pass
+₹6,000
+Valid for 45 days
+Cancel next day’s meal by 10 PM tonight for free
+Unused paid meals carry forward or can be refunded
+```
+
+## 6. Core product rules
+
+### 6.1 Meal pass unit
+
+The pass should be based on **meal credits**, not days.
+
+Bad:
+
+```txt
+₹6,000 monthly plan for 30 days
+```
+
+Good:
+
+```txt
+30 Meal Pass for ₹6,000
+Valid for 45 days
+```
+
+Why? Because students don’t consume “days.” They consume meals.
+
+### 6.2 Meal credit value
+
+Example:
+
+```txt
+Pass price: ₹6,000
+Meals included: 30
+Effective meal value: ₹200 per meal
+```
+
+If the user eats 18 meals:
+
+```txt
+Consumed: 18 × ₹200 = ₹3,600
+Unused: 12 meals = ₹2,400 remaining value
+```
+
+### 6.3 Premium meals
+
+Some meals may cost more than the standard credit value.
+
+Example:
+
+```txt
+Standard meal credit value: ₹200
+Premium thali: ₹240
+User pays: 1 meal credit + ₹40 extra
+```
+
+Or:
+
+```txt
+Premium thali uses 1.2 credits
+```
+
+For MVP, use **credit + extra rupee payment**. Easier to understand.
+
+## 7. Cancellation policy
+
+This is the heart of the product.
+
+### Standard rule
+
+```txt
+Cancel by 10 PM the previous day: Free
+Cancel after 10 PM previous day: Late cancellation fee
+No-show / restaurant already prepared: Full deduction
+```
+
+### Lunch example
+
+Meal: Tuesday lunch
+
+```txt
+Free cancellation: Until Monday 10 PM
+Late cancellation: Monday 10 PM to Tuesday 9 AM
+Full charge/no-show: After Tuesday 9 AM
+```
+
+### Dinner example
+
+Meal: Tuesday dinner
+
+```txt
+Free cancellation: Until Monday 10 PM
+Late cancellation: Monday 10 PM to Tuesday 3 PM
+Full charge/no-show: After Tuesday 3 PM
+```
+
+### MVP simplified rule
+
+Use one clean rule first:
+
+```txt
+Cancel by 10 PM the previous night: Free
+After that: 50% meal credit deducted
+After prep/dispatched/no-show: 100% meal credit deducted
+```
+
+This is simple enough for students and protective enough for restaurants. Not NASA tiffin ops.
+
+## 8. Refund policy
+
+Refunds should be based on **unused paid meal credits**, not skipped days.
+
+### Refund formula
+
+```txt
+Refundable amount =
+Unused paid meal credits × effective paid value per credit
+- late cancellation fees
+- non-refundable payment/platform fees, if any
+```
+
+### Example
+
+```txt
+30 Meal Pass = ₹6,000
+1 meal credit = ₹200
+
+Meals eaten: 18
+Late cancellations: 2 at 50% each = ₹200 total
+Free cancellations: 5 = ₹0 deducted
+
+Total consumed/charged:
+18 meals = ₹3,600
+Late cancellation fees = ₹200
+
+Refundable amount:
+₹6,000 - ₹3,600 - ₹200 = ₹2,200
+```
+
+### Refund UX copy
+
+```txt
+Refund Summary
+
+Pass purchased: ₹6,000
+Meals included: 30
+Meals used: 18
+Late cancellation charges: ₹200
+Unused paid value: ₹2,200
+
+Refund goes back to your original payment method in 3–7 working days.
+Bonus credits are non-refundable.
+```
+
+## 9. Business model
+
+### Primary revenue
+
+```txt
+Commission per delivered meal
+```
+
+Example:
+
+```txt
+Meal price: ₹200
+Restaurant payout: ₹170
+Platform commission: ₹30
+Commission rate: 15%
+```
+
+### Secondary revenue later
+
+```txt
+Student convenience fee
+Restaurant SaaS dashboard fee
+Featured restaurant placement
+Premium meal discovery
+Delivery fee
+Campus partnership fee
+```
+
+Do not overdo monetization in MVP. First win trust.
+
+## 10. User personas
+
+### Persona 1: Hostel student
+
+Wants reliable lunch/dinner without daily ordering headache.
+
+Pain:
+
+```txt
+I don’t want to think about food every day.
+```
+
+Needs:
+
+```txt
+Affordable meals
+Pause when going home
+Cancel next meal easily
+Clear remaining meals
+```
+
+### Persona 2: Coaching/student apartment user
+
+Lives outside hostel, orders often, wants budget control.
+
+Pain:
+
+```txt
+Swiggy/Zomato daily ordering is expensive.
+```
+
+Needs:
+
+```txt
+Monthly food planning
+Restaurant choice
+No daily payment
+```
+
+### Persona 3: Restaurant partner
+
+Wants predictable orders and repeat customers.
+
+Pain:
+
+```txt
+Daily random orders are unpredictable.
+```
+
+Needs:
+
+```txt
+Tomorrow’s meal count
+Prep planning
+Cancellation cutoff
+Weekly settlement
+```
+
+### Persona 4: Platform admin
+
+Needs financial clarity.
+
+Pain:
+
+```txt
+Who paid? Who ate? Who cancelled? Who gets paid?
+```
+
+Needs:
+
+```txt
+Immutable ledger
+Dispute management
+Restaurant settlement
+Refund approval
+Fraud detection
+```
+
+## 11. Student mobile app: information architecture
+
+Bottom tabs:
+
+```txt
+Home
+Meals
+Pass
+Orders
+Profile
+```
+
+Optional later:
+
+```txt
+Rewards
+Campus
+```
+
+## 12. Student app screens
+
+### 12.1 Splash screen
+
+Purpose: Brand entry.
+
+Elements:
+
+```txt
+Logo
+Tagline: Meals sorted for student life
+Loading state
+```
+
+### 12.2 Login/signup screen
+
+Login methods:
+
+```txt
+Phone OTP
+Google
+Apple Sign-In for iOS
+```
+
+Required profile:
+
+```txt
+Name
+Phone number
+Campus/area
+Delivery address / hostel / PG
+Food preference: Veg / Non-veg / Jain / Egg
+```
+
+### 12.3 Location/campus selection
+
+User selects:
+
+```txt
+College/campus
+Hostel/PG/apartment area
+Delivery preference
+```
+
+UX copy:
+
+```txt
+We’ll show restaurants that can actually deliver to you.
+```
+
+### 12.4 Onboarding screen 1: Problem
+
+Headline:
+
+```txt
+Daily food ordering is exhausting.
+```
+
+Body:
+
+```txt
+No more deciding, paying, and tracking every single meal.
+```
+
+### 12.5 Onboarding screen 2: Meal pass
+
+Headline:
+
+```txt
+Buy meals once. Eat flexibly.
+```
+
+Body:
+
+```txt
+Get meal credits and use them across partner restaurants.
+```
+
+### 12.6 Onboarding screen 3: Cancellation trust
+
+Headline:
+
+```txt
+Cancel tomorrow’s meal by tonight.
+```
+
+Body:
+
+```txt
+Cancel before 10 PM the previous day for free. Your meal credit stays safe.
+```
+
+### 12.7 Home screen
+
+This is the most important screen.
+
+Top section:
+
+```txt
+Good afternoon, Rahul
+You’re covered for 12 more meals
+```
+
+Main cards:
+
+```txt
+Today’s Lunch
+Restaurant: Green Bowl
+Status: Scheduled
+Cancel status: Locked / Free cancel available / Late fee applies
+CTA: View meal
+```
+
+```txt
+Tomorrow’s Dinner
+Cancel free until 10 PM tonight
+CTA: Change / Cancel
+```
+
+Meal pass card:
+
+```txt
+12 meals left
+₹2,400 unused paid value
+Valid till 18 July
+```
+
+Quick actions:
+
+```txt
+Schedule meals
+Pause meals
+Buy more meals
+Request refund
+```
+
+### 12.8 Meals discovery screen
+
+Filters:
+
+```txt
+Lunch / Dinner
+Veg / Non-veg
+Budget
+High protein
+North Indian
+South Indian
+Home-style
+Rating
+Delivery time
+```
+
+Meal card:
+
+```txt
+Restaurant name
+Meal name
+Photo
+Included in pass / Requires ₹30 extra
+Rating
+Cancellation rule badge
+```
+
+Example badge:
+
+```txt
+Included in pass
+```
+
+or:
+
+```txt
+1 credit + ₹40
+```
+
+### 12.9 Restaurant detail screen
+
+Sections:
+
+```txt
+Restaurant name
+Rating
+Distance / delivery area
+Menu
+Meal pass eligibility
+Weekly availability
+Hygiene/trust badges
+Cancellation cutoff
+Reviews
+```
+
+CTA:
+
+```txt
+Schedule this meal
+```
+
+### 12.10 Meal detail screen
+
+Elements:
+
+```txt
+Meal image
+Meal name
+Restaurant
+Ingredients
+Veg/non-veg indicator
+Calories/protein optional
+Spice level
+Delivery/pickup time
+Pass cost: 1 meal credit
+Extra amount if premium
+```
+
+CTA:
+
+```txt
+Add to schedule
+```
+
+### 12.11 Schedule meal screen
+
+User chooses:
+
+```txt
+Date
+Lunch/dinner
+Restaurant
+Meal
+Delivery/pickup
+Repeat pattern
+```
+
+Repeat options:
+
+```txt
+Only once
+Every weekday
+Every day
+Custom days
+```
+
+Example:
+
+```txt
+Schedule Green Bowl Lunch every Mon–Fri
+```
+
+Before confirmation, show:
+
+```txt
+Free cancellation until 10 PM previous day.
+After that, late cancellation fee may apply.
+```
+
+### 12.12 Schedule confirmation screen
+
+Show:
+
+```txt
+Meal scheduled
+Tuesday Lunch
+Green Bowl Mini Thali
+1 meal credit will be used after lock/prep
+```
+
+Important: Do not deduct immediately if the meal is still cancellable. Reserve or mark scheduled, but final debit happens at lock/prep stage depending on your accounting logic.
+
+### 12.13 Cancel meal bottom sheet
+
+Before free cutoff:
+
+```txt
+Cancel Tuesday Lunch?
+
+Free cancellation available.
+Your meal credit will stay in your pass.
+
+CTA:
+Cancel meal
+Keep meal
+```
+
+After cutoff:
+
+```txt
+Late cancellation fee applies.
+
+Restaurant planning may have started.
+Cancelling now will deduct 50% meal credit.
+
+CTA:
+Cancel with fee
+Keep meal
+```
+
+After prep lock:
+
+```txt
+Meal preparation started.
+
+Cancelling now will use the full meal credit.
+
+CTA:
+Cancel anyway
+Keep meal
+```
+
+### 12.14 Pause meals screen
+
+Very important.
+
+Options:
+
+```txt
+Pause for 3 days
+Pause for 7 days
+Pause until custom date
+```
+
+UX copy:
+
+```txt
+Meals after the free cancellation window will be paused automatically.
+Meals already locked may still have a fee.
+```
+
+Example:
+
+```txt
+Pause from Wednesday to Sunday
+5 upcoming meals paused
+1 locked meal may still be charged
+```
+
+### 12.15 Pass screen
+
+This should be the trust dashboard.
+
+Top:
+
+```txt
+Active Meal Pass
+30 Meal Pass
+12 meals left
+Valid till 18 July
+```
+
+Value breakdown:
+
+```txt
+Paid meal value left: ₹2,400
+Bonus value left: ₹0
+Refundable amount: ₹2,400
+```
+
+Actions:
+
+```txt
+Buy more meals
+Pause pass
+Request refund
+View ledger
+```
+
+### 12.16 Buy pass screen
+
+Plans:
+
+```txt
+Starter Pass
+5 meals
+₹999
+Valid 10 days
+
+Weekly Pass
+10 meals
+₹1,899
+Valid 15 days
+
+Monthly Pass
+30 meals
+₹5,699
+Valid 45 days
+
+Heavy Pass
+60 meals
+₹10,999
+Valid 75 days
+```
+
+Plan card should show:
+
+```txt
+Cost per meal
+Validity
+Cancellation rule
+Refund/carry-forward rule
+```
+
+Example copy:
+
+```txt
+Unused paid meals can be carried forward or refunded.
+```
+
+### 12.17 Checkout screen
+
+Payment methods:
+
+```txt
+UPI
+Cards
+Net banking
+Wallets
+```
+
+Razorpay can support multiple payment modes such as cards, UPI, net banking, and wallets; Razorpay Route is also designed for marketplace-style splitting, settlements, refunds, and reconciliation between multiple parties. ([Razorpay][3])
+
+Checkout summary:
+
+```txt
+30 Meal Pass
+₹5,699
+Validity: 45 days
+Free cancellation: till 10 PM previous day
+Refund: unused paid meal value only
+```
+
+CTA:
+
+```txt
+Pay ₹5,699
+```
+
+### 12.18 Payment success screen
+
+```txt
+Your Meal Pass is active 🎉
+
+30 meals added
+Valid till 18 July
+Start scheduling your meals
+```
+
+CTA:
+
+```txt
+Schedule first meal
+```
+
+### 12.19 Orders screen
+
+Tabs:
+
+```txt
+Upcoming
+Past
+Cancelled
+Refunded
+```
+
+Upcoming order card:
+
+```txt
+Tomorrow Lunch
+Restaurant
+Meal
+Free cancel until 10 PM tonight
+CTA: Change / Cancel
+```
+
+Past order card:
+
+```txt
+Delivered
+1 meal credit used
+Rate meal
+Report issue
+```
+
+### 12.20 Order tracking screen
+
+For delivery:
+
+```txt
+Scheduled
+Accepted by restaurant
+Preparing
+Out for delivery
+Delivered
+```
+
+For pickup:
+
+```txt
+Scheduled
+Preparing
+Ready for pickup
+Collected
+```
+
+### 12.21 Refund request screen
+
+Show exact math.
+
+```txt
+Refund available: ₹2,400
+
+Breakdown:
+Unused paid meals: 12
+Value per meal: ₹200
+Bonus credits: ₹0 non-refundable
+Late cancellation charges: ₹0
+
+Refund method:
+Original payment source
+Timeline:
+3–7 working days
+```
+
+CTA:
+
+```txt
+Request refund
+```
+
+### 12.22 Ledger/history screen
+
+User-facing ledger:
+
+```txt
++ 30 meals purchased
+- 1 meal used: Green Bowl Lunch
++ 1 meal restored: Cancelled before cutoff
+- 0.5 meal: Late cancellation
+- 1 meal: No-show
+```
+
+Also show rupee equivalent where needed.
+
+### 12.23 Support screen
+
+Categories:
+
+```txt
+Food not delivered
+Wrong meal
+Poor quality
+Refund issue
+Restaurant issue
+Payment failed
+```
+
+Support ticket should attach:
+
+```txt
+Order ID
+Restaurant
+Meal
+Timestamp
+Photo upload
+Refund requested yes/no
+```
+
+## 13. Restaurant app/dashboard
+
+Restaurants need either a lightweight mobile app or web dashboard. For MVP, web dashboard is cheaper. Later, build restaurant Android app.
+
+### 13.1 Restaurant login
+
+Methods:
+
+```txt
+Phone OTP
+Email/password
+Admin-created account
+```
+
+### 13.2 Restaurant dashboard home
+
+Top metrics:
+
+```txt
+Today’s scheduled meals
+Tomorrow’s expected meals
+Pending preparation
+Cancelled meals
+Estimated payout
+```
+
+Cards:
+
+```txt
+Lunch: 42 scheduled
+Dinner: 31 scheduled
+Late cancellations: 3
+No-shows: 1
+```
+
+### 13.3 Tomorrow planning screen
+
+This is the restaurant’s power screen.
+
+```txt
+Tomorrow’s Lunch Orders
+Final count locks at 10 PM tonight
+Current count: 42
+```
+
+After 10 PM:
+
+```txt
+Locked count: 42
+Prepare for 42 meals
+```
+
+### 13.4 Order list screen
+
+Filters:
+
+```txt
+Lunch
+Dinner
+Delivery
+Pickup
+Scheduled
+Preparing
+Ready
+Delivered
+Cancelled
+```
+
+Order row:
+
+```txt
+Student name
+Meal
+Quantity
+Delivery/pickup
+Status
+Special instructions
+```
+
+### 13.5 Menu management screen
+
+Restaurant can:
+
+```txt
+Add meal
+Edit meal
+Set available days
+Set lunch/dinner availability
+Mark included in pass
+Set premium extra amount
+Pause item
+```
+
+Meal fields:
+
+```txt
+Name
+Photo
+Description
+Veg/non-veg
+Price
+Pass eligible yes/no
+Extra charge if premium
+Available slots
+Daily capacity
+```
+
+### 13.6 Capacity management
+
+Restaurant sets:
+
+```txt
+Max lunch orders/day
+Max dinner orders/day
+Prep lock time
+Holiday/off days
+```
+
+### 13.7 Cancellation view
+
+Shows:
+
+```txt
+Free cancellations
+Late cancellations
+No-shows
+Refund responsibility
+```
+
+Example:
+
+```txt
+Late cancellation fee collected: ₹600
+Restaurant share: ₹420
+Platform share: ₹180
+```
+
+### 13.8 Settlement screen
+
+Shows:
+
+```txt
+Delivered meals
+Gross meal value
+Platform commission
+Late cancellation share
+Refund reversals
+Net payout
+Payout date
+```
+
+Example:
+
+```txt
+Week of 1–7 July
+
+Delivered value: ₹42,000
+Late cancellation share: ₹1,200
+Platform commission: ₹6,300
+Refund reversals: ₹400
+
+Net payout: ₹36,500
+```
+
+### 13.9 Restaurant issue reporting
+
+Restaurant can mark:
+
+```txt
+Student no-show
+Address unreachable
+Ingredient unavailable
+Forced cancellation
+```
+
+If restaurant cancels, user gets full credit restored.
+
+## 14. Admin dashboard
+
+Admin dashboard is non-negotiable. Without this, finance becomes a crime scene.
+
+### 14.1 Admin home
+
+Metrics:
+
+```txt
+Active users
+Active passes
+Meals scheduled today
+Meals delivered today
+Free cancellations
+Late cancellations
+Refund requests
+Restaurant payouts due
+Customer liability balance
+```
+
+### 14.2 User management
+
+Admin can see:
+
+```txt
+User profile
+Active pass
+Meal credits
+Payment history
+Ledger
+Refund history
+Support tickets
+Risk flags
+```
+
+### 14.3 Restaurant management
+
+Admin can:
+
+```txt
+Approve restaurant
+Pause restaurant
+Edit commission
+View orders
+View settlement
+Manage menu
+Set capacity
+```
+
+### 14.4 Order operations
+
+Admin can:
+
+```txt
+Force cancel
+Restore credit
+Mark delivered
+Issue partial refund
+Escalate dispute
+```
+
+### 14.5 Refund management
+
+Refund status:
+
+```txt
+Requested
+Under review
+Approved
+Processing
+Refunded
+Rejected
+```
+
+### 14.6 Settlement management
+
+Admin can generate weekly payout:
+
+```txt
+Restaurant
+Gross delivered amount
+Commission
+Cancellation share
+Refund reversals
+Final payable
+```
+
+### 14.7 Ledger audit screen
+
+Every money/credit movement must be immutable.
+
+Admin should see:
+
+```txt
+Who triggered it
+When
+Why
+Linked order/payment/refund ID
+Before balance
+After balance
+```
+
+## 15. Core state machines
+
+### 15.1 Meal order states
+
+```txt
+scheduled
+free_cancellable
+locked
+accepted_by_restaurant
+preparing
+ready
+out_for_delivery
+delivered
+cancelled_free
+cancelled_late
+cancelled_full_charge
+restaurant_cancelled
+refunded
+disputed
+```
+
+### 15.2 Pass states
+
+```txt
+active
+paused
+exhausted
+expired
+refund_requested
+partially_refunded
+fully_refunded
+cancelled
+```
+
+### 15.3 Payment states
+
+```txt
+initiated
+paid
+failed
+refunded
+partially_refunded
+chargeback
+```
+
+### 15.4 Settlement states
+
+```txt
+pending
+payable
+on_hold
+paid
+reversed
+disputed
+```
+
+## 16. Ledger architecture
+
+You need two different ledgers.
+
+### 16.1 User meal ledger
+
+Purpose: user balance and trust.
+
+Events:
+
+```txt
+pass_purchase
+meal_scheduled
+meal_locked
+meal_debited
+free_cancellation_credit_restored
+late_cancellation_debit
+full_no_show_debit
+restaurant_cancel_credit_restored
+refund_requested
+refund_processed
+bonus_credit_added
+bonus_credit_expired
+```
+
+### 16.2 Business accounting ledger
+
+Purpose: money truth.
+
+Events:
+
+```txt
+cash_collected
+customer_liability_created
+meal_revenue_recognized
+restaurant_payable_created
+platform_commission_earned
+refund_liability_created
+refund_processed
+gateway_fee_recorded
+settlement_paid
+```
+
+### Golden rule
+
+```txt
+User payment is not revenue until meal delivery/charge event happens.
+```
+
+If user pays ₹6,000 and eats ₹3,000 worth:
+
+```txt
+Customer liability remaining: ₹3,000
+Revenue recognized: only platform commission on consumed meals
+Restaurant payable: restaurant share on consumed meals
+```
+
+## 17. Suggested database schema
+
+### users
+
+```txt
+id
+name
+phone
+email
+campus_id
+default_address_id
+food_preference
+created_at
+```
+
+### campuses
+
+```txt
+id
+name
+city
+serviceable_area
+active
+```
+
+### restaurants
+
+```txt
+id
+name
+owner_name
+phone
+address
+campus_id
+commission_rate
+status
+kyc_status
+settlement_cycle
+```
+
+### meals
+
+```txt
+id
+restaurant_id
+name
+description
+image_url
+meal_type: lunch/dinner/both
+veg_type
+base_price
+pass_eligible
+premium_extra_amount
+available_days
+daily_capacity
+active
+```
+
+### meal_passes
+
+```txt
+id
+user_id
+plan_id
+total_credits
+remaining_credits
+paid_amount
+bonus_amount
+effective_credit_value
+valid_from
+valid_until
+status
+```
+
+### meal_orders
+
+```txt
+id
+user_id
+restaurant_id
+meal_id
+meal_pass_id
+scheduled_for_date
+meal_slot: lunch/dinner
+status
+credit_value
+premium_extra_amount
+free_cancel_until
+late_cancel_until
+prep_lock_time
+delivered_at
+cancelled_at
+cancellation_reason
+```
+
+### user_ledger
+
+```txt
+id
+user_id
+meal_pass_id
+order_id
+payment_id
+type
+credit_delta
+amount_delta
+paid_amount_delta
+bonus_amount_delta
+description
+created_by
+created_at
+```
+
+### payments
+
+```txt
+id
+user_id
+gateway
+gateway_payment_id
+amount
+status
+method
+created_at
+```
+
+### refunds
+
+```txt
+id
+user_id
+payment_id
+meal_pass_id
+amount
+reason
+status
+gateway_refund_id
+created_at
+processed_at
+```
+
+### restaurant_settlements
+
+```txt
+id
+restaurant_id
+period_start
+period_end
+gross_delivered_amount
+late_cancellation_share
+platform_commission
+refund_reversals
+net_payable
+status
+paid_at
+```
+
+### restaurant_settlement_items
+
+```txt
+id
+settlement_id
+order_id
+meal_amount
+commission_amount
+restaurant_payout
+status
+```
+
+## 18. Payment flow
+
+### Pass purchase flow
+
+```txt
+User selects pass
+↓
+Backend creates payment order
+↓
+User pays via Razorpay/UPI/card
+↓
+Webhook confirms payment
+↓
+Backend creates meal_pass
+↓
+Backend creates user_ledger event: pass_purchase
+↓
+User sees active pass
+```
+
+### Meal debit flow
+
+```txt
+Meal scheduled
+↓
+Free cancellation window passes
+↓
+Meal locks
+↓
+Restaurant accepts/prepares
+↓
+Meal delivered/no-show/late cancel
+↓
+Credits deducted
+↓
+Restaurant payable created
+↓
+Platform commission recognized
+```
+
+### Refund flow
+
+```txt
+User requests refund
+↓
+System calculates refundable paid value
+↓
+Admin/system approves
+↓
+Gateway refund initiated
+↓
+Ledger records refund_processed
+↓
+Meal pass credits reduced
+```
+
+## 19. Notifications
+
+### Student notifications
+
+```txt
+Tomorrow’s lunch can be cancelled free until 10 PM.
+Your meal has been locked.
+Your lunch is being prepared.
+Your meal was delivered.
+Your pass has 5 meals left.
+Your refund request was approved.
+Your meal was cancelled by restaurant; credit restored.
+```
+
+### Restaurant notifications
+
+```txt
+Tomorrow’s lunch count locked: 42 meals.
+New scheduled meal added.
+Student cancelled before cutoff.
+Late cancellation recorded.
+Payout generated for this week.
+```
+
+### Admin notifications
+
+```txt
+High refund volume from restaurant
+Restaurant cancellation spike
+Payment webhook failed
+Settlement mismatch
+User dispute opened
+```
+
+## 20. UX copy system
+
+Use trust-first copy.
+
+### Good copy
+
+```txt
+Cancel by 10 PM tonight for free.
+Your meal credit stays safe.
+Unused paid meals can be carried forward or refunded.
+Restaurant prep has started, so full credit may be used.
+```
+
+### Bad copy
+
+```txt
+Cancellation not allowed.
+Wallet expired.
+No refund.
+Terms apply.
+```
+
+That sounds like a scam dressed as a startup. Avoid.
+
+## 21. MVP feature scope
+
+### Must-have
+
+```txt
+Student signup/login
+Campus/location selection
+Restaurant list
+Meal detail
+Buy meal pass
+Schedule meal
+Cancel before previous-day cutoff
+Late cancellation fee
+Pause upcoming meals
+User meal ledger
+Refund request
+Restaurant dashboard
+Admin dashboard
+Payment gateway integration
+Webhook handling
+Restaurant settlement report
+Push notifications
+```
+
+### Should-have
+
+```txt
+Meal ratings
+Support tickets
+Restaurant capacity limits
+Promo/bonus credits
+Delivery/pickup support
+Basic analytics dashboard
+```
+
+### Later
+
+```txt
+AI meal recommendations
+Nutrition tracking
+Group hostel plans
+Referral system
+Subscription autopay
+Restaurant ads
+Campus ambassador program
+Dynamic pricing
+```
+
+## 22. Key edge cases
+
+### Payment successful but webhook delayed
+
+Show:
+
+```txt
+Payment received. Activating your pass...
+```
+
+Backend should reconcile gateway status.
+
+### User cancels one minute before cutoff
+
+Allow it. Don’t be shady.
+
+### User tries to cancel after cutoff
+
+Show fee clearly before action.
+
+### Restaurant cancels after accepting
+
+Restore full credit. Optionally give goodwill credit.
+
+### User no-shows repeatedly
+
+Add risk flag.
+
+Possible policy:
+
+```txt
+After 3 no-shows in 30 days, user must confirm meals manually.
+```
+
+### Restaurant quality complaints spike
+
+Auto-pause restaurant from new scheduling until admin review.
+
+### User requests refund after bonus used
+
+Refund only unused paid value, not bonus.
+
+### User schedules beyond pass validity
+
+Allow only if meal date is within validity, or prompt renewal.
+
+## 23. Anti-abuse rules
+
+### Student abuse
+
+Risks:
+
+```txt
+Late cancel repeatedly
+Fake food complaints
+Refund gaming
+Multiple accounts for bonuses
+```
+
+Controls:
+
+```txt
+Limit refunds abuse
+Photo proof for quality issues
+Device/phone checks
+Manual review above threshold
+No peer-to-peer transfer of meal value
+Refund only to original payment method
+```
+
+### Restaurant abuse
+
+Risks:
+
+```txt
+Marking meals delivered falsely
+Reducing quality for pass users
+Cancelling too often
+Manipulating availability
+```
+
+Controls:
+
+```txt
+Student confirmation
+Ratings
+Complaint thresholds
+Admin audits
+Settlement holds
+Restaurant penalty for repeated cancellations
+```
+
+## 24. Success metrics
+
+### User metrics
+
+```txt
+Pass purchase conversion rate
+First meal scheduled rate
+Meals consumed per pass
+Cancellation rate before cutoff
+Late cancellation rate
+Refund request rate
+Repeat pass purchase rate
+30-day retention
+```
+
+### Restaurant metrics
+
+```txt
+Meals delivered per restaurant
+Cancellation acceptance rate
+Restaurant prep accuracy
+Complaint rate
+Average rating
+Settlement disputes
+```
+
+### Business metrics
+
+```txt
+Gross meal value
+Platform commission
+Customer liability balance
+Refund amount
+Restaurant payout amount
+Contribution margin per meal
+CAC payback
+Repeat purchase revenue
+```
+
+## 25. Launch strategy
+
+### Phase 1: Single-campus pilot
+
+```txt
+1 campus/area
+5–10 restaurants
+100–300 students
+Lunch-only or lunch+dinner
+Manual restaurant onboarding
+Weekly settlements
+```
+
+Do not start city-wide. That is how logistics startups go to die wearing a hoodie.
+
+### Phase 2: Add scheduling depth
+
+```txt
+Weekly meal scheduling
+Pause meals
+Refund automation
+Restaurant capacity
+Ratings
+```
+
+### Phase 3: Marketplace expansion
+
+```txt
+More restaurants
+More campuses
+Partner dashboard
+Automated settlement
+Referral program
+```
+
+## 26. MVP screen list summary
+
+### Student app
+
+```txt
+Splash
+Login/signup
+Campus selection
+Onboarding
+Home
+Meals discovery
+Restaurant detail
+Meal detail
+Schedule meal
+Schedule confirmation
+Cancel meal bottom sheet
+Pause meals
+Pass dashboard
+Buy pass
+Checkout
+Payment success
+Orders
+Order tracking
+Refund request
+Ledger/history
+Support
+Profile/settings
+```
+
+### Restaurant dashboard/app
+
+```txt
+Login
+Dashboard
+Tomorrow planning
+Orders
+Menu management
+Capacity management
+Cancellations
+Settlements
+Issue reporting
+Profile/KYC
+```
+
+### Admin dashboard
+
+```txt
+Admin home
+Users
+Restaurants
+Orders
+Refunds
+Settlements
+Ledger audit
+Support tickets
+Risk flags
+Analytics
+```
+
+## 27. Final product rulebook
+
+Use this as the operating constitution:
+
+```txt
+1. Users buy meal credits, not calendar days.
+2. Free cancellation is allowed until 10 PM the previous day.
+3. Late cancellation has a visible fee.
+4. No-show or prep-start cancellation can consume full credit.
+5. Restaurant cancellation restores user credit fully.
+6. Unused paid meal value carries forward or is refundable.
+7. Bonus credits are non-refundable.
+8. Refunds go only to original payment method.
+9. User top-up/pass money is liability until meals are consumed.
+10. Restaurant settlement happens only for delivered/chargeable meals.
+```
+
+## 28. Final recommendation
+
+Build the MVP as:
+
+```txt
+Meal Pass + Previous-Day Cancellation + Carry-Forward + Refundable Paid Value + Restaurant Settlement Ledger
+```
+
+Do **not** build:
+
+```txt
+Open wallet
+Unlimited monthly food subscription
+Daily food ordering clone
+```
+
+The killer UX is this:
+
+```txt
+You have 12 meals left.
+Cancel tomorrow’s meal by 10 PM tonight for free.
+Unused paid meals stay yours.
+```
+
+That’s the trust wedge. That’s the product.
+
+[1]: https://developer.apple.com/app-store/review/guidelines/ "App Review Guidelines - Apple Developer"
+[2]: https://www.rbi.org.in/commonman/English/scripts/FAQs.aspx?Id=2812 "Reserve Bank of India"
+[3]: https://razorpay.com/ "Razorpay - Best Payment Solution for Online Payments India"
