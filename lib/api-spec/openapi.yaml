@@ -10,13 +10,27 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: restaurant-portal-auth
+    description: Restaurant portal authentication
+  - name: restaurant-portal-overview
+    description: Restaurant portal overview dashboard
+  - name: restaurant-portal-packages
+    description: Restaurant portal meal packages
+  - name: restaurant-portal-upcoming
+    description: Restaurant portal upcoming meals
+  - name: restaurant-portal-cancellations
+    description: Restaurant portal cancellations
+  - name: restaurant-portal-settlements
+    description: Restaurant portal settlements
+  - name: restaurant-portal-reports
+    description: Restaurant portal reports
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,7 +38,326 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /restaurant-portal/auth/login:
+    post:
+      operationId: restaurantPortalLogin
+      tags: [restaurant-portal-auth]
+      summary: Login to restaurant portal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RestaurantPortalLoginBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantPortalLoginResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: No restaurant portal access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /restaurant-portal/auth/me:
+    get:
+      operationId: restaurantPortalMe
+      tags: [restaurant-portal-auth]
+      summary: Get current authenticated restaurant portal user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantPortalUser"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /restaurant-portal/restaurants/{restaurantId}/overview:
+    get:
+      operationId: getRestaurantOverview
+      tags: [restaurant-portal-overview]
+      summary: Get restaurant overview dashboard metrics
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: mealSlot
+          in: query
+          schema:
+            type: string
+            enum: [all, lunch, dinner, both]
+      responses:
+        "200":
+          description: Overview metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantOverview"
+
+  /restaurant-portal/restaurants/{restaurantId}/packages:
+    get:
+      operationId: getRestaurantPackages
+      tags: [restaurant-portal-packages]
+      summary: Get all meal packages for a restaurant
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [all, active, paused, archived]
+      responses:
+        "200":
+          description: List of packages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RestaurantPackage"
+
+  /restaurant-portal/restaurants/{restaurantId}/upcoming-meals:
+    get:
+      operationId: getRestaurantUpcomingMeals
+      tags: [restaurant-portal-upcoming]
+      summary: Get upcoming meals for preparation
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: mealSlot
+          in: query
+          schema:
+            type: string
+            enum: [all, lunch, dinner]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [all, scheduled, locked, preparing, delivered, cancelled]
+      responses:
+        "200":
+          description: Upcoming meals data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpcomingMealsData"
+
+  /restaurant-portal/restaurants/{restaurantId}/upcoming-meals/counts:
+    get:
+      operationId: getRestaurantMealCounts
+      tags: [restaurant-portal-upcoming]
+      summary: Get meal count summary for a date range
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Meal counts by date and slot
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyMealCount"
+
+  /restaurant-portal/restaurants/{restaurantId}/orders/{orderId}/status:
+    patch:
+      operationId: updateMealOrderStatus
+      tags: [restaurant-portal-upcoming]
+      summary: Update meal order status
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderStatusBody"
+      responses:
+        "200":
+          description: Order updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealOrderDetail"
+
+  /restaurant-portal/restaurants/{restaurantId}/cancellations:
+    get:
+      operationId: getRestaurantCancellations
+      tags: [restaurant-portal-cancellations]
+      summary: Get cancellations for a restaurant
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: mealSlot
+          in: query
+          schema:
+            type: string
+            enum: [all, lunch, dinner]
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [all, free_cancellation, late_cancellation, no_show, restaurant_cancelled]
+      responses:
+        "200":
+          description: Cancellations data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancellationsData"
+
+  /restaurant-portal/restaurants/{restaurantId}/settlements:
+    get:
+      operationId: getRestaurantSettlements
+      tags: [restaurant-portal-settlements]
+      summary: Get settlement reports for a restaurant
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [all, pending, payable, processing, paid, on_hold]
+      responses:
+        "200":
+          description: Settlements data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettlementsData"
+
+  /restaurant-portal/restaurants/{restaurantId}/reports/export:
+    get:
+      operationId: exportRestaurantReport
+      tags: [restaurant-portal-reports]
+      summary: Export a restaurant report as CSV
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: reportType
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [daily_prep, weekly_settlement, monthly_subscribers, cancellations, package_performance]
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: mealSlot
+          in: query
+          schema:
+            type: string
+            enum: [all, lunch, dinner]
+      responses:
+        "200":
+          description: CSV export data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportExport"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    RestaurantIdParam:
+      name: restaurantId
+      in: path
+      required: true
+      schema:
+        type: string
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +367,468 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+        - message
+
+    RestaurantPortalLoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    RestaurantPortalLoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/RestaurantPortalUser"
+      required:
+        - token
+        - user
+
+    RestaurantPortalUser:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [restaurant_owner, restaurant_staff, admin, super_admin]
+        restaurantIds:
+          type: array
+          items:
+            type: string
+        restaurantNames:
+          type: array
+          items:
+            type: string
+      required:
+        - id
+        - email
+        - name
+        - role
+        - restaurantIds
+        - restaurantNames
+
+    RestaurantOverview:
+      type: object
+      properties:
+        restaurantId:
+          type: string
+        restaurantName:
+          type: string
+        dateRange:
+          type: object
+          properties:
+            from:
+              type: string
+            to:
+              type: string
+          required: [from, to]
+        activePackages:
+          type: integer
+        activeSubscribers:
+          type: integer
+        mealsScheduledToday:
+          type: integer
+        mealsLockedForPrep:
+          type: integer
+        mealsDeliveredToday:
+          type: integer
+        freeCancellations:
+          type: integer
+        lateCancellations:
+          type: integer
+        noShows:
+          type: integer
+        estimatedPayoutPeriod:
+          type: number
+        pendingSettlementAmount:
+          type: number
+        lunchScheduledToday:
+          type: integer
+        dinnerScheduledToday:
+          type: integer
+        lunchLockedCount:
+          type: integer
+        dinnerLockedCount:
+          type: integer
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityItem"
+      required:
+        - restaurantId
+        - restaurantName
+        - dateRange
+        - activePackages
+        - activeSubscribers
+        - mealsScheduledToday
+        - mealsLockedForPrep
+        - mealsDeliveredToday
+        - freeCancellations
+        - lateCancellations
+        - noShows
+        - estimatedPayoutPeriod
+        - pendingSettlementAmount
+        - lunchScheduledToday
+        - dinnerScheduledToday
+        - lunchLockedCount
+        - dinnerLockedCount
+        - recentActivity
+
+    ActivityItem:
+      type: object
+      properties:
+        type:
+          type: string
+        description:
+          type: string
+        timestamp:
+          type: string
+        amount:
+          type: number
+      required:
+        - type
+        - description
+        - timestamp
+
+    RestaurantPackage:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        mealSlot:
+          type: string
+          enum: [lunch, dinner, both]
+        mealCount:
+          type: integer
+        pricePerDay:
+          type: number
+        totalPrice:
+          type: number
+        validityDays:
+          type: integer
+        activeSubscribers:
+          type: integer
+        totalSold:
+          type: integer
+        revenueGenerated:
+          type: number
+        status:
+          type: string
+          enum: [active, paused, archived]
+        discountPct:
+          type: number
+      required:
+        - id
+        - name
+        - mealSlot
+        - mealCount
+        - pricePerDay
+        - totalPrice
+        - validityDays
+        - activeSubscribers
+        - totalSold
+        - revenueGenerated
+        - status
+
+    UpcomingMealsData:
+      type: object
+      properties:
+        date:
+          type: string
+        lunchTotal:
+          type: integer
+        lunchLocked:
+          type: integer
+        lunchCancelled:
+          type: integer
+        lunchDelivered:
+          type: integer
+        dinnerTotal:
+          type: integer
+        dinnerLocked:
+          type: integer
+        dinnerCancelled:
+          type: integer
+        dinnerDelivered:
+          type: integer
+        isLockPassed:
+          type: boolean
+        lockTime:
+          type: string
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/MealOrderDetail"
+      required:
+        - date
+        - lunchTotal
+        - lunchLocked
+        - lunchCancelled
+        - lunchDelivered
+        - dinnerTotal
+        - dinnerLocked
+        - dinnerCancelled
+        - dinnerDelivered
+        - isLockPassed
+        - lockTime
+        - orders
+
+    MealOrderDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        studentName:
+          type: string
+        studentPhoneMasked:
+          type: string
+        packageName:
+          type: string
+        mealSlot:
+          type: string
+          enum: [lunch, dinner]
+        scheduledDate:
+          type: string
+        status:
+          type: string
+        freeCancelUntil:
+          type: string
+        isLocked:
+          type: boolean
+        pricePerDay:
+          type: number
+      required:
+        - id
+        - studentName
+        - studentPhoneMasked
+        - packageName
+        - mealSlot
+        - scheduledDate
+        - status
+        - freeCancelUntil
+        - isLocked
+        - pricePerDay
+
+    DailyMealCount:
+      type: object
+      properties:
+        date:
+          type: string
+        lunch:
+          type: integer
+        dinner:
+          type: integer
+        total:
+          type: integer
+        cancelled:
+          type: integer
+      required:
+        - date
+        - lunch
+        - dinner
+        - total
+        - cancelled
+
+    UpdateOrderStatusBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [accepted, preparing, ready, delivered, no_show]
+        note:
+          type: string
+      required:
+        - status
+
+    CancellationsData:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            freeCancellations:
+              type: integer
+            lateCancellations:
+              type: integer
+            noShows:
+              type: integer
+            restaurantCancelled:
+              type: integer
+            totalImpact:
+              type: number
+          required:
+            - freeCancellations
+            - lateCancellations
+            - noShows
+            - restaurantCancelled
+            - totalImpact
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CancellationItem"
+      required:
+        - summary
+        - items
+
+    CancellationItem:
+      type: object
+      properties:
+        id:
+          type: string
+        studentName:
+          type: string
+        packageName:
+          type: string
+        mealSlot:
+          type: string
+        mealDate:
+          type: string
+        cancellationType:
+          type: string
+          enum: [free_cancellation, late_cancellation, no_show, restaurant_cancelled]
+        deductionAmount:
+          type: number
+        restaurantPayout:
+          type: number
+        timestamp:
+          type: string
+      required:
+        - id
+        - studentName
+        - packageName
+        - mealSlot
+        - mealDate
+        - cancellationType
+        - deductionAmount
+        - restaurantPayout
+        - timestamp
+
+    SettlementsData:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            grossDeliveredValue:
+              type: number
+            lateCancellationShare:
+              type: number
+            noShowValue:
+              type: number
+            restaurantCancellationDeductions:
+              type: number
+            platformCommission:
+              type: number
+            netPayable:
+              type: number
+            pendingAmount:
+              type: number
+            paidAmount:
+              type: number
+          required:
+            - grossDeliveredValue
+            - lateCancellationShare
+            - noShowValue
+            - restaurantCancellationDeductions
+            - platformCommission
+            - netPayable
+            - pendingAmount
+            - paidAmount
+        periods:
+          type: array
+          items:
+            $ref: "#/components/schemas/SettlementPeriod"
+      required:
+        - summary
+        - periods
+
+    SettlementPeriod:
+      type: object
+      properties:
+        id:
+          type: string
+        periodStart:
+          type: string
+        periodEnd:
+          type: string
+        grossValue:
+          type: number
+        commission:
+          type: number
+        netPayable:
+          type: number
+        status:
+          type: string
+          enum: [pending, payable, processing, paid, on_hold]
+        payoutDate:
+          type: string
+        mealsDelivered:
+          type: integer
+      required:
+        - id
+        - periodStart
+        - periodEnd
+        - grossValue
+        - commission
+        - netPayable
+        - status
+        - mealsDelivered
+
+    ReportExport:
+      type: object
+      properties:
+        reportType:
+          type: string
+        generatedAt:
+          type: string
+        dateRange:
+          type: object
+          properties:
+            from:
+              type: string
+            to:
+              type: string
+          required: [from, to]
+        headers:
+          type: array
+          items:
+            type: string
+        rows:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+        totalRows:
+          type: integer
+      required:
+        - reportType
+        - generatedAt
+        - dateRange
+        - headers
+        - rows
+        - totalRows

@@ -8,9 +8,338 @@
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
+});
+
+/**
+ * @summary Login to restaurant portal
+ */
+export const RestaurantPortalLoginBody = zod.object({
+  email: zod.string().email(),
+  password: zod.string(),
+});
+
+export const RestaurantPortalLoginResponse = zod.object({
+  token: zod.string(),
+  user: zod.object({
+    id: zod.string(),
+    email: zod.string(),
+    name: zod.string(),
+    role: zod.enum([
+      "restaurant_owner",
+      "restaurant_staff",
+      "admin",
+      "super_admin",
+    ]),
+    restaurantIds: zod.array(zod.string()),
+    restaurantNames: zod.array(zod.string()),
+  }),
+});
+
+/**
+ * @summary Get current authenticated restaurant portal user
+ */
+export const RestaurantPortalMeResponse = zod.object({
+  id: zod.string(),
+  email: zod.string(),
+  name: zod.string(),
+  role: zod.enum([
+    "restaurant_owner",
+    "restaurant_staff",
+    "admin",
+    "super_admin",
+  ]),
+  restaurantIds: zod.array(zod.string()),
+  restaurantNames: zod.array(zod.string()),
+});
+
+/**
+ * @summary Get restaurant overview dashboard metrics
+ */
+export const GetRestaurantOverviewParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const GetRestaurantOverviewQueryParams = zod.object({
+  dateFrom: zod.date().optional(),
+  dateTo: zod.date().optional(),
+  mealSlot: zod.enum(["all", "lunch", "dinner", "both"]).optional(),
+});
+
+export const GetRestaurantOverviewResponse = zod.object({
+  restaurantId: zod.string(),
+  restaurantName: zod.string(),
+  dateRange: zod.object({
+    from: zod.string(),
+    to: zod.string(),
+  }),
+  activePackages: zod.number(),
+  activeSubscribers: zod.number(),
+  mealsScheduledToday: zod.number(),
+  mealsLockedForPrep: zod.number(),
+  mealsDeliveredToday: zod.number(),
+  freeCancellations: zod.number(),
+  lateCancellations: zod.number(),
+  noShows: zod.number(),
+  estimatedPayoutPeriod: zod.number(),
+  pendingSettlementAmount: zod.number(),
+  lunchScheduledToday: zod.number(),
+  dinnerScheduledToday: zod.number(),
+  lunchLockedCount: zod.number(),
+  dinnerLockedCount: zod.number(),
+  recentActivity: zod.array(
+    zod.object({
+      type: zod.string(),
+      description: zod.string(),
+      timestamp: zod.string(),
+      amount: zod.number().optional(),
+    }),
+  ),
+});
+
+/**
+ * @summary Get all meal packages for a restaurant
+ */
+export const GetRestaurantPackagesParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const GetRestaurantPackagesQueryParams = zod.object({
+  status: zod.enum(["all", "active", "paused", "archived"]).optional(),
+});
+
+export const GetRestaurantPackagesResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  mealSlot: zod.enum(["lunch", "dinner", "both"]),
+  mealCount: zod.number(),
+  pricePerDay: zod.number(),
+  totalPrice: zod.number(),
+  validityDays: zod.number(),
+  activeSubscribers: zod.number(),
+  totalSold: zod.number(),
+  revenueGenerated: zod.number(),
+  status: zod.enum(["active", "paused", "archived"]),
+  discountPct: zod.number().optional(),
+});
+export const GetRestaurantPackagesResponse = zod.array(
+  GetRestaurantPackagesResponseItem,
+);
+
+/**
+ * @summary Get upcoming meals for preparation
+ */
+export const GetRestaurantUpcomingMealsParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const GetRestaurantUpcomingMealsQueryParams = zod.object({
+  date: zod.date().optional(),
+  mealSlot: zod.enum(["all", "lunch", "dinner"]).optional(),
+  status: zod
+    .enum(["all", "scheduled", "locked", "preparing", "delivered", "cancelled"])
+    .optional(),
+});
+
+export const GetRestaurantUpcomingMealsResponse = zod.object({
+  date: zod.string(),
+  lunchTotal: zod.number(),
+  lunchLocked: zod.number(),
+  lunchCancelled: zod.number(),
+  lunchDelivered: zod.number(),
+  dinnerTotal: zod.number(),
+  dinnerLocked: zod.number(),
+  dinnerCancelled: zod.number(),
+  dinnerDelivered: zod.number(),
+  isLockPassed: zod.boolean(),
+  lockTime: zod.string(),
+  orders: zod.array(
+    zod.object({
+      id: zod.string(),
+      studentName: zod.string(),
+      studentPhoneMasked: zod.string(),
+      packageName: zod.string(),
+      mealSlot: zod.enum(["lunch", "dinner"]),
+      scheduledDate: zod.string(),
+      status: zod.string(),
+      freeCancelUntil: zod.string(),
+      isLocked: zod.boolean(),
+      pricePerDay: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Get meal count summary for a date range
+ */
+export const GetRestaurantMealCountsParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const GetRestaurantMealCountsQueryParams = zod.object({
+  dateFrom: zod.date().optional(),
+  dateTo: zod.date().optional(),
+});
+
+export const GetRestaurantMealCountsResponseItem = zod.object({
+  date: zod.string(),
+  lunch: zod.number(),
+  dinner: zod.number(),
+  total: zod.number(),
+  cancelled: zod.number(),
+});
+export const GetRestaurantMealCountsResponse = zod.array(
+  GetRestaurantMealCountsResponseItem,
+);
+
+/**
+ * @summary Update meal order status
+ */
+export const UpdateMealOrderStatusParams = zod.object({
+  restaurantId: zod.coerce.string(),
+  orderId: zod.coerce.string(),
+});
+
+export const UpdateMealOrderStatusBody = zod.object({
+  status: zod.enum(["accepted", "preparing", "ready", "delivered", "no_show"]),
+  note: zod.string().optional(),
+});
+
+export const UpdateMealOrderStatusResponse = zod.object({
+  id: zod.string(),
+  studentName: zod.string(),
+  studentPhoneMasked: zod.string(),
+  packageName: zod.string(),
+  mealSlot: zod.enum(["lunch", "dinner"]),
+  scheduledDate: zod.string(),
+  status: zod.string(),
+  freeCancelUntil: zod.string(),
+  isLocked: zod.boolean(),
+  pricePerDay: zod.number(),
+});
+
+/**
+ * @summary Get cancellations for a restaurant
+ */
+export const GetRestaurantCancellationsParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const GetRestaurantCancellationsQueryParams = zod.object({
+  dateFrom: zod.date().optional(),
+  dateTo: zod.date().optional(),
+  mealSlot: zod.enum(["all", "lunch", "dinner"]).optional(),
+  type: zod
+    .enum([
+      "all",
+      "free_cancellation",
+      "late_cancellation",
+      "no_show",
+      "restaurant_cancelled",
+    ])
+    .optional(),
+});
+
+export const GetRestaurantCancellationsResponse = zod.object({
+  summary: zod.object({
+    freeCancellations: zod.number(),
+    lateCancellations: zod.number(),
+    noShows: zod.number(),
+    restaurantCancelled: zod.number(),
+    totalImpact: zod.number(),
+  }),
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      studentName: zod.string(),
+      packageName: zod.string(),
+      mealSlot: zod.string(),
+      mealDate: zod.string(),
+      cancellationType: zod.enum([
+        "free_cancellation",
+        "late_cancellation",
+        "no_show",
+        "restaurant_cancelled",
+      ]),
+      deductionAmount: zod.number(),
+      restaurantPayout: zod.number(),
+      timestamp: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Get settlement reports for a restaurant
+ */
+export const GetRestaurantSettlementsParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const GetRestaurantSettlementsQueryParams = zod.object({
+  dateFrom: zod.date().optional(),
+  dateTo: zod.date().optional(),
+  status: zod
+    .enum(["all", "pending", "payable", "processing", "paid", "on_hold"])
+    .optional(),
+});
+
+export const GetRestaurantSettlementsResponse = zod.object({
+  summary: zod.object({
+    grossDeliveredValue: zod.number(),
+    lateCancellationShare: zod.number(),
+    noShowValue: zod.number(),
+    restaurantCancellationDeductions: zod.number(),
+    platformCommission: zod.number(),
+    netPayable: zod.number(),
+    pendingAmount: zod.number(),
+    paidAmount: zod.number(),
+  }),
+  periods: zod.array(
+    zod.object({
+      id: zod.string(),
+      periodStart: zod.string(),
+      periodEnd: zod.string(),
+      grossValue: zod.number(),
+      commission: zod.number(),
+      netPayable: zod.number(),
+      status: zod.enum(["pending", "payable", "processing", "paid", "on_hold"]),
+      payoutDate: zod.string().optional(),
+      mealsDelivered: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Export a restaurant report as CSV
+ */
+export const ExportRestaurantReportParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const ExportRestaurantReportQueryParams = zod.object({
+  reportType: zod.enum([
+    "daily_prep",
+    "weekly_settlement",
+    "monthly_subscribers",
+    "cancellations",
+    "package_performance",
+  ]),
+  dateFrom: zod.date().optional(),
+  dateTo: zod.date().optional(),
+  mealSlot: zod.enum(["all", "lunch", "dinner"]).optional(),
+});
+
+export const ExportRestaurantReportResponse = zod.object({
+  reportType: zod.string(),
+  generatedAt: zod.string(),
+  dateRange: zod.object({
+    from: zod.string(),
+    to: zod.string(),
+  }),
+  headers: zod.array(zod.string()),
+  rows: zod.array(zod.array(zod.string())),
+  totalRows: zod.number(),
 });

@@ -1,0 +1,634 @@
+Build a production-ready Restaurant Owner Portal inside our existing app for a restaurant-specific student meal package platform.
+
+## Context
+
+Our app allows students to buy meal packages tied to a specific restaurant and meal slot, such as:
+
+- Restaurant A — 10 Lunch Plan
+- Restaurant B — 20 Dinner Plan
+- Restaurant C — 30 Full-Day Plan
+
+Students cannot use one restaurant’s package at another restaurant. Each package belongs to one restaurant and one meal slot/type. Restaurants need their own secure dashboard to view package sales, active subscribers, upcoming meals, cancellations, and settlements.
+
+The restaurant portal must be secure, scalable, and ready for thousands of users and multiple restaurants.
+
+---
+
+# 1. Goal
+
+Create a secure, role-based Restaurant Owner Dashboard with a separate login gateway for restaurant partners.
+
+After login, a restaurant owner should only see data belonging to their assigned restaurant or restaurants.
+
+The portal should allow restaurant partners to:
+
+- View active meal packages
+- View subscribers per package
+- View upcoming meal counts
+- View locked meals for preparation
+- View cancellations and no-shows
+- View settlement reports
+- Export reports
+- Receive scheduled reports by email
+- Manage limited restaurant/package information if permitted by admin
+
+---
+
+# 2. User roles
+
+Implement role-based access control.
+
+Required roles:
+
+txt student restaurant_owner restaurant_staff admin super_admin 
+
+## Role permissions
+
+### restaurant_owner
+
+Can view and manage data for assigned restaurant(s).
+
+Can access:
+
+txt Dashboard Packages Subscribers Upcoming Meals Cancellations Settlements Reports Restaurant Profile 
+
+Can perform actions:
+
+txt View package metrics View upcoming/locked meals Download reports Update limited restaurant profile fields Mark meal preparation statuses if enabled 
+
+Cannot access:
+
+txt Other restaurants’ data Student private payment details Admin-only financial internals Platform-wide analytics Internal commission configuration unless explicitly allowed 
+
+### restaurant_staff
+
+Limited access.
+
+Can access:
+
+txt Upcoming Meals Preparation List Order Status Updates 
+
+Cannot access:
+
+txt Settlements Revenue reports Subscriber personal data beyond required delivery/prep info Package financials 
+
+### admin / super_admin
+
+Can access everything.
+
+Admin can assign restaurant owners/staff to restaurants.
+
+---
+
+# 3. Authentication requirements
+
+Create a separate restaurant login gateway.
+
+Route example:
+
+txt /restaurant/login /restaurant/dashboard 
+
+or mobile route:
+
+txt RestaurantLoginScreen RestaurantDashboardScreen 
+
+Login options:
+
+txt Email + password Phone OTP Magic link optional 
+
+Use existing auth system if available. If existing app uses Supabase/Firebase/custom auth, integrate with that system instead of creating duplicate auth.
+
+On login:
+
+1. Authenticate user.
+2. Check user role.
+3. Check restaurant assignment.
+4. If user is not restaurant_owner, restaurant_staff, admin, or super_admin, block access.
+5. Redirect unauthorized users to a clear error screen.
+
+Unauthorized message:
+
+txt You do not have access to the restaurant portal. Please contact support if this is a mistake. 
+
+---
+
+# 4. Data access security
+
+This is critical.
+
+Every query must be scoped by restaurant access.
+
+A restaurant owner must only fetch data for restaurant IDs assigned to them.
+
+Create or use a mapping table:
+
+txt restaurant_users 
+
+Suggested fields:
+
+txt id user_id restaurant_id role: owner / staff / manager status: active / invited / suspended created_at updated_at 
+
+Backend must enforce:
+
+txt current_user can only read restaurant data where restaurant_users.user_id = current_user.id and restaurant_users.status = 'active' 
+
+Do not rely only on frontend filtering. Enforce access control at backend/database/API level.
+
+If using Supabase, add RLS policies for all restaurant portal tables/views.
+
+If using custom API, validate restaurant access in middleware before every request.
+
+---
+
+# 5. Required dashboard sections
+
+Create these main tabs:
+
+txt Overview Packages Subscribers Upcoming Meals Cancellations Settlements Reports Profile 
+
+Mobile layout can use cards and bottom tabs. Web layout can use sidebar navigation.
+
+---
+
+# 6. Overview dashboard
+
+The overview screen should show restaurant-specific metrics.
+
+Date filters:
+
+txt Today Tomorrow This week This month Custom date range 
+
+Meal slot filters:
+
+txt All Lunch Dinner Full-day 
+
+Required cards:
+
+txt Active packages Active subscribers Meals scheduled today Meals locked for preparation Free cancellations Late cancellations No-shows Restaurant cancellations Estimated payout Pending settlement amount Average rating Support issues open 
+
+Example UI content:
+
+txt Today’s Lunch Scheduled: 64 Cancelled before cutoff: 12 Locked for prep: 52 Delivered: 39 Pending: 13 
+
+---
+
+# 7. Packages tab
+
+Display all packages created for the restaurant.
+
+Package card fields:
+
+txt Package name Meal slot: lunch / dinner / full-day Meal count Price Validity days Active subscribers Total sold Revenue generated Status: active / paused / archived 
+
+Example:
+
+txt 10 Lunch Plan ₹1,999 Valid 15 days Active subscribers: 42 Total sold: 128 Status: Active 
+
+Actions:
+
+txt View package details View subscribers Export package report 
+
+Optional admin-controlled actions:
+
+txt Create package Edit package price Pause package Archive package 
+
+If package editing is allowed for restaurant owners, ensure changes only apply to future purchases, not existing active user plans.
+
+---
+
+# 8. Subscribers tab
+
+Show active subscribers for the restaurant.
+
+Filters:
+
+txt Package Meal slot Active / paused / expiring soon / completed / refunded Date range 
+
+Subscriber list fields:
+
+txt Student name Masked phone number Package name Remaining meals Plan status Valid until Next scheduled meal Delivery / pickup preference 
+
+Protect student privacy.
+
+Do not show full payment details, card details, or sensitive personal information.
+
+Allow CSV export with only necessary fields.
+
+---
+
+# 9. Upcoming Meals tab
+
+This is the most important operational screen.
+
+Restaurant should see meal preparation counts.
+
+Filters:
+
+txt Date Meal slot: lunch / dinner Status Delivery / pickup Package 
+
+Sections:
+
+txt Tomorrow’s meals Today’s locked meals Preparing Ready Delivered Cancelled No-show 
+
+For each meal order, show:
+
+txt Student name Masked phone Meal/package Slot: lunch/dinner Delivery or pickup Address or pickup note Special instructions Status Cancellation deadline Prep lock status 
+
+Required status flow:
+
+txt scheduled locked accepted preparing ready out_for_delivery delivered no_show restaurant_cancelled 
+
+Actions allowed:
+
+txt Mark accepted Mark preparing Mark ready Mark delivered Mark no-show Report issue 
+
+Do not allow restaurant to mark an order delivered without audit trail.
+
+Every status change must create an audit log with:
+
+txt actor_user_id restaurant_id order_id old_status new_status timestamp source: restaurant_portal 
+
+---
+
+# 10. Meal locking logic
+
+Implement the previous-day cancellation model.
+
+Default rule:
+
+txt Student can cancel next day’s meal for free until 10 PM previous day. After that, late cancellation rules apply. 
+
+For restaurant dashboard:
+
+Before lock:
+
+txt Tomorrow’s lunch estimate: 64 Final count locks at 10 PM 
+
+After lock:
+
+txt Tomorrow’s lunch locked count: 52 Prepare for 52 meals 
+
+Restaurant should clearly see:
+
+txt Estimated count Free-cancelled count Locked count Late-cancelled count Final prep count 
+
+---
+
+# 11. Cancellations tab
+
+Show all cancellations grouped by type.
+
+Cancellation types:
+
+txt free_cancellation late_cancellation no_show restaurant_cancelled admin_cancelled 
+
+Fields:
+
+txt Student name Package Meal slot Meal date Cancellation type Deduction amount Refund/credit impact Reason Timestamp 
+
+Examples:
+
+txt Free cancellation 0 meal deducted No restaurant payout 
+
+txt Late cancellation 0.5 meal deducted Partial restaurant payout 
+
+txt No-show 1 meal deducted Restaurant payout eligible 
+
+txt Restaurant cancelled 0 meal deducted User credit restored Possible restaurant penalty 
+
+---
+
+# 12. Settlements tab
+
+Show restaurant financial settlement data.
+
+Settlement period filters:
+
+txt This week Last week This month Custom range 
+
+Settlement summary fields:
+
+txt Gross delivered meal value Late cancellation share No-show value Restaurant cancellations Refund reversals Platform commission Taxes/fees if applicable Net payable Settlement status Payout date 
+
+Statuses:
+
+txt pending payable processing paid on_hold disputed reversed 
+
+Settlement detail row:
+
+txt Order ID Date Meal slot Package Meal value Commission Restaurant payout Status 
+
+Export formats:
+
+txt CSV PDF Excel if available 
+
+Important:
+
+Do not expose internal platform-wide revenue data.
+
+Only show settlement data relevant to that restaurant.
+
+---
+
+# 13. Reports tab
+
+Allow restaurant to download reports.
+
+Report types:
+
+txt Daily meal prep report Weekly settlement report Monthly subscriber report Cancellation report Package performance report 
+
+Report filters:
+
+txt Date range Meal slot Package Status 
+
+Export options:
+
+txt Download CSV Download PDF Email report 
+
+Scheduled email reports:
+
+txt Daily prep report at 9 PM Weekly settlement report every Monday Monthly performance report on 1st of month 
+
+Restaurant owner should be able to toggle email reports on/off.
+
+---
+
+# 14. Restaurant Profile tab
+
+Show restaurant profile.
+
+Fields:
+
+txt Restaurant name Address Contact person Phone Email Service areas Cuisine type Veg/non-veg availability Opening days Lunch timing Dinner timing Pickup available Delivery available Bank settlement details masked KYC status 
+
+Editable by restaurant owner:
+
+txt Contact phone Support email Opening days Temporary closure dates Menu availability note Pickup/delivery availability 
+
+Admin-only fields:
+
+txt Commission rate Bank account details KYC approval Restaurant status Settlement cycle Package approval 
+
+---
+
+# 15. Temporary closure / holiday mode
+
+Restaurant owners must be able to mark unavailable dates.
+
+Feature:
+
+txt Holiday Mode / Temporary Closure 
+
+Fields:
+
+txt Start date End date Meal slots affected: lunch / dinner / both Reason 
+
+When restaurant marks closure:
+
+1. New scheduling should be blocked for those dates.
+2. Existing scheduled meals should be flagged.
+3. Admin should be notified.
+4. Affected students should receive notification.
+5. Credits should be restored or meals rescheduled based on policy.
+
+Do not silently cancel meals. That is how support tickets spawn like mosquitoes.
+
+---
+
+# 16. Notifications
+
+Implement notifications for restaurant portal.
+
+Restaurant notifications:
+
+txt Tomorrow’s lunch count locks at 10 PM. Final lunch count is ready. New student purchased your package. Student cancelled before cutoff. Late cancellation recorded. No-show marked. Weekly settlement report is ready. Support ticket opened. Admin paused your package. 
+
+Notification channels:
+
+txt In-app notification Email Optional WhatsApp/SMS later 
+
+---
+
+# 17. Backend API requirements
+
+Create secure backend endpoints or RPC functions.
+
+Example endpoints:
+
+txt GET /restaurant-portal/me GET /restaurant-portal/restaurants GET /restaurant-portal/:restaurantId/overview GET /restaurant-portal/:restaurantId/packages GET /restaurant-portal/:restaurantId/subscribers GET /restaurant-portal/:restaurantId/upcoming-meals GET /restaurant-portal/:restaurantId/cancellations GET /restaurant-portal/:restaurantId/settlements GET /restaurant-portal/:restaurantId/reports POST /restaurant-portal/:restaurantId/orders/:orderId/status POST /restaurant-portal/:restaurantId/reports/export POST /restaurant-portal/:restaurantId/reports/email POST /restaurant-portal/:restaurantId/closure 
+
+Every endpoint must:
+
+1. Authenticate user.
+2. Check role.
+3. Check restaurant assignment.
+4. Validate input.
+5. Return only scoped restaurant data.
+6. Create audit logs for state-changing actions.
+
+---
+
+# 18. Database tables required or expected
+
+Use existing tables if already present. Otherwise create these.
+
+txt users restaurants restaurant_users restaurant_packages package_purchases scheduled_meals meal_orders payments refunds restaurant_settlements restaurant_settlement_items restaurant_closures restaurant_reports audit_logs notifications support_tickets 
+
+Important indexes:
+
+txt restaurant_users(user_id, restaurant_id) package_purchases(restaurant_id, status) scheduled_meals(restaurant_id, meal_date, meal_slot, status) meal_orders(restaurant_id, scheduled_for_date, status) restaurant_settlements(restaurant_id, period_start, period_end) audit_logs(restaurant_id, created_at) 
+
+---
+
+# 19. Row-level security / access policy
+
+If using Supabase, enable RLS on all restaurant portal tables.
+
+Policy concept:
+
+txt Restaurant owner can select rows only where restaurant_id is assigned to auth.uid() 
+
+Example logic:
+
+txt exists (   select 1   from restaurant_users ru   where ru.user_id = auth.uid()   and ru.restaurant_id = target_table.restaurant_id   and ru.status = 'active' ) 
+
+For admin:
+
+txt admins can access all restaurants 
+
+Never expose data using frontend filtering only.
+
+---
+
+# 20. Audit logging
+
+Every sensitive action must be logged.
+
+Audit these actions:
+
+txt Login to restaurant portal View settlement report Export report Change order status Mark no-show Mark delivered Create/edit/pause package Change restaurant profile Create closure Request settlement clarification 
+
+Audit log fields:
+
+txt id actor_user_id actor_role restaurant_id entity_type entity_id action old_value new_value ip_address user_agent created_at 
+
+---
+
+# 21. Error handling
+
+Handle these cases clearly:
+
+txt User has restaurant role but no assigned restaurant Restaurant is suspended Restaurant has no active packages No meals scheduled for selected date Report export failed Settlement data unavailable Network error Permission denied 
+
+Example messages:
+
+txt No restaurant is assigned to this account. Contact admin. 
+
+txt You don’t have permission to view settlements. 
+
+txt No locked meals yet. Final count appears after 10 PM. 
+
+---
+
+# 22. Performance requirements
+
+The portal should handle thousands of users and many restaurants.
+
+Requirements:
+
+txt Use paginated lists for subscribers, orders, and cancellations. Do not fetch all rows at once. Use server-side filters. Use database indexes. Cache overview metrics where appropriate. Use loading skeletons. Avoid duplicate API calls on tab switch. Use background refresh for dashboard metrics. 
+
+Pagination:
+
+txt limit offset or cursor sort_by sort_direction 
+
+Default page size:
+
+txt 25 or 50 rows 
+
+---
+
+# 23. Data export requirements
+
+Reports must export accurate scoped data.
+
+Export formats:
+
+txt CSV required PDF optional XLSX optional 
+
+CSV export must include:
+
+txt restaurant name report period generated timestamp filters applied rows totals 
+
+Ensure exports respect access control.
+
+A restaurant owner must not be able to export another restaurant’s data by changing URL params.
+
+---
+
+# 24. UI requirements
+
+Design should be clean, operational, and mobile-friendly.
+
+Use simple cards, tables, and filters.
+
+Prioritize clarity over fancy visuals.
+
+Responsive layouts:
+
+### Mobile
+
+txt Top header Metric cards Tabbed sections Bottom navigation or menu Compact cards instead of wide tables 
+
+### Tablet/web
+
+txt Sidebar navigation Top filter bar Metric cards Tables with pagination Export buttons 
+
+Required empty states:
+
+txt No active packages yet No upcoming meals No cancellations in this period No settlements generated yet No subscribers found 
+
+Required loading states:
+
+txt Skeleton metric cards Skeleton table rows Disabled export button while generating 
+
+---
+
+# 25. Suggested restaurant dashboard UI structure
+
+txt Restaurant Portal │ ├── Overview │   ├── Today’s locked meals │   ├── Tomorrow estimates │   ├── Active subscribers │   ├── Estimated payout │   └── Alerts │ ├── Packages │   ├── Package list │   ├── Package details │   └── Package subscribers │ ├── Subscribers │   ├── Active │   ├── Paused │   ├── Expiring soon │   └── Completed │ ├── Upcoming Meals │   ├── Today │   ├── Tomorrow │   ├── Locked │   ├── Preparing │   └── Delivered │ ├── Cancellations │   ├── Free cancellations │   ├── Late cancellations │   ├── No-shows │   └── Restaurant cancellations │ ├── Settlements │   ├── Current period │   ├── Past settlements │   └── Export statement │ ├── Reports │   ├── Download reports │   └── Email report settings │ └── Profile     ├── Restaurant details     ├── Timings     ├── Closure dates     └── Contact info 
+
+---
+
+# 26. Critical business logic
+
+## Meal count logic
+
+For tomorrow’s meals:
+
+txt expected_meals = active scheduled meals - free cancellations before cutoff 
+
+After cutoff:
+
+txt locked_meals = scheduled meals not cancelled before cutoff 
+
+## Payout logic
+
+For each delivered meal:
+
+txt restaurant_payout = meal_value - platform_commission 
+
+For late cancellation:
+
+txt late_fee = meal_value * late_cancellation_percentage restaurant_share = late_fee * restaurant_late_fee_share platform_share = late_fee - restaurant_share 
+
+For restaurant cancellation:
+
+txt restaurant_payout = 0 user meal restored possible penalty later 
+
+For no-show:
+
+txt restaurant_payout eligible full meal deducted 
+
+---
+
+# 27. Security checklist
+
+Before marking complete, verify:
+
+txt Restaurant owner cannot access another restaurant by changing restaurant_id. Restaurant staff cannot view settlement data. Suspended restaurant user cannot login. All exports are scoped. All status updates are audited. All APIs validate role and restaurant access. All financial data is server-calculated, not frontend-calculated. No sensitive student payment details are exposed. Database RLS/API middleware is active. 
+
+---
+
+# 28. Testing checklist
+
+Write tests for:
+
+txt Restaurant owner login Unauthorized user blocked Restaurant owner sees only own restaurant Restaurant staff cannot view settlements Admin can view all restaurants Package metrics are correct Upcoming meal count before cutoff Locked meal count after cutoff Free cancellation handling Late cancellation handling No-show handling Restaurant cancellation handling Settlement calculation CSV export scoping Report email scheduling Pagination Empty states Error states Audit logging 
+
+Also test edge cases:
+
+txt Restaurant owner assigned to multiple restaurants Restaurant with no active packages Restaurant suspended by admin Payment exists but package not activated Meal cancelled exactly at cutoff time Large subscriber list Failed report export Duplicate status update 
+
+---
+
+# 29. Acceptance criteria
+
+This feature is complete only when:
+
+txt Restaurant owners can log in through a separate gateway. Only approved restaurant users can access the portal. Every restaurant user only sees assigned restaurant data. Dashboard metrics load correctly. Packages, subscribers, upcoming meals, cancellations, and settlements are visible. Date and meal-slot filters work. CSV export works and respects access control. Email report settings work or are safely stubbed. All status-changing actions create audit logs. Unauthorized access attempts are blocked. UI handles loading, empty, and error states. Performance is acceptable with large datasets. 
+
+---
+
+# 30. Important implementation note
+
+Do not build this as a frontend-only dashboard.
+
+The restaurant portal must be backed by secure APIs or database policies.
+
+All financial calculations, settlement calculations, cancellation deductions, and access permissions must be calculated/enforced on the backend.
+
+Frontend should display trusted backend results, not calculate business-critical money logic itself.
+
+Build this like production infrastructure, not a pretty admin panel.

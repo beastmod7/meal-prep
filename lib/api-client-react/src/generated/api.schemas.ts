@@ -8,3 +8,385 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface ErrorResponse {
+  error: string;
+  message: string;
+}
+
+export interface RestaurantPortalLoginBody {
+  email: string;
+  password: string;
+}
+
+export type RestaurantPortalUserRole =
+  (typeof RestaurantPortalUserRole)[keyof typeof RestaurantPortalUserRole];
+
+export const RestaurantPortalUserRole = {
+  restaurant_owner: "restaurant_owner",
+  restaurant_staff: "restaurant_staff",
+  admin: "admin",
+  super_admin: "super_admin",
+} as const;
+
+export interface RestaurantPortalUser {
+  id: string;
+  email: string;
+  name: string;
+  role: RestaurantPortalUserRole;
+  restaurantIds: string[];
+  restaurantNames: string[];
+}
+
+export interface RestaurantPortalLoginResponse {
+  token: string;
+  user: RestaurantPortalUser;
+}
+
+export type RestaurantOverviewDateRange = {
+  from: string;
+  to: string;
+};
+
+export interface ActivityItem {
+  type: string;
+  description: string;
+  timestamp: string;
+  amount?: number;
+}
+
+export interface RestaurantOverview {
+  restaurantId: string;
+  restaurantName: string;
+  dateRange: RestaurantOverviewDateRange;
+  activePackages: number;
+  activeSubscribers: number;
+  mealsScheduledToday: number;
+  mealsLockedForPrep: number;
+  mealsDeliveredToday: number;
+  freeCancellations: number;
+  lateCancellations: number;
+  noShows: number;
+  estimatedPayoutPeriod: number;
+  pendingSettlementAmount: number;
+  lunchScheduledToday: number;
+  dinnerScheduledToday: number;
+  lunchLockedCount: number;
+  dinnerLockedCount: number;
+  recentActivity: ActivityItem[];
+}
+
+export type RestaurantPackageMealSlot =
+  (typeof RestaurantPackageMealSlot)[keyof typeof RestaurantPackageMealSlot];
+
+export const RestaurantPackageMealSlot = {
+  lunch: "lunch",
+  dinner: "dinner",
+  both: "both",
+} as const;
+
+export type RestaurantPackageStatus =
+  (typeof RestaurantPackageStatus)[keyof typeof RestaurantPackageStatus];
+
+export const RestaurantPackageStatus = {
+  active: "active",
+  paused: "paused",
+  archived: "archived",
+} as const;
+
+export interface RestaurantPackage {
+  id: string;
+  name: string;
+  mealSlot: RestaurantPackageMealSlot;
+  mealCount: number;
+  pricePerDay: number;
+  totalPrice: number;
+  validityDays: number;
+  activeSubscribers: number;
+  totalSold: number;
+  revenueGenerated: number;
+  status: RestaurantPackageStatus;
+  discountPct?: number;
+}
+
+export type MealOrderDetailMealSlot =
+  (typeof MealOrderDetailMealSlot)[keyof typeof MealOrderDetailMealSlot];
+
+export const MealOrderDetailMealSlot = {
+  lunch: "lunch",
+  dinner: "dinner",
+} as const;
+
+export interface MealOrderDetail {
+  id: string;
+  studentName: string;
+  studentPhoneMasked: string;
+  packageName: string;
+  mealSlot: MealOrderDetailMealSlot;
+  scheduledDate: string;
+  status: string;
+  freeCancelUntil: string;
+  isLocked: boolean;
+  pricePerDay: number;
+}
+
+export interface UpcomingMealsData {
+  date: string;
+  lunchTotal: number;
+  lunchLocked: number;
+  lunchCancelled: number;
+  lunchDelivered: number;
+  dinnerTotal: number;
+  dinnerLocked: number;
+  dinnerCancelled: number;
+  dinnerDelivered: number;
+  isLockPassed: boolean;
+  lockTime: string;
+  orders: MealOrderDetail[];
+}
+
+export interface DailyMealCount {
+  date: string;
+  lunch: number;
+  dinner: number;
+  total: number;
+  cancelled: number;
+}
+
+export type UpdateOrderStatusBodyStatus =
+  (typeof UpdateOrderStatusBodyStatus)[keyof typeof UpdateOrderStatusBodyStatus];
+
+export const UpdateOrderStatusBodyStatus = {
+  accepted: "accepted",
+  preparing: "preparing",
+  ready: "ready",
+  delivered: "delivered",
+  no_show: "no_show",
+} as const;
+
+export interface UpdateOrderStatusBody {
+  status: UpdateOrderStatusBodyStatus;
+  note?: string;
+}
+
+export type CancellationsDataSummary = {
+  freeCancellations: number;
+  lateCancellations: number;
+  noShows: number;
+  restaurantCancelled: number;
+  totalImpact: number;
+};
+
+export type CancellationItemCancellationType =
+  (typeof CancellationItemCancellationType)[keyof typeof CancellationItemCancellationType];
+
+export const CancellationItemCancellationType = {
+  free_cancellation: "free_cancellation",
+  late_cancellation: "late_cancellation",
+  no_show: "no_show",
+  restaurant_cancelled: "restaurant_cancelled",
+} as const;
+
+export interface CancellationItem {
+  id: string;
+  studentName: string;
+  packageName: string;
+  mealSlot: string;
+  mealDate: string;
+  cancellationType: CancellationItemCancellationType;
+  deductionAmount: number;
+  restaurantPayout: number;
+  timestamp: string;
+}
+
+export interface CancellationsData {
+  summary: CancellationsDataSummary;
+  items: CancellationItem[];
+}
+
+export type SettlementsDataSummary = {
+  grossDeliveredValue: number;
+  lateCancellationShare: number;
+  noShowValue: number;
+  restaurantCancellationDeductions: number;
+  platformCommission: number;
+  netPayable: number;
+  pendingAmount: number;
+  paidAmount: number;
+};
+
+export type SettlementPeriodStatus =
+  (typeof SettlementPeriodStatus)[keyof typeof SettlementPeriodStatus];
+
+export const SettlementPeriodStatus = {
+  pending: "pending",
+  payable: "payable",
+  processing: "processing",
+  paid: "paid",
+  on_hold: "on_hold",
+} as const;
+
+export interface SettlementPeriod {
+  id: string;
+  periodStart: string;
+  periodEnd: string;
+  grossValue: number;
+  commission: number;
+  netPayable: number;
+  status: SettlementPeriodStatus;
+  payoutDate?: string;
+  mealsDelivered: number;
+}
+
+export interface SettlementsData {
+  summary: SettlementsDataSummary;
+  periods: SettlementPeriod[];
+}
+
+export type ReportExportDateRange = {
+  from: string;
+  to: string;
+};
+
+export interface ReportExport {
+  reportType: string;
+  generatedAt: string;
+  dateRange: ReportExportDateRange;
+  headers: string[];
+  rows: string[][];
+  totalRows: number;
+}
+
+export type GetRestaurantOverviewParams = {
+  dateFrom?: string;
+  dateTo?: string;
+  mealSlot?: GetRestaurantOverviewMealSlot;
+};
+
+export type GetRestaurantOverviewMealSlot =
+  (typeof GetRestaurantOverviewMealSlot)[keyof typeof GetRestaurantOverviewMealSlot];
+
+export const GetRestaurantOverviewMealSlot = {
+  all: "all",
+  lunch: "lunch",
+  dinner: "dinner",
+  both: "both",
+} as const;
+
+export type GetRestaurantPackagesParams = {
+  status?: GetRestaurantPackagesStatus;
+};
+
+export type GetRestaurantPackagesStatus =
+  (typeof GetRestaurantPackagesStatus)[keyof typeof GetRestaurantPackagesStatus];
+
+export const GetRestaurantPackagesStatus = {
+  all: "all",
+  active: "active",
+  paused: "paused",
+  archived: "archived",
+} as const;
+
+export type GetRestaurantUpcomingMealsParams = {
+  date?: string;
+  mealSlot?: GetRestaurantUpcomingMealsMealSlot;
+  status?: GetRestaurantUpcomingMealsStatus;
+};
+
+export type GetRestaurantUpcomingMealsMealSlot =
+  (typeof GetRestaurantUpcomingMealsMealSlot)[keyof typeof GetRestaurantUpcomingMealsMealSlot];
+
+export const GetRestaurantUpcomingMealsMealSlot = {
+  all: "all",
+  lunch: "lunch",
+  dinner: "dinner",
+} as const;
+
+export type GetRestaurantUpcomingMealsStatus =
+  (typeof GetRestaurantUpcomingMealsStatus)[keyof typeof GetRestaurantUpcomingMealsStatus];
+
+export const GetRestaurantUpcomingMealsStatus = {
+  all: "all",
+  scheduled: "scheduled",
+  locked: "locked",
+  preparing: "preparing",
+  delivered: "delivered",
+  cancelled: "cancelled",
+} as const;
+
+export type GetRestaurantMealCountsParams = {
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+export type GetRestaurantCancellationsParams = {
+  dateFrom?: string;
+  dateTo?: string;
+  mealSlot?: GetRestaurantCancellationsMealSlot;
+  type?: GetRestaurantCancellationsType;
+};
+
+export type GetRestaurantCancellationsMealSlot =
+  (typeof GetRestaurantCancellationsMealSlot)[keyof typeof GetRestaurantCancellationsMealSlot];
+
+export const GetRestaurantCancellationsMealSlot = {
+  all: "all",
+  lunch: "lunch",
+  dinner: "dinner",
+} as const;
+
+export type GetRestaurantCancellationsType =
+  (typeof GetRestaurantCancellationsType)[keyof typeof GetRestaurantCancellationsType];
+
+export const GetRestaurantCancellationsType = {
+  all: "all",
+  free_cancellation: "free_cancellation",
+  late_cancellation: "late_cancellation",
+  no_show: "no_show",
+  restaurant_cancelled: "restaurant_cancelled",
+} as const;
+
+export type GetRestaurantSettlementsParams = {
+  dateFrom?: string;
+  dateTo?: string;
+  status?: GetRestaurantSettlementsStatus;
+};
+
+export type GetRestaurantSettlementsStatus =
+  (typeof GetRestaurantSettlementsStatus)[keyof typeof GetRestaurantSettlementsStatus];
+
+export const GetRestaurantSettlementsStatus = {
+  all: "all",
+  pending: "pending",
+  payable: "payable",
+  processing: "processing",
+  paid: "paid",
+  on_hold: "on_hold",
+} as const;
+
+export type ExportRestaurantReportParams = {
+  reportType: ExportRestaurantReportReportType;
+  dateFrom?: string;
+  dateTo?: string;
+  mealSlot?: ExportRestaurantReportMealSlot;
+};
+
+export type ExportRestaurantReportReportType =
+  (typeof ExportRestaurantReportReportType)[keyof typeof ExportRestaurantReportReportType];
+
+export const ExportRestaurantReportReportType = {
+  daily_prep: "daily_prep",
+  weekly_settlement: "weekly_settlement",
+  monthly_subscribers: "monthly_subscribers",
+  cancellations: "cancellations",
+  package_performance: "package_performance",
+} as const;
+
+export type ExportRestaurantReportMealSlot =
+  (typeof ExportRestaurantReportMealSlot)[keyof typeof ExportRestaurantReportMealSlot];
+
+export const ExportRestaurantReportMealSlot = {
+  all: "all",
+  lunch: "lunch",
+  dinner: "dinner",
+} as const;

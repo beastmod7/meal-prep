@@ -5,18 +5,43 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  CancellationsData,
+  DailyMealCount,
+  ErrorResponse,
+  ExportRestaurantReportParams,
+  GetRestaurantCancellationsParams,
+  GetRestaurantMealCountsParams,
+  GetRestaurantOverviewParams,
+  GetRestaurantPackagesParams,
+  GetRestaurantSettlementsParams,
+  GetRestaurantUpcomingMealsParams,
+  HealthStatus,
+  MealOrderDetail,
+  ReportExport,
+  RestaurantOverview,
+  RestaurantPackage,
+  RestaurantPortalLoginBody,
+  RestaurantPortalLoginResponse,
+  RestaurantPortalUser,
+  SettlementsData,
+  UpcomingMealsData,
+  UpdateOrderStatusBody,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -25,7 +50,6 @@ type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const getHealthCheckUrl = () => {
@@ -92,6 +116,1144 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Login to restaurant portal
+ */
+export const getRestaurantPortalLoginUrl = () => {
+  return `/api/restaurant-portal/auth/login`;
+};
+
+export const restaurantPortalLogin = async (
+  restaurantPortalLoginBody: RestaurantPortalLoginBody,
+  options?: RequestInit,
+): Promise<RestaurantPortalLoginResponse> => {
+  return customFetch<RestaurantPortalLoginResponse>(
+    getRestaurantPortalLoginUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(restaurantPortalLoginBody),
+    },
+  );
+};
+
+export const getRestaurantPortalLoginMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restaurantPortalLogin>>,
+    TError,
+    { data: BodyType<RestaurantPortalLoginBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof restaurantPortalLogin>>,
+  TError,
+  { data: BodyType<RestaurantPortalLoginBody> },
+  TContext
+> => {
+  const mutationKey = ["restaurantPortalLogin"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof restaurantPortalLogin>>,
+    { data: BodyType<RestaurantPortalLoginBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return restaurantPortalLogin(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RestaurantPortalLoginMutationResult = NonNullable<
+  Awaited<ReturnType<typeof restaurantPortalLogin>>
+>;
+export type RestaurantPortalLoginMutationBody =
+  BodyType<RestaurantPortalLoginBody>;
+export type RestaurantPortalLoginMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Login to restaurant portal
+ */
+export const useRestaurantPortalLogin = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restaurantPortalLogin>>,
+    TError,
+    { data: BodyType<RestaurantPortalLoginBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof restaurantPortalLogin>>,
+  TError,
+  { data: BodyType<RestaurantPortalLoginBody> },
+  TContext
+> => {
+  return useMutation(getRestaurantPortalLoginMutationOptions(options));
+};
+
+/**
+ * @summary Get current authenticated restaurant portal user
+ */
+export const getRestaurantPortalMeUrl = () => {
+  return `/api/restaurant-portal/auth/me`;
+};
+
+export const restaurantPortalMe = async (
+  options?: RequestInit,
+): Promise<RestaurantPortalUser> => {
+  return customFetch<RestaurantPortalUser>(getRestaurantPortalMeUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getRestaurantPortalMeQueryKey = () => {
+  return [`/api/restaurant-portal/auth/me`] as const;
+};
+
+export const getRestaurantPortalMeQueryOptions = <
+  TData = Awaited<ReturnType<typeof restaurantPortalMe>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof restaurantPortalMe>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getRestaurantPortalMeQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof restaurantPortalMe>>
+  > = ({ signal }) => restaurantPortalMe({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof restaurantPortalMe>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type RestaurantPortalMeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof restaurantPortalMe>>
+>;
+export type RestaurantPortalMeQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get current authenticated restaurant portal user
+ */
+
+export function useRestaurantPortalMe<
+  TData = Awaited<ReturnType<typeof restaurantPortalMe>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof restaurantPortalMe>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getRestaurantPortalMeQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get restaurant overview dashboard metrics
+ */
+export const getGetRestaurantOverviewUrl = (
+  restaurantId: string,
+  params?: GetRestaurantOverviewParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/restaurant-portal/restaurants/${restaurantId}/overview?${stringifiedParams}`
+    : `/api/restaurant-portal/restaurants/${restaurantId}/overview`;
+};
+
+export const getRestaurantOverview = async (
+  restaurantId: string,
+  params?: GetRestaurantOverviewParams,
+  options?: RequestInit,
+): Promise<RestaurantOverview> => {
+  return customFetch<RestaurantOverview>(
+    getGetRestaurantOverviewUrl(restaurantId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetRestaurantOverviewQueryKey = (
+  restaurantId: string,
+  params?: GetRestaurantOverviewParams,
+) => {
+  return [
+    `/api/restaurant-portal/restaurants/${restaurantId}/overview`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetRestaurantOverviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRestaurantOverview>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params?: GetRestaurantOverviewParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantOverview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetRestaurantOverviewQueryKey(restaurantId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getRestaurantOverview>>
+  > = ({ signal }) =>
+    getRestaurantOverview(restaurantId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!restaurantId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRestaurantOverview>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRestaurantOverviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRestaurantOverview>>
+>;
+export type GetRestaurantOverviewQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get restaurant overview dashboard metrics
+ */
+
+export function useGetRestaurantOverview<
+  TData = Awaited<ReturnType<typeof getRestaurantOverview>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params?: GetRestaurantOverviewParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantOverview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRestaurantOverviewQueryOptions(
+    restaurantId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get all meal packages for a restaurant
+ */
+export const getGetRestaurantPackagesUrl = (
+  restaurantId: string,
+  params?: GetRestaurantPackagesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/restaurant-portal/restaurants/${restaurantId}/packages?${stringifiedParams}`
+    : `/api/restaurant-portal/restaurants/${restaurantId}/packages`;
+};
+
+export const getRestaurantPackages = async (
+  restaurantId: string,
+  params?: GetRestaurantPackagesParams,
+  options?: RequestInit,
+): Promise<RestaurantPackage[]> => {
+  return customFetch<RestaurantPackage[]>(
+    getGetRestaurantPackagesUrl(restaurantId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetRestaurantPackagesQueryKey = (
+  restaurantId: string,
+  params?: GetRestaurantPackagesParams,
+) => {
+  return [
+    `/api/restaurant-portal/restaurants/${restaurantId}/packages`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetRestaurantPackagesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRestaurantPackages>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params?: GetRestaurantPackagesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantPackages>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetRestaurantPackagesQueryKey(restaurantId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getRestaurantPackages>>
+  > = ({ signal }) =>
+    getRestaurantPackages(restaurantId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!restaurantId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRestaurantPackages>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRestaurantPackagesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRestaurantPackages>>
+>;
+export type GetRestaurantPackagesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get all meal packages for a restaurant
+ */
+
+export function useGetRestaurantPackages<
+  TData = Awaited<ReturnType<typeof getRestaurantPackages>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params?: GetRestaurantPackagesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantPackages>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRestaurantPackagesQueryOptions(
+    restaurantId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get upcoming meals for preparation
+ */
+export const getGetRestaurantUpcomingMealsUrl = (
+  restaurantId: string,
+  params?: GetRestaurantUpcomingMealsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/restaurant-portal/restaurants/${restaurantId}/upcoming-meals?${stringifiedParams}`
+    : `/api/restaurant-portal/restaurants/${restaurantId}/upcoming-meals`;
+};
+
+export const getRestaurantUpcomingMeals = async (
+  restaurantId: string,
+  params?: GetRestaurantUpcomingMealsParams,
+  options?: RequestInit,
+): Promise<UpcomingMealsData> => {
+  return customFetch<UpcomingMealsData>(
+    getGetRestaurantUpcomingMealsUrl(restaurantId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetRestaurantUpcomingMealsQueryKey = (
+  restaurantId: string,
+  params?: GetRestaurantUpcomingMealsParams,
+) => {
+  return [
+    `/api/restaurant-portal/restaurants/${restaurantId}/upcoming-meals`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetRestaurantUpcomingMealsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRestaurantUpcomingMeals>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params?: GetRestaurantUpcomingMealsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantUpcomingMeals>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetRestaurantUpcomingMealsQueryKey(restaurantId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getRestaurantUpcomingMeals>>
+  > = ({ signal }) =>
+    getRestaurantUpcomingMeals(restaurantId, params, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!restaurantId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRestaurantUpcomingMeals>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRestaurantUpcomingMealsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRestaurantUpcomingMeals>>
+>;
+export type GetRestaurantUpcomingMealsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get upcoming meals for preparation
+ */
+
+export function useGetRestaurantUpcomingMeals<
+  TData = Awaited<ReturnType<typeof getRestaurantUpcomingMeals>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params?: GetRestaurantUpcomingMealsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantUpcomingMeals>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRestaurantUpcomingMealsQueryOptions(
+    restaurantId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get meal count summary for a date range
+ */
+export const getGetRestaurantMealCountsUrl = (
+  restaurantId: string,
+  params?: GetRestaurantMealCountsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/restaurant-portal/restaurants/${restaurantId}/upcoming-meals/counts?${stringifiedParams}`
+    : `/api/restaurant-portal/restaurants/${restaurantId}/upcoming-meals/counts`;
+};
+
+export const getRestaurantMealCounts = async (
+  restaurantId: string,
+  params?: GetRestaurantMealCountsParams,
+  options?: RequestInit,
+): Promise<DailyMealCount[]> => {
+  return customFetch<DailyMealCount[]>(
+    getGetRestaurantMealCountsUrl(restaurantId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetRestaurantMealCountsQueryKey = (
+  restaurantId: string,
+  params?: GetRestaurantMealCountsParams,
+) => {
+  return [
+    `/api/restaurant-portal/restaurants/${restaurantId}/upcoming-meals/counts`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetRestaurantMealCountsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRestaurantMealCounts>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params?: GetRestaurantMealCountsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantMealCounts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetRestaurantMealCountsQueryKey(restaurantId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getRestaurantMealCounts>>
+  > = ({ signal }) =>
+    getRestaurantMealCounts(restaurantId, params, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!restaurantId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRestaurantMealCounts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRestaurantMealCountsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRestaurantMealCounts>>
+>;
+export type GetRestaurantMealCountsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get meal count summary for a date range
+ */
+
+export function useGetRestaurantMealCounts<
+  TData = Awaited<ReturnType<typeof getRestaurantMealCounts>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params?: GetRestaurantMealCountsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantMealCounts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRestaurantMealCountsQueryOptions(
+    restaurantId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update meal order status
+ */
+export const getUpdateMealOrderStatusUrl = (
+  restaurantId: string,
+  orderId: string,
+) => {
+  return `/api/restaurant-portal/restaurants/${restaurantId}/orders/${orderId}/status`;
+};
+
+export const updateMealOrderStatus = async (
+  restaurantId: string,
+  orderId: string,
+  updateOrderStatusBody: UpdateOrderStatusBody,
+  options?: RequestInit,
+): Promise<MealOrderDetail> => {
+  return customFetch<MealOrderDetail>(
+    getUpdateMealOrderStatusUrl(restaurantId, orderId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateOrderStatusBody),
+    },
+  );
+};
+
+export const getUpdateMealOrderStatusMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMealOrderStatus>>,
+    TError,
+    {
+      restaurantId: string;
+      orderId: string;
+      data: BodyType<UpdateOrderStatusBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMealOrderStatus>>,
+  TError,
+  {
+    restaurantId: string;
+    orderId: string;
+    data: BodyType<UpdateOrderStatusBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updateMealOrderStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMealOrderStatus>>,
+    {
+      restaurantId: string;
+      orderId: string;
+      data: BodyType<UpdateOrderStatusBody>;
+    }
+  > = (props) => {
+    const { restaurantId, orderId, data } = props ?? {};
+
+    return updateMealOrderStatus(restaurantId, orderId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMealOrderStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateMealOrderStatus>>
+>;
+export type UpdateMealOrderStatusMutationBody = BodyType<UpdateOrderStatusBody>;
+export type UpdateMealOrderStatusMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update meal order status
+ */
+export const useUpdateMealOrderStatus = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMealOrderStatus>>,
+    TError,
+    {
+      restaurantId: string;
+      orderId: string;
+      data: BodyType<UpdateOrderStatusBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateMealOrderStatus>>,
+  TError,
+  {
+    restaurantId: string;
+    orderId: string;
+    data: BodyType<UpdateOrderStatusBody>;
+  },
+  TContext
+> => {
+  return useMutation(getUpdateMealOrderStatusMutationOptions(options));
+};
+
+/**
+ * @summary Get cancellations for a restaurant
+ */
+export const getGetRestaurantCancellationsUrl = (
+  restaurantId: string,
+  params?: GetRestaurantCancellationsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/restaurant-portal/restaurants/${restaurantId}/cancellations?${stringifiedParams}`
+    : `/api/restaurant-portal/restaurants/${restaurantId}/cancellations`;
+};
+
+export const getRestaurantCancellations = async (
+  restaurantId: string,
+  params?: GetRestaurantCancellationsParams,
+  options?: RequestInit,
+): Promise<CancellationsData> => {
+  return customFetch<CancellationsData>(
+    getGetRestaurantCancellationsUrl(restaurantId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetRestaurantCancellationsQueryKey = (
+  restaurantId: string,
+  params?: GetRestaurantCancellationsParams,
+) => {
+  return [
+    `/api/restaurant-portal/restaurants/${restaurantId}/cancellations`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetRestaurantCancellationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRestaurantCancellations>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params?: GetRestaurantCancellationsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantCancellations>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetRestaurantCancellationsQueryKey(restaurantId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getRestaurantCancellations>>
+  > = ({ signal }) =>
+    getRestaurantCancellations(restaurantId, params, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!restaurantId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRestaurantCancellations>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRestaurantCancellationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRestaurantCancellations>>
+>;
+export type GetRestaurantCancellationsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get cancellations for a restaurant
+ */
+
+export function useGetRestaurantCancellations<
+  TData = Awaited<ReturnType<typeof getRestaurantCancellations>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params?: GetRestaurantCancellationsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantCancellations>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRestaurantCancellationsQueryOptions(
+    restaurantId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get settlement reports for a restaurant
+ */
+export const getGetRestaurantSettlementsUrl = (
+  restaurantId: string,
+  params?: GetRestaurantSettlementsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/restaurant-portal/restaurants/${restaurantId}/settlements?${stringifiedParams}`
+    : `/api/restaurant-portal/restaurants/${restaurantId}/settlements`;
+};
+
+export const getRestaurantSettlements = async (
+  restaurantId: string,
+  params?: GetRestaurantSettlementsParams,
+  options?: RequestInit,
+): Promise<SettlementsData> => {
+  return customFetch<SettlementsData>(
+    getGetRestaurantSettlementsUrl(restaurantId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetRestaurantSettlementsQueryKey = (
+  restaurantId: string,
+  params?: GetRestaurantSettlementsParams,
+) => {
+  return [
+    `/api/restaurant-portal/restaurants/${restaurantId}/settlements`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetRestaurantSettlementsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRestaurantSettlements>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params?: GetRestaurantSettlementsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantSettlements>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetRestaurantSettlementsQueryKey(restaurantId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getRestaurantSettlements>>
+  > = ({ signal }) =>
+    getRestaurantSettlements(restaurantId, params, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!restaurantId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRestaurantSettlements>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRestaurantSettlementsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRestaurantSettlements>>
+>;
+export type GetRestaurantSettlementsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get settlement reports for a restaurant
+ */
+
+export function useGetRestaurantSettlements<
+  TData = Awaited<ReturnType<typeof getRestaurantSettlements>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params?: GetRestaurantSettlementsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantSettlements>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRestaurantSettlementsQueryOptions(
+    restaurantId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Export a restaurant report as CSV
+ */
+export const getExportRestaurantReportUrl = (
+  restaurantId: string,
+  params: ExportRestaurantReportParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/restaurant-portal/restaurants/${restaurantId}/reports/export?${stringifiedParams}`
+    : `/api/restaurant-portal/restaurants/${restaurantId}/reports/export`;
+};
+
+export const exportRestaurantReport = async (
+  restaurantId: string,
+  params: ExportRestaurantReportParams,
+  options?: RequestInit,
+): Promise<ReportExport> => {
+  return customFetch<ReportExport>(
+    getExportRestaurantReportUrl(restaurantId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getExportRestaurantReportQueryKey = (
+  restaurantId: string,
+  params?: ExportRestaurantReportParams,
+) => {
+  return [
+    `/api/restaurant-portal/restaurants/${restaurantId}/reports/export`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getExportRestaurantReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof exportRestaurantReport>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params: ExportRestaurantReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof exportRestaurantReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getExportRestaurantReportQueryKey(restaurantId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof exportRestaurantReport>>
+  > = ({ signal }) =>
+    exportRestaurantReport(restaurantId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!restaurantId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof exportRestaurantReport>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ExportRestaurantReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof exportRestaurantReport>>
+>;
+export type ExportRestaurantReportQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Export a restaurant report as CSV
+ */
+
+export function useExportRestaurantReport<
+  TData = Awaited<ReturnType<typeof exportRestaurantReport>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params: ExportRestaurantReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof exportRestaurantReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getExportRestaurantReportQueryOptions(
+    restaurantId,
+    params,
+    options,
+  );
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
