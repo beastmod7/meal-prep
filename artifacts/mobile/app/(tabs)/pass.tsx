@@ -43,7 +43,7 @@ const progressStyles = StyleSheet.create({
   },
   fill: {
     height: "100%",
-    backgroundColor: "#F97316",
+    backgroundColor: "#3B82F6",
     borderRadius: 3,
   },
 });
@@ -75,7 +75,7 @@ function SubscriptionCard({
       ]}
     >
       <LinearGradient
-        colors={sub.slot === "lunch" ? ["#FFF3E8", "#FAFAF8"] : ["#F5F3FF", "#FAFAF8"]}
+        colors={sub.slot === "lunch" ? ["#EFF6FF", "#F0F4FF"] : ["#F5F3FF", "#F0F4FF"]}
         style={cardStyles.cardHeader}
       >
         <View style={cardStyles.headerLeft}>
@@ -229,22 +229,28 @@ export default function PlansScreen() {
           paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 90,
         }}
       >
-        <View
+        <LinearGradient
+          colors={["#3B82F6", "#2563EB"]}
           style={[
             styles.header,
-            { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) + 16 },
+            { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) + 20 },
           ]}
         >
-          <Text style={[styles.title, { color: colors.foreground }]}>My Plans</Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            Your restaurant subscriptions
-          </Text>
-        </View>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.headerTitle}>My Plans</Text>
+              <Text style={styles.headerSubtitle}>Your restaurant subscriptions</Text>
+            </View>
+            <View style={styles.headerBadge}>
+              <Text style={styles.headerBadgeText}>{activeSubs.length} active</Text>
+            </View>
+          </View>
+        </LinearGradient>
 
         <View style={styles.content}>
           {/* Policy reminder */}
           <View style={[styles.policyBox, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-            <Feather name="info" size={14} color="#92400E" />
+            <Feather name="info" size={14} color="#1E3A8A" />
             <Text style={styles.policyText}>
               Cancel by 10 PM the previous night for free. Late cancels incur 50% day charge. Prep started = full day charge.
             </Text>
@@ -420,17 +426,20 @@ export default function PlansScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: 16, paddingBottom: 8 },
-  title: { fontSize: 26, fontFamily: "Inter_700Bold", marginBottom: 2 },
-  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  header: { paddingHorizontal: 20, paddingBottom: 24 },
+  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  headerTitle: { fontSize: 26, fontFamily: "Inter_700Bold", color: "#FFFFFF", marginBottom: 2 },
+  headerSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)" },
+  headerBadge: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 100, paddingHorizontal: 12, paddingVertical: 5 },
+  headerBadgeText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#FFFFFF" },
   content: { padding: 16, gap: 16 },
   policyBox: { flexDirection: "row", alignItems: "flex-start", gap: 8, borderRadius: 12, borderWidth: 1, padding: 12 },
-  policyText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: "#92400E", lineHeight: 17 },
+  policyText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: "#1E3A8A", lineHeight: 17 },
   sectionTitle: { fontSize: 15, fontFamily: "Inter_700Bold", marginBottom: 10 },
   noSubs: { borderRadius: 16, borderWidth: 1, padding: 28, alignItems: "center", gap: 8 },
   noSubsTitle: { fontSize: 18, fontFamily: "Inter_700Bold", marginTop: 4 },
   noSubsBody: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 19, maxWidth: 260 },
-  newSubBtn: { marginTop: 8, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: "#F97316", borderRadius: 12 },
+  newSubBtn: { marginTop: 8, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: "#3B82F6", borderRadius: 12 },
   newSubBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
   addSubBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 14, borderWidth: 1.5, borderStyle: "dashed" },
   addSubText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
@@ -457,6 +466,6 @@ const styles = StyleSheet.create({
   keepBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   confirmCancelBtn: { flex: 1, height: 52, backgroundColor: "#EF4444", borderRadius: 14, alignItems: "center", justifyContent: "center" },
   confirmCancelText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#FFFFFF" },
-  doneBtn: { height: 52, backgroundColor: "#F97316", borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  doneBtn: { height: 52, backgroundColor: "#3B82F6", borderRadius: 14, alignItems: "center", justifyContent: "center" },
   doneBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
 });

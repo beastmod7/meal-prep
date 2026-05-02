@@ -63,7 +63,7 @@ export default function PaymentSuccessScreen() {
       ]}
     >
       <LinearGradient
-        colors={["#FFFFFF", "#FFF7ED"]}
+        colors={["#FFFFFF", "#EFF6FF"]}
         style={StyleSheet.absoluteFill}
       />
 
@@ -72,7 +72,7 @@ export default function PaymentSuccessScreen() {
           style={[styles.iconWrap, { transform: [{ scale: scaleAnim }] }]}
         >
           <LinearGradient
-            colors={["#F97316", "#EA580C"]}
+            colors={["#3B82F6", "#2563EB"]}
             style={styles.iconGradient}
           >
             <Feather name="check" size={36} color="#FFFFFF" />
@@ -112,7 +112,7 @@ export default function PaymentSuccessScreen() {
           </View>
 
           <View style={styles.tip}>
-            <Feather name="bell" size={14} color="#EA580C" />
+            <Feather name="bell" size={14} color="#2563EB" />
             <Text style={styles.tipText}>
               Cancel any day for free before 10 PM the previous night. Manage
               your subscription in <Text style={styles.tipBold}>My Plans</Text>.
@@ -163,7 +163,7 @@ function SummaryRow({
       <Text
         style={[
           summaryStyles.value,
-          highlight && { color: "#F97316", fontFamily: "Inter_700Bold" },
+          highlight && { color: "#3B82F6", fontFamily: "Inter_700Bold" },
         ]}
       >
         {value}
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     alignItems: "flex-start",
-    backgroundColor: "#FFF7ED",
+    backgroundColor: "#EFF6FF",
     borderRadius: 12,
     padding: 12,
     width: "100%",
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-    color: "#92400E",
+    color: "#1E3A8A",
     lineHeight: 17,
   },
   tipBold: { fontFamily: "Inter_700Bold" },
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     height: 54,
-    backgroundColor: "#F97316",
+    backgroundColor: "#3B82F6",
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",

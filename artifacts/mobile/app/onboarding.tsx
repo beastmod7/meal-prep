@@ -17,24 +17,24 @@ const { width } = Dimensions.get("window");
 const SLIDES = [
   {
     id: "1",
-    emoji: "😤",
+    emoji: "🍱",
     headline: "Daily food ordering\nis exhausting.",
     body: "No more deciding, paying, and tracking every single meal. There's a better way.",
-    bg: ["#1A1A1A", "#2D2D2D"] as [string, string],
+    bg: ["#1E3A8A", "#2563EB"] as [string, string],
   },
   {
     id: "2",
-    emoji: "🎫",
-    headline: "Buy meals once.\nEat flexibly.",
-    body: "Get meal credits and use them across partner restaurants near your campus.",
-    bg: ["#F97316", "#EA580C"] as [string, string],
+    emoji: "📅",
+    headline: "Subscribe once.\nEat every day.",
+    body: "Pick a restaurant, choose lunch or dinner, pick 10, 20, or 30 days — every meal is auto-scheduled.",
+    bg: ["#3B82F6", "#60A5FA"] as [string, string],
   },
   {
     id: "3",
     emoji: "✅",
-    headline: "Cancel tomorrow's\nmeal by tonight.",
-    body: "Cancel before 10 PM the previous day for free. Your meal credit stays safe — always.",
-    bg: ["#166534", "#15803D"] as [string, string],
+    headline: "Cancel any day,\nfor free.",
+    body: "Cancel before 10 PM the previous night for free. Unused days are always refundable.",
+    bg: ["#0369A1", "#0EA5E9"] as [string, string],
   },
 ];
 

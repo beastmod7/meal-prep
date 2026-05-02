@@ -196,15 +196,15 @@ export default function MealDetailScreen() {
           <View
             style={[
               styles.costCard,
-              { backgroundColor: "#FFF3E8", borderColor: "#FDBA74" },
+              { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" },
             ]}
           >
-            <Feather name="calendar" size={16} color="#F97316" />
+            <Feather name="calendar" size={16} color="#3B82F6" />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.costTitle, { color: "#92400E" }]}>
+              <Text style={[styles.costTitle, { color: "#1E3A8A" }]}>
                 Available via subscription
               </Text>
-              <Text style={[styles.costSub, { color: "#B45309" }]}>
+              <Text style={[styles.costSub, { color: "#1D4ED8" }]}>
                 Subscribe to {restaurant.name} to get this meal auto-scheduled daily
               </Text>
             </View>
@@ -214,10 +214,10 @@ export default function MealDetailScreen() {
           <View
             style={[
               styles.policyBox,
-              { backgroundColor: "#FFF3E8", borderColor: "#FDBA74" },
+              { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" },
             ]}
           >
-            <Feather name="shield" size={14} color="#F97316" />
+            <Feather name="shield" size={14} color="#3B82F6" />
             <Text style={styles.policyText}>
               Free cancellation until 10 PM the previous day. Your meal credit stays safe.
             </Text>
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    color: "#92400E",
+    color: "#1E3A8A",
     lineHeight: 18,
   },
   ctaBar: {
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   },
   ctaBtn: {
     height: 54,
-    backgroundColor: "#F97316",
+    backgroundColor: "#3B82F6",
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",

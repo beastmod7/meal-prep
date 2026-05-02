@@ -167,7 +167,7 @@ export default function ProfileScreen() {
       >
         {/* Header */}
         <LinearGradient
-          colors={["#F97316", "#EA580C"]}
+          colors={["#3B82F6", "#2563EB"]}
           style={[
             styles.header,
             {

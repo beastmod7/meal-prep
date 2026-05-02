@@ -53,7 +53,7 @@ function PackageCard({
         { borderColor: colors.border, backgroundColor: colors.card },
         selected && {
           borderColor: colors.primary,
-          backgroundColor: "#FFF3E8",
+          backgroundColor: "#EFF6FF",
         },
       ]}
     >
@@ -94,8 +94,8 @@ const pkgStyles = StyleSheet.create({
   left: { flex: 1 },
   daysRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 3 },
   days: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  popularBadge: { backgroundColor: "#FFF3E8", borderRadius: 100, paddingHorizontal: 7, paddingVertical: 2 },
-  popularText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#EA580C" },
+  popularBadge: { backgroundColor: "#EFF6FF", borderRadius: 100, paddingHorizontal: 7, paddingVertical: 2 },
+  popularText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#2563EB" },
   discountBadge: { backgroundColor: "#DCFCE7", borderRadius: 100, paddingHorizontal: 7, paddingVertical: 2 },
   discountText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#16A34A" },
   perDay: { fontSize: 11, fontFamily: "Inter_400Regular" },

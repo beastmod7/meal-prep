@@ -19,13 +19,18 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedForeground,
+        tabBarActiveTintColor: "#3B82F6",
+        tabBarInactiveTintColor: "#94A3B8",
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontFamily: "Inter_500Medium",
+          marginTop: -2,
+        },
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: isIOS ? "transparent" : colors.background,
+          backgroundColor: isIOS ? "transparent" : "#FFFFFF",
           borderTopWidth: 1,
-          borderTopColor: colors.border,
+          borderTopColor: "#DBEAFE",
           elevation: 0,
           paddingBottom: isWeb ? 0 : insets.bottom,
           ...(isWeb ? { height: 64 } : {}),
@@ -41,7 +46,7 @@ export default function TabLayout() {
             <View
               style={[
                 StyleSheet.absoluteFill,
-                { backgroundColor: colors.background },
+                { backgroundColor: "#FFFFFF" },
               ]}
             />
           ) : null,

@@ -25,7 +25,7 @@ export default function PassCard({ subscription: sub, compact = false }: PassCar
         style={({ pressed }) => [styles.compact, pressed && { opacity: 0.9 }]}
       >
         <LinearGradient
-          colors={["#F97316", "#EA580C"]}
+          colors={["#3B82F6", "#2563EB"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.compactGradient}
@@ -59,7 +59,7 @@ export default function PassCard({ subscription: sub, compact = false }: PassCar
 
   return (
     <LinearGradient
-      colors={["#F97316", "#EA580C"]}
+      colors={["#3B82F6", "#2563EB"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.card}
@@ -77,7 +77,7 @@ export default function PassCard({ subscription: sub, compact = false }: PassCar
           <Text
             style={[
               styles.statusText,
-              sub.status === "paused" && { color: "#92400E" },
+              sub.status === "paused" && { color: "#1E3A8A" },
             ]}
           >
             {sub.status === "active" ? "Active" : sub.status === "paused" ? "Paused" : "Active"}
@@ -194,5 +194,5 @@ const styles = StyleSheet.create({
   compactValue: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
   compactValueLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)" },
   compactProgressBg: { height: 4, backgroundColor: "#E4E4E7", overflow: "hidden" },
-  compactProgressBar: { height: "100%", backgroundColor: "#F97316" },
+  compactProgressBar: { height: "100%", backgroundColor: "#3B82F6" },
 });

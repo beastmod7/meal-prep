@@ -1,4 +1,5 @@
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useState } from "react";
 import {
   Modal,
@@ -68,52 +69,31 @@ export default function OrdersScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View
+      <LinearGradient
+        colors={["#3B82F6", "#2563EB"]}
         style={[
           styles.header,
-          {
-            paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) + 16,
-            borderBottomColor: colors.border,
-          },
+          { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) + 20 },
         ]}
       >
-        <Text style={[styles.title, { color: colors.foreground }]}>Orders</Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Daily meals from your subscriptions
-        </Text>
+        <Text style={styles.title}>Orders</Text>
+        <Text style={styles.subtitle}>Daily meals from your subscriptions</Text>
 
-        <View style={[styles.tabs, { backgroundColor: colors.muted }]}>
+        <View style={styles.tabs}>
           {(["upcoming", "past", "cancelled"] as Tab[]).map((tab) => (
             <Pressable
               key={tab}
               onPress={() => setActiveTab(tab)}
-              style={[
-                styles.tab,
-                activeTab === tab && {
-                  backgroundColor: colors.card,
-                  shadowColor: "#000",
-                  shadowOpacity: 0.06,
-                  shadowRadius: 4,
-                  elevation: 2,
-                },
-              ]}
+              style={[styles.tab, activeTab === tab && styles.tabActive]}
             >
-              <Text
-                style={[
-                  styles.tabText,
-                  {
-                    color: activeTab === tab ? colors.foreground : colors.mutedForeground,
-                    fontFamily: activeTab === tab ? "Inter_600SemiBold" : "Inter_400Regular",
-                  },
-                ]}
-              >
+              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                {tab === "upcoming" && upcoming.length > 0 ? ` (${upcoming.length})` : ""}
+                {tab === "upcoming" && upcoming.length > 0 ? ` · ${upcoming.length}` : ""}
               </Text>
             </Pressable>
           ))}
         </View>
-      </View>
+      </LinearGradient>
 
       <ScrollView
         contentContainerStyle={[
@@ -202,7 +182,7 @@ export default function OrdersScreen() {
                 {cancelStatus === "late" && (
                   <View style={[styles.infoBox, { backgroundColor: "#FFFBEB" }]}>
                     <Feather name="alert-triangle" size={16} color="#F59E0B" />
-                    <Text style={[styles.infoText, { color: "#92400E" }]}>
+                    <Text style={[styles.infoText, { color: "#1E3A8A" }]}>
                       Late cancel fee: ₹{cancelTarget ? Math.round(cancelTarget.pricePerDay * 0.5) : 0} (50% of ₹{cancelTarget?.pricePerDay}/day).
                     </Text>
                   </View>
@@ -250,15 +230,16 @@ export default function OrdersScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
   },
-  title: { fontSize: 26, fontFamily: "Inter_700Bold", marginBottom: 2 },
-  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 14 },
-  tabs: { flexDirection: "row", borderRadius: 12, padding: 3, gap: 2 },
-  tab: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: "center" },
-  tabText: { fontSize: 13 },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold", color: "#FFFFFF", marginBottom: 2 },
+  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)", marginBottom: 14 },
+  tabs: { flexDirection: "row", backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 12, padding: 3, gap: 2 },
+  tab: { flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: "center" },
+  tabActive: { backgroundColor: "#FFFFFF" },
+  tabText: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)" },
+  tabTextActive: { fontFamily: "Inter_600SemiBold", color: "#2563EB" },
   listContent: { padding: 16 },
   empty: { alignItems: "center", paddingTop: 60, gap: 10 },
   emptyText: { fontSize: 15, fontFamily: "Inter_400Regular" },
@@ -276,6 +257,6 @@ const styles = StyleSheet.create({
   keepText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   cancelBtn: { flex: 1, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   cancelText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#FFFFFF" },
-  doneBtn: { height: 52, backgroundColor: "#F97316", borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  doneBtn: { height: 52, backgroundColor: "#3B82F6", borderRadius: 14, alignItems: "center", justifyContent: "center" },
   doneBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
 });

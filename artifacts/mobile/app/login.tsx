@@ -66,7 +66,7 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <LinearGradient
-        colors={["#F97316", "#EA580C"]}
+        colors={["#3B82F6", "#2563EB"]}
         style={[
           styles.topDecor,
           { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) },
@@ -186,7 +186,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAF8",
+    backgroundColor: "#F0F4FF",
   },
   topDecor: {
     paddingHorizontal: 28,
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    backgroundColor: "#FAFAF8",
+    backgroundColor: "#F0F4FF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 24,
@@ -274,8 +274,8 @@ const styles = StyleSheet.create({
     color: "#1A1A1A",
   },
   otpBoxFilled: {
-    borderColor: "#F97316",
-    backgroundColor: "#FFF3E8",
+    borderColor: "#3B82F6",
+    backgroundColor: "#EFF6FF",
   },
   hint: {
     fontSize: 12,
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     height: 56,
-    backgroundColor: "#F97316",
+    backgroundColor: "#3B82F6",
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
@@ -313,6 +313,6 @@ const styles = StyleSheet.create({
   backLinkText: {
     fontSize: 14,
     fontFamily: "Inter_500Medium",
-    color: "#F97316",
+    color: "#3B82F6",
   },
 });

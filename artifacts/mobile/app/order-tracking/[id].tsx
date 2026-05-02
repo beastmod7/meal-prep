@@ -90,11 +90,11 @@ export default function OrderTrackingScreen() {
             </View>
             <View style={[
               styles.slotBadge,
-              { backgroundColor: order.slot === "lunch" ? "#FFF3E8" : "#EDE9FE" },
+              { backgroundColor: order.slot === "lunch" ? "#EFF6FF" : "#EDE9FE" },
             ]}>
               <Text style={[
                 styles.slotText,
-                { color: order.slot === "lunch" ? "#92400E" : "#4C1D95" },
+                { color: order.slot === "lunch" ? "#1E3A8A" : "#4C1D95" },
               ]}>
                 {order.slot === "lunch" ? "Lunch" : "Dinner"}
               </Text>
@@ -151,7 +151,7 @@ export default function OrderTrackingScreen() {
                     <View style={[
                       styles.stepDot,
                       isComplete && { backgroundColor: "#16A34A" },
-                      isCurrent && { backgroundColor: "#F97316", borderColor: "#F97316" },
+                      isCurrent && { backgroundColor: "#3B82F6", borderColor: "#3B82F6" },
                       isPending && { backgroundColor: colors.background, borderColor: colors.border },
                     ]}>
                       {isComplete ? (
@@ -191,8 +191,8 @@ export default function OrderTrackingScreen() {
 
         {/* Cancellation info */}
         {!isCancelled && order.status === "scheduled" && (
-          <View style={[styles.policyBox, { backgroundColor: "#FFF3E8", borderColor: "#FDBA74" }]}>
-            <Feather name="info" size={14} color="#F97316" />
+          <View style={[styles.policyBox, { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" }]}>
+            <Feather name="info" size={14} color="#3B82F6" />
             <Text style={styles.policyText}>
               Free cancellation until{" "}
               {new Date(order.freeCancelUntil).toLocaleTimeString("en-IN", {
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    color: "#92400E",
+    color: "#1E3A8A",
     lineHeight: 18,
   },
 });

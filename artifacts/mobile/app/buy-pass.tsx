@@ -132,8 +132,8 @@ export default function BuyPassScreen() {
                     styles.slotCard,
                     { borderColor: colors.border, backgroundColor: colors.card },
                     selectedSlot === slot && slot === "lunch" && {
-                      borderColor: "#F97316",
-                      backgroundColor: "#FFF3E8",
+                      borderColor: "#3B82F6",
+                      backgroundColor: "#EFF6FF",
                     },
                     selectedSlot === slot && slot === "dinner" && {
                       borderColor: "#7C3AED",
@@ -151,7 +151,7 @@ export default function BuyPassScreen() {
                         color:
                           selectedSlot === slot
                             ? slot === "lunch"
-                              ? "#92400E"
+                              ? "#1E3A8A"
                               : "#4C1D95"
                             : colors.foreground,
                       },
@@ -166,7 +166,7 @@ export default function BuyPassScreen() {
                         color:
                           selectedSlot === slot
                             ? slot === "lunch"
-                              ? "#92400E"
+                              ? "#1E3A8A"
                               : "#4C1D95"
                             : colors.mutedForeground,
                       },
@@ -180,7 +180,7 @@ export default function BuyPassScreen() {
                         styles.slotCheck,
                         {
                           backgroundColor:
-                            slot === "lunch" ? "#F97316" : "#7C3AED",
+                            slot === "lunch" ? "#3B82F6" : "#7C3AED",
                         },
                       ]}
                     >
@@ -211,7 +211,7 @@ export default function BuyPassScreen() {
                     { borderColor: colors.border, backgroundColor: colors.card },
                     isSelected && {
                       borderColor: colors.primary,
-                      backgroundColor: "#FFF3E8",
+                      backgroundColor: "#EFF6FF",
                     },
                   ]}
                 >
@@ -288,8 +288,8 @@ export default function BuyPassScreen() {
               },
             ].map((item, i) => (
               <View key={i} style={styles.howRow}>
-                <View style={[styles.howIcon, { backgroundColor: "#FFF3E8" }]}>
-                  <Feather name={item.icon} size={14} color="#F97316" />
+                <View style={[styles.howIcon, { backgroundColor: "#EFF6FF" }]}>
+                  <Feather name={item.icon} size={14} color="#3B82F6" />
                 </View>
                 <Text
                   style={[styles.howText, { color: colors.mutedForeground }]}
@@ -415,12 +415,12 @@ const styles = StyleSheet.create({
   },
   packageDays: { fontSize: 15, fontFamily: "Inter_700Bold" },
   popularBadge: {
-    backgroundColor: "#FFF3E8",
+    backgroundColor: "#EFF6FF",
     borderRadius: 100,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  popularText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#EA580C" },
+  popularText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#2563EB" },
   discountBadge: {
     backgroundColor: "#DCFCE7",
     borderRadius: 100,

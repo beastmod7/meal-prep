@@ -69,8 +69,8 @@ export default function PauseMealsScreen() {
           { backgroundColor: colors.background },
         ]}
       >
-        <View style={[styles.successIcon, { backgroundColor: "#FFF3E8" }]}>
-          <Feather name="pause-circle" size={32} color="#F97316" />
+        <View style={[styles.successIcon, { backgroundColor: "#EFF6FF" }]}>
+          <Feather name="pause-circle" size={32} color="#3B82F6" />
         </View>
         <Text style={[styles.successTitle, { color: colors.foreground }]}>
           Subscription paused
@@ -151,7 +151,7 @@ export default function PauseMealsScreen() {
                 { borderColor: colors.border, backgroundColor: colors.card },
                 selectedDays === opt.days && {
                   borderColor: colors.primary,
-                  backgroundColor: "#FFF3E8",
+                  backgroundColor: "#EFF6FF",
                 },
               ]}
             >

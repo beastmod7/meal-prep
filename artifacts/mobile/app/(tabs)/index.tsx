@@ -85,8 +85,8 @@ export default function HomeScreen() {
     {
       icon: "plus-circle" as const,
       label: "Subscribe",
-      color: "#F97316",
-      bg: "#FFF3E8",
+      color: "#3B82F6",
+      bg: "#EFF6FF",
       onPress: () => router.push("/(tabs)/meals"),
     },
     {
@@ -122,7 +122,7 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <LinearGradient
-          colors={["#F97316", "#EA580C"]}
+          colors={["#3B82F6", "#2563EB"]}
           style={[
             styles.header,
             { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) + 16 },
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: "#F97316",
+    backgroundColor: "#3B82F6",
     borderRadius: 10,
   },
   discoverBtnText: {
@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
   freeInfo: { flexDirection: "row", gap: 10, backgroundColor: "#F0FDF4", borderRadius: 12, padding: 14, marginBottom: 20, alignItems: "flex-start" },
   freeInfoText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: "#166534", lineHeight: 20 },
   lateInfo: { flexDirection: "row", gap: 10, backgroundColor: "#FFFBEB", borderRadius: 12, padding: 14, marginBottom: 20, alignItems: "flex-start" },
-  lateInfoText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: "#92400E", lineHeight: 20 },
+  lateInfoText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: "#1E3A8A", lineHeight: 20 },
   fullInfo: { flexDirection: "row", gap: 10, backgroundColor: "#FEF2F2", borderRadius: 12, padding: 14, marginBottom: 20, alignItems: "flex-start" },
   fullInfoText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: "#991B1B", lineHeight: 20 },
   sheetActions: { flexDirection: "row", gap: 10 },
@@ -534,6 +534,6 @@ const styles = StyleSheet.create({
   keepBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   cancelConfirmBtn: { flex: 1, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   cancelConfirmText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#FFFFFF" },
-  doneBtn: { height: 52, backgroundColor: "#F97316", borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  doneBtn: { height: 52, backgroundColor: "#3B82F6", borderRadius: 14, alignItems: "center", justifyContent: "center" },
   doneBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
 });

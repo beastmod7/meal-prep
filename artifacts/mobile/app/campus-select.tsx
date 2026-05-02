@@ -109,7 +109,7 @@ export default function CampusSelectScreen() {
               <Feather
                 name="map-pin"
                 size={14}
-                color={selectedCampus === campus.id ? "#F97316" : "#71717A"}
+                color={selectedCampus === campus.id ? "#3B82F6" : "#71717A"}
               />
               <Text
                 style={[
@@ -122,7 +122,7 @@ export default function CampusSelectScreen() {
               <Text
                 style={[
                   styles.campusCity,
-                  selectedCampus === campus.id && { color: "#F97316" },
+                  selectedCampus === campus.id && { color: "#3B82F6" },
                 ]}
               >
                 {campus.city}
@@ -152,7 +152,7 @@ export default function CampusSelectScreen() {
               <Text
                 style={[
                   styles.prefLabel,
-                  selectedPref === pref.key && { color: "#F97316" },
+                  selectedPref === pref.key && { color: "#3B82F6" },
                 ]}
               >
                 {pref.label}
@@ -162,7 +162,7 @@ export default function CampusSelectScreen() {
         </View>
 
         <View style={styles.infoBox}>
-          <Feather name="info" size={14} color="#F97316" />
+          <Feather name="info" size={14} color="#3B82F6" />
           <Text style={styles.infoText}>
             You can change your preferences anytime from your profile.
           </Text>
@@ -193,7 +193,7 @@ export default function CampusSelectScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAF8",
+    backgroundColor: "#F0F4FF",
   },
   header: {
     paddingHorizontal: 24,
@@ -243,8 +243,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   campusCardSelected: {
-    borderColor: "#F97316",
-    backgroundColor: "#FFF3E8",
+    borderColor: "#3B82F6",
+    backgroundColor: "#EFF6FF",
   },
   campusName: {
     fontSize: 13,
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     color: "#1A1A1A",
   },
   campusNameSelected: {
-    color: "#F97316",
+    color: "#3B82F6",
   },
   campusCity: {
     fontSize: 11,
@@ -277,8 +277,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   prefCardSelected: {
-    borderColor: "#F97316",
-    backgroundColor: "#FFF3E8",
+    borderColor: "#3B82F6",
+    backgroundColor: "#EFF6FF",
   },
   prefEmoji: {
     fontSize: 22,
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 8,
-    backgroundColor: "#FFF3E8",
+    backgroundColor: "#EFF6FF",
     borderRadius: 10,
     padding: 12,
     marginTop: 20,
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    color: "#92400E",
+    color: "#1E3A8A",
     lineHeight: 18,
   },
   footer: {
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   },
   confirmBtn: {
     height: 56,
-    backgroundColor: "#F97316",
+    backgroundColor: "#3B82F6",
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",

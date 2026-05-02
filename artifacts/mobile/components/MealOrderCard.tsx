@@ -48,6 +48,8 @@ export default function MealOrderCard({
   const isActive = !["delivered", "cancelled_free", "cancelled_late", "cancelled_full"].includes(order.status);
   const isCancelled = ["cancelled_free", "cancelled_late", "cancelled_full"].includes(order.status);
 
+  const accentColor = order.slot === "lunch" ? "#F59E0B" : "#8B5CF6";
+
   function getBadgeVariant() {
     if (order.status === "delivered") return "delivered";
     if (isCancelled) return "cancelled";
@@ -76,70 +78,91 @@ export default function MealOrderCard({
       style={({ pressed }) => [
         styles.card,
         { backgroundColor: colors.card, borderColor: colors.border },
-        pressed && { opacity: 0.95 },
-        isCancelled && { opacity: 0.55 },
+        pressed && { opacity: 0.95, transform: [{ scale: 0.99 }] },
+        isCancelled && { opacity: 0.5 },
       ]}
     >
-      <View style={styles.topRow}>
-        <View style={styles.dateSlot}>
-          <Text style={[styles.date, { color: colors.foreground }]}>
-            {formatDate(order.scheduledDate)}
-          </Text>
-          <View
-            style={[
-              styles.slotPill,
-              { backgroundColor: order.slot === "lunch" ? "#FFF3E8" : "#EDE9FE" },
-            ]}
-          >
-            <Text
+      {/* Left accent stripe */}
+      <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
+
+      <View style={styles.cardInner}>
+        <View style={styles.topRow}>
+          <View style={styles.dateSlot}>
+            <Text style={[styles.date, { color: colors.foreground }]}>
+              {formatDate(order.scheduledDate)}
+            </Text>
+            <View
               style={[
-                styles.slotText,
-                { color: order.slot === "lunch" ? "#92400E" : "#4C1D95" },
+                styles.slotPill,
+                {
+                  backgroundColor:
+                    order.slot === "lunch" ? "#FEF3C7" : "#EDE9FE",
+                },
               ]}
             >
-              {order.slot === "lunch" ? "☀️ Lunch" : "🌙 Dinner"}
+              <Text
+                style={[
+                  styles.slotText,
+                  { color: order.slot === "lunch" ? "#92400E" : "#5B21B6" },
+                ]}
+              >
+                {order.slot === "lunch" ? "☀️ Lunch" : "🌙 Dinner"}
+              </Text>
+            </View>
+          </View>
+          <StatusBadge variant={getBadgeVariant()} label={getBadgeLabel()} small />
+        </View>
+
+        <View style={styles.mealRow}>
+          <View style={[styles.mealIcon, { backgroundColor: accentColor + "18" }]}>
+            <Feather name="coffee" size={16} color={accentColor} />
+          </View>
+          <View style={styles.mealInfo}>
+            <Text style={[styles.mealName, { color: colors.foreground }]}>
+              {order.mealName}
+            </Text>
+            <Text style={[styles.restaurantName, { color: colors.mutedForeground }]}>
+              {order.restaurantName}
             </Text>
           </View>
+          <View style={styles.priceWrap}>
+            <Text style={[styles.price, { color: colors.foreground }]}>₹{order.pricePerDay}</Text>
+            <Text style={[styles.priceSub, { color: colors.mutedForeground }]}>/day</Text>
+          </View>
         </View>
-        <StatusBadge variant={getBadgeVariant()} label={getBadgeLabel()} small />
-      </View>
 
-      <View style={styles.mealRow}>
-        <View style={styles.mealIcon}>
-          <Feather name="coffee" size={16} color={colors.primary} />
-        </View>
-        <View style={styles.mealInfo}>
-          <Text style={[styles.mealName, { color: colors.foreground }]}>
-            {order.mealName}
-          </Text>
-          <Text style={[styles.restaurantName, { color: colors.mutedForeground }]}>
-            {order.restaurantName}
-          </Text>
-        </View>
-        <Text style={[styles.price, { color: colors.mutedForeground }]}>
-          ₹{order.pricePerDay}/day
-        </Text>
+        {showActions && isActive && onCancel && (
+          <View style={[styles.actionsRow, { borderTopColor: colors.border }]}>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onCancel(order);
+              }}
+              style={({ pressed }) => [
+                styles.cancelBtn,
+                { borderColor: colors.border, backgroundColor: colors.muted },
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Feather name="x" size={13} color={colors.mutedForeground} />
+              <Text style={[styles.cancelBtnText, { color: colors.mutedForeground }]}>
+                Cancel this day
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(`/order-tracking/${order.id}`)}
+              style={({ pressed }) => [
+                styles.trackBtn,
+                { backgroundColor: "#EFF6FF", borderColor: colors.border },
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Feather name="map-pin" size={13} color="#3B82F6" />
+              <Text style={[styles.trackBtnText, { color: "#3B82F6" }]}>Track</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
-
-      {showActions && isActive && onCancel && (
-        <View style={[styles.actionsRow, { borderTopColor: colors.border }]}>
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              onCancel(order);
-            }}
-            style={({ pressed }) => [
-              styles.cancelBtn,
-              { borderColor: colors.border },
-              pressed && { opacity: 0.7 },
-            ]}
-          >
-            <Text style={[styles.cancelBtnText, { color: colors.mutedForeground }]}>
-              Cancel this day
-            </Text>
-          </Pressable>
-        </View>
-      )}
     </Pressable>
   );
 }
@@ -150,14 +173,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 10,
     overflow: "hidden",
+    flexDirection: "row",
+  },
+  accentBar: {
+    width: 4,
+  },
+  cardInner: {
+    flex: 1,
   },
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   dateSlot: {
     flexDirection: "row",
@@ -180,15 +210,14 @@ const styles = StyleSheet.create({
   mealRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 14,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
     gap: 10,
   },
   mealIcon: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: "#FFF3E8",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -199,26 +228,44 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   restaurantName: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
   },
-  price: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-  },
+  priceWrap: { alignItems: "flex-end" },
+  price: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  priceSub: { fontSize: 10, fontFamily: "Inter_400Regular" },
   actionsRow: {
     borderTopWidth: 1,
-    padding: 12,
+    padding: 10,
+    flexDirection: "row",
+    gap: 8,
   },
   cancelBtn: {
-    height: 36,
+    flex: 1,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 5,
+    height: 34,
     borderRadius: 8,
     borderWidth: 1,
   },
   cancelBtnText: {
-    fontSize: 13,
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+  },
+  trackBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  trackBtnText: {
+    fontSize: 12,
     fontFamily: "Inter_500Medium",
   },
 });

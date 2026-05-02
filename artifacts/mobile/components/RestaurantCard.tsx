@@ -135,7 +135,7 @@ export default function RestaurantCard({
             {restaurant.lunchAvailable && (
               <View style={styles.priceBlock}>
                 <Text style={styles.priceSlotLabel}>☀️ Lunch</Text>
-                <Text style={[styles.priceValue, { color: "#EA580C" }]}>
+                <Text style={[styles.priceValue, { color: "#2563EB" }]}>
                   ₹{restaurant.lunchStartPrice}/day
                 </Text>
               </View>
@@ -164,7 +164,7 @@ export default function RestaurantCard({
               }}
               style={({ pressed }) => [
                 styles.subscribeBtn,
-                { backgroundColor: "#F97316" },
+                { backgroundColor: "#3B82F6" },
                 pressed && { opacity: 0.85 },
               ]}
             >

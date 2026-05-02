@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -48,43 +49,34 @@ export default function MealsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View
+      <LinearGradient
+        colors={["#3B82F6", "#2563EB"]}
         style={[
           styles.header,
-          {
-            paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) + 16,
-            borderBottomColor: colors.border,
-          },
+          { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) + 20 },
         ]}
       >
-        <Text style={[styles.title, { color: colors.foreground }]}>
-          Restaurants
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Tap a restaurant to see meal options and subscribe
+        <Text style={styles.title}>Restaurants</Text>
+        <Text style={styles.subtitle}>
+          Subscribe for daily meals — lunch or dinner
         </Text>
 
-        <View
-          style={[
-            styles.searchBar,
-            { backgroundColor: colors.muted, borderColor: colors.border },
-          ]}
-        >
-          <Feather name="search" size={16} color={colors.mutedForeground} />
+        <View style={styles.searchBar}>
+          <Feather name="search" size={16} color="rgba(255,255,255,0.7)" />
           <TextInput
-            style={[styles.searchInput, { color: colors.foreground }]}
+            style={styles.searchInput}
             placeholder="Search restaurants or cuisine..."
-            placeholderTextColor={colors.mutedForeground}
+            placeholderTextColor="rgba(255,255,255,0.55)"
             value={search}
             onChangeText={setSearch}
           />
           {search.length > 0 && (
             <Pressable onPress={() => setSearch("")}>
-              <Feather name="x" size={16} color={colors.mutedForeground} />
+              <Feather name="x" size={16} color="rgba(255,255,255,0.7)" />
             </Pressable>
           )}
         </View>
-      </View>
+      </LinearGradient>
 
       <ScrollView
         horizontal
@@ -135,8 +127,8 @@ export default function MealsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* How it works banner */}
-        <View style={[styles.howItWorks, { backgroundColor: "#FFF3E8", borderColor: "#FDBA74" }]}>
-          <Feather name="info" size={14} color="#EA580C" />
+        <View style={[styles.howItWorks, { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" }]}>
+          <Feather name="info" size={14} color="#2563EB" />
           <Text style={styles.howItWorksText}>
             Subscribe to a restaurant for <Text style={{ fontFamily: "Inter_700Bold" }}>10, 20, or 30 days</Text> — choose lunch or dinner. Every meal is auto-scheduled for you daily.
           </Text>
@@ -162,18 +154,19 @@ export default function MealsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   title: {
     fontSize: 26,
     fontFamily: "Inter_700Bold",
+    color: "#FFFFFF",
     marginBottom: 2,
   },
   subtitle: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.75)",
     marginBottom: 14,
   },
   searchBar: {
@@ -181,14 +174,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     height: 44,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     borderRadius: 12,
-    borderWidth: 1,
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
     fontFamily: "Inter_400Regular",
+    color: "#FFFFFF",
   },
   filtersScroll: { flexGrow: 0, marginVertical: 10 },
   filtersContent: { paddingHorizontal: 16, gap: 8 },
@@ -214,7 +208,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-    color: "#92400E",
+    color: "#1E3A8A",
     lineHeight: 17,
   },
   empty: { alignItems: "center", paddingTop: 60, gap: 12 },

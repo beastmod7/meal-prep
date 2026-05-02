@@ -130,7 +130,7 @@ export default function ScheduleMealScreen() {
             ]}
           >
             <View style={styles.mealSummaryIcon}>
-              <Feather name="coffee" size={18} color="#F97316" />
+              <Feather name="coffee" size={18} color="#3B82F6" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.mealSummaryName, { color: colors.foreground }]}>
@@ -174,11 +174,11 @@ export default function ScheduleMealScreen() {
                   {
                     backgroundColor:
                       selectedDate === day.date
-                        ? "#F97316"
+                        ? "#3B82F6"
                         : colors.card,
                     borderColor:
                       selectedDate === day.date
-                        ? "#F97316"
+                        ? "#3B82F6"
                         : colors.border,
                   },
                 ]}
@@ -229,23 +229,23 @@ export default function ScheduleMealScreen() {
                   styles.slotCard,
                   {
                     backgroundColor:
-                      selectedSlot === slot ? "#FFF3E8" : colors.card,
+                      selectedSlot === slot ? "#EFF6FF" : colors.card,
                     borderColor:
-                      selectedSlot === slot ? "#F97316" : colors.border,
+                      selectedSlot === slot ? "#3B82F6" : colors.border,
                   },
                 ]}
               >
                 <Feather
                   name={slot === "lunch" ? "sun" : "moon"}
                   size={22}
-                  color={selectedSlot === slot ? "#F97316" : colors.mutedForeground}
+                  color={selectedSlot === slot ? "#3B82F6" : colors.mutedForeground}
                 />
                 <Text
                   style={[
                     styles.slotLabel,
                     {
                       color:
-                        selectedSlot === slot ? "#F97316" : colors.foreground,
+                        selectedSlot === slot ? "#3B82F6" : colors.foreground,
                     },
                   ]}
                 >
@@ -265,8 +265,8 @@ export default function ScheduleMealScreen() {
         </View>
 
         {/* Policy reminder */}
-        <View style={[styles.policyBox, { backgroundColor: "#FFF3E8", borderColor: "#FDBA74" }]}>
-          <Feather name="info" size={14} color="#F97316" />
+        <View style={[styles.policyBox, { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" }]}>
+          <Feather name="info" size={14} color="#3B82F6" />
           <View style={{ flex: 1 }}>
             <Text style={styles.policyBoxTitle}>Cancellation policy</Text>
             <Text style={styles.policyBoxBody}>
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "#FFF3E8",
+    backgroundColor: "#EFF6FF",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -407,13 +407,13 @@ const styles = StyleSheet.create({
   policyBoxTitle: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
-    color: "#92400E",
+    color: "#1E3A8A",
     marginBottom: 3,
   },
   policyBoxBody: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-    color: "#92400E",
+    color: "#1E3A8A",
     lineHeight: 17,
   },
   ctaBar: {
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
   },
   ctaBtn: {
     height: 54,
-    backgroundColor: "#F97316",
+    backgroundColor: "#3B82F6",
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 32,
     paddingVertical: 14,
-    backgroundColor: "#F97316",
+    backgroundColor: "#3B82F6",
     borderRadius: 14,
   },
   viewOrdersBtnText: {

@@ -26,15 +26,15 @@ const BADGE_CONFIG: Record<
   { bg: string; text: string; defaultLabel: string }
 > = {
   free: { bg: "#DCFCE7", text: "#166534", defaultLabel: "Free cancel" },
-  late: { bg: "#FEF3C7", text: "#92400E", defaultLabel: "Late fee" },
+  late: { bg: "#FEF3C7", text: "#1E3A8A", defaultLabel: "Late fee" },
   locked: { bg: "#FEE2E2", text: "#991B1B", defaultLabel: "Locked" },
   preparing: { bg: "#EDE9FE", text: "#4C1D95", defaultLabel: "Preparing" },
   delivered: { bg: "#F0FDF4", text: "#166534", defaultLabel: "Delivered" },
   cancelled: { bg: "#F4F4F5", text: "#71717A", defaultLabel: "Cancelled" },
   active: { bg: "#DCFCE7", text: "#166534", defaultLabel: "Active" },
-  paused: { bg: "#FEF3C7", text: "#92400E", defaultLabel: "Paused" },
+  paused: { bg: "#FEF3C7", text: "#1E3A8A", defaultLabel: "Paused" },
   expired: { bg: "#F4F4F5", text: "#71717A", defaultLabel: "Expired" },
-  premium: { bg: "#FEF9C3", text: "#713F12", defaultLabel: "1 credit + extra" },
+  premium: { bg: "#FEF9C3", text: "#1E3A8A", defaultLabel: "1 credit + extra" },
   included: { bg: "#DCFCE7", text: "#166534", defaultLabel: "Included in pass" },
 };
 

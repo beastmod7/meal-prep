@@ -98,11 +98,11 @@ export default function SupportScreen() {
                 {
                   backgroundColor:
                     selectedCategory === cat.key
-                      ? "#FFF3E8"
+                      ? "#EFF6FF"
                       : colors.card,
                   borderColor:
                     selectedCategory === cat.key
-                      ? "#F97316"
+                      ? "#3B82F6"
                       : colors.border,
                 },
                 pressed && { opacity: 0.85 },
@@ -111,7 +111,7 @@ export default function SupportScreen() {
               <Feather
                 name={cat.icon as any}
                 size={18}
-                color={selectedCategory === cat.key ? "#F97316" : colors.mutedForeground}
+                color={selectedCategory === cat.key ? "#3B82F6" : colors.mutedForeground}
               />
               <Text
                 style={[
@@ -119,7 +119,7 @@ export default function SupportScreen() {
                   {
                     color:
                       selectedCategory === cat.key
-                        ? "#F97316"
+                        ? "#3B82F6"
                         : colors.foreground,
                   },
                 ]}
@@ -160,10 +160,10 @@ export default function SupportScreen() {
             <View
               style={[
                 styles.infoBox,
-                { backgroundColor: "#FFF3E8", borderColor: "#FDBA74" },
+                { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" },
               ]}
             >
-              <Feather name="clock" size={14} color="#F97316" />
+              <Feather name="clock" size={14} color="#3B82F6" />
               <Text style={styles.infoText}>
                 Average response time: 2–4 hours. We'll contact you via the
                 phone number on your account.
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    color: "#92400E",
+    color: "#1E3A8A",
     lineHeight: 18,
   },
   ctaBar: {
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
   },
   ctaBtn: {
     height: 54,
-    backgroundColor: "#F97316",
+    backgroundColor: "#3B82F6",
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
@@ -310,11 +310,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: "#F97316",
+    borderColor: "#3B82F6",
   },
   newTicketText: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
-    color: "#F97316",
+    color: "#3B82F6",
   },
 });
