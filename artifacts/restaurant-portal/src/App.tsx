@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,26 +18,38 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
-      
-      {/* Protected Routes */}
-      <Route path="/dashboard*">
+      <Route path="/" component={() => <Redirect to="/dashboard" />} />
+
+      <Route path="/dashboard">
         <AppLayout>
-          <Switch>
-            <Route path="/dashboard" component={Overview} />
-            <Route path="/dashboard/packages" component={Packages} />
-            <Route path="/dashboard/upcoming-meals" component={UpcomingMeals} />
-            <Route path="/dashboard/cancellations" component={Cancellations} />
-            <Route path="/dashboard/settlements" component={Settlements} />
-            <Route component={NotFound} />
-          </Switch>
+          <Overview />
         </AppLayout>
       </Route>
-      
-      <Route path="/">
-        {/* Redirect root to dashboard */}
-        <Login /> 
+
+      <Route path="/dashboard/packages">
+        <AppLayout>
+          <Packages />
+        </AppLayout>
       </Route>
-      
+
+      <Route path="/dashboard/upcoming-meals">
+        <AppLayout>
+          <UpcomingMeals />
+        </AppLayout>
+      </Route>
+
+      <Route path="/dashboard/cancellations">
+        <AppLayout>
+          <Cancellations />
+        </AppLayout>
+      </Route>
+
+      <Route path="/dashboard/settlements">
+        <AppLayout>
+          <Settlements />
+        </AppLayout>
+      </Route>
+
       <Route component={NotFound} />
     </Switch>
   );
