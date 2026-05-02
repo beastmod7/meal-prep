@@ -1,22 +1,35 @@
 import { useAuth } from "@/lib/auth";
 import { useGetRestaurantPackages, getGetRestaurantPackagesQueryKey } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Package as PackageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { inr } from "@/lib/fmt";
+
+const slotLabel: Record<string, string> = {
+  lunch: "Lunch",
+  dinner: "Dinner",
+  both: "Lunch + Dinner",
+};
+
+const statusStyle: Record<string, string> = {
+  active: "bg-green-50 text-green-700 border-green-200",
+  paused: "bg-yellow-50 text-yellow-700 border-yellow-200",
+  archived: "bg-slate-50 text-slate-500 border-slate-200",
+};
 
 export default function Packages() {
   const { activeRestaurantId } = useAuth();
-  
+
   const { data: packages, isLoading } = useGetRestaurantPackages(
-    activeRestaurantId!, 
-    {}, 
-    { 
-      query: { 
+    activeRestaurantId!,
+    {},
+    {
+      query: {
         enabled: !!activeRestaurantId,
-        queryKey: getGetRestaurantPackagesQueryKey(activeRestaurantId!, {})
-      } 
-    }
+        queryKey: getGetRestaurantPackagesQueryKey(activeRestaurantId!, {}),
+      },
+    },
   );
 
   if (!activeRestaurantId) return null;
@@ -34,9 +47,39 @@ export default function Packages() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Packages</h1>
-          <p className="text-muted-foreground mt-1">Manage your meal subscription offerings.</p>
+          <p className="text-muted-foreground mt-1">Your meal subscription offerings and performance.</p>
         </div>
       </div>
+
+      {/* Summary cards */}
+      {packages && packages.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="bg-card">
+            <div className="p-4">
+              <p className="text-sm text-muted-foreground">Total Active Subscribers</p>
+              <p className="text-2xl font-bold mt-1">
+                {packages.filter(p => p.status === "active").reduce((s, p) => s + p.activeSubscribers, 0)}
+              </p>
+            </div>
+          </Card>
+          <Card className="bg-card">
+            <div className="p-4">
+              <p className="text-sm text-muted-foreground">Total Revenue Generated</p>
+              <p className="text-2xl font-bold text-primary mt-1">
+                {inr(packages.reduce((s, p) => s + p.revenueGenerated, 0))}
+              </p>
+            </div>
+          </Card>
+          <Card className="bg-card">
+            <div className="p-4">
+              <p className="text-sm text-muted-foreground">Total Packages Sold</p>
+              <p className="text-2xl font-bold mt-1">
+                {packages.reduce((s, p) => s + p.totalSold, 0)}
+              </p>
+            </div>
+          </Card>
+        </div>
+      )}
 
       <Card className="bg-card">
         <CardContent className="p-0">
@@ -45,17 +88,19 @@ export default function Packages() {
               <TableRow>
                 <TableHead>Package Name</TableHead>
                 <TableHead>Slot</TableHead>
-                <TableHead>Pricing</TableHead>
-                <TableHead>Subscribers</TableHead>
-                <TableHead>Revenue</TableHead>
+                <TableHead>Validity</TableHead>
+                <TableHead>Price / Day</TableHead>
+                <TableHead>Active</TableHead>
+                <TableHead>Total Sold</TableHead>
+                <TableHead className="text-right">Revenue</TableHead>
                 <TableHead className="text-right">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {!packages || packages.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    <PackageIcon className="mx-auto h-8 w-8 mb-2 opacity-50" />
+                  <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                    <PackageIcon className="mx-auto h-8 w-8 mb-2 opacity-40" />
                     No packages found.
                   </TableCell>
                 </TableRow>
@@ -64,30 +109,35 @@ export default function Packages() {
                   <TableRow key={pkg.id}>
                     <TableCell className="font-medium">
                       {pkg.name}
-                      <div className="text-xs text-muted-foreground mt-1">{pkg.validityDays} days</div>
-                    </TableCell>
-                    <TableCell className="capitalize">{pkg.mealSlot}</TableCell>
-                    <TableCell>
-                      ${(pkg.pricePerDay / 100).toFixed(2)}/day
                       {pkg.discountPct && pkg.discountPct > 0 && (
-                        <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-200">
+                        <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-200 text-[10px]">
                           {pkg.discountPct}% off
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell>
-                      <span className="font-bold">{pkg.activeSubscribers}</span> active
-                      <div className="text-xs text-muted-foreground mt-1">{pkg.totalSold} total sold</div>
+                      <Badge variant="outline" className={
+                        pkg.mealSlot === "lunch"
+                          ? "text-orange-600 border-orange-200 bg-orange-50"
+                          : pkg.mealSlot === "dinner"
+                          ? "text-blue-600 border-blue-200 bg-blue-50"
+                          : "text-purple-600 border-purple-200 bg-purple-50"
+                      }>
+                        {slotLabel[pkg.mealSlot] ?? pkg.mealSlot}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="font-medium text-primary">
-                      ${(pkg.revenueGenerated / 100).toFixed(2)}
+                    <TableCell className="text-muted-foreground">{pkg.validityDays} days</TableCell>
+                    <TableCell>{inr(pkg.pricePerDay)}</TableCell>
+                    <TableCell>
+                      <span className="font-semibold">{pkg.activeSubscribers}</span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{pkg.totalSold}</TableCell>
+                    <TableCell className="text-right font-semibold text-primary">
+                      {inr(pkg.revenueGenerated)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Badge 
-                        variant={pkg.status === "active" ? "default" : pkg.status === "paused" ? "secondary" : "outline"}
-                        className={pkg.status === "active" ? "bg-primary text-primary-foreground" : ""}
-                      >
-                        {pkg.status}
+                      <Badge variant="outline" className={statusStyle[pkg.status] ?? ""}>
+                        {pkg.status.charAt(0).toUpperCase() + pkg.status.slice(1)}
                       </Badge>
                     </TableCell>
                   </TableRow>

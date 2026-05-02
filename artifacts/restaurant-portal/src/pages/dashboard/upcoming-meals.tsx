@@ -1,7 +1,11 @@
 import { useAuth } from "@/lib/auth";
-import { useGetRestaurantUpcomingMeals, getGetRestaurantUpcomingMealsQueryKey, useUpdateMealOrderStatus } from "@workspace/api-client-react";
+import {
+  useGetRestaurantUpcomingMeals,
+  getGetRestaurantUpcomingMealsQueryKey,
+  useUpdateMealOrderStatus,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Calendar as CalendarIcon, CheckCircle2, Clock } from "lucide-react";
+import { Loader2, Calendar as CalendarIcon, CheckCircle2, Clock, UtensilsCrossed } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -9,39 +13,52 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+import { inr } from "@/lib/fmt";
+
+const statusStyle: Record<string, string> = {
+  delivered: "bg-green-600 text-white",
+  cancelled: "bg-red-100 text-red-700 border-red-200",
+  no_show: "bg-red-100 text-red-700 border-red-200",
+  preparing: "bg-blue-100 text-blue-700 border-blue-200",
+  scheduled: "bg-slate-100 text-slate-600 border-slate-200",
+  locked: "bg-orange-100 text-orange-700 border-orange-200",
+};
 
 export default function UpcomingMeals() {
   const { activeRestaurantId } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  
-  // Default to today
-  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
 
   const { data, isLoading } = useGetRestaurantUpcomingMeals(
-    activeRestaurantId!, 
-    { date }, 
-    { 
-      query: { 
+    activeRestaurantId!,
+    { date },
+    {
+      query: {
         enabled: !!activeRestaurantId,
-        queryKey: getGetRestaurantUpcomingMealsQueryKey(activeRestaurantId!, { date })
-      } 
-    }
+        queryKey: getGetRestaurantUpcomingMealsQueryKey(activeRestaurantId!, { date }),
+      },
+    },
   );
 
   const updateStatus = useUpdateMealOrderStatus();
 
-  const handleStatusUpdate = (orderId: string, newStatus: "accepted" | "preparing" | "ready" | "delivered" | "no_show") => {
-    updateStatus.mutate({
-      restaurantId: activeRestaurantId!,
-      orderId,
-      data: { status: newStatus }
-    }, {
-      onSuccess: () => {
-        toast({ description: `Order status updated to ${newStatus}` });
-        queryClient.invalidateQueries({ queryKey: getGetRestaurantUpcomingMealsQueryKey(activeRestaurantId!, { date }) });
-      }
-    });
+  const handleStatusUpdate = (
+    orderId: string,
+    newStatus: "accepted" | "preparing" | "ready" | "delivered" | "no_show",
+  ) => {
+    updateStatus.mutate(
+      { restaurantId: activeRestaurantId!, orderId, data: { status: newStatus } },
+      {
+        onSuccess: () => {
+          toast({ description: `Order marked as ${newStatus.replace("_", " ")}` });
+          queryClient.invalidateQueries({
+            queryKey: getGetRestaurantUpcomingMealsQueryKey(activeRestaurantId!, { date }),
+          });
+        },
+      },
+    );
   };
 
   if (!activeRestaurantId) return null;
@@ -51,14 +68,14 @@ export default function UpcomingMeals() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Daily Prep</h1>
-          <p className="text-muted-foreground mt-1">Manage kitchen locks and order fulfillments.</p>
+          <p className="text-muted-foreground mt-1">Kitchen locks, order count, and meal fulfillment.</p>
         </div>
         <div className="flex items-center gap-2 bg-card border rounded-md p-1 shadow-sm">
           <CalendarIcon className="w-4 h-4 ml-2 text-muted-foreground" />
-          <Input 
-            type="date" 
-            value={date} 
-            onChange={(e) => setDate(e.target.value)} 
+          <Input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
             className="border-0 shadow-none focus-visible:ring-0 w-[150px]"
           />
         </div>
@@ -69,24 +86,32 @@ export default function UpcomingMeals() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : !data ? (
-        <Card><CardContent className="p-8 text-center text-muted-foreground">No data available for this date.</CardContent></Card>
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            <UtensilsCrossed className="mx-auto h-8 w-8 mb-2 opacity-40" />
+            No data available for this date.
+          </CardContent>
+        </Card>
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-2">
             <Card className="border-l-4 border-l-orange-500">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Lunch Shift</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-orange-500 inline-block" />
+                  Lunch Shift
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex justify-between items-end">
                   <div>
-                    <div className="text-3xl font-bold">{data.lunchLocked}</div>
+                    <div className="text-4xl font-bold">{data.lunchLocked}</div>
                     <p className="text-sm text-muted-foreground">Locked for prep</p>
                   </div>
-                  <div className="text-right space-y-1 text-sm">
-                    <div>Total: <span className="font-medium">{data.lunchTotal}</span></div>
-                    <div className="text-destructive">Cancelled: <span className="font-medium">{data.lunchCancelled}</span></div>
-                    <div className="text-green-600">Delivered: <span className="font-medium">{data.lunchDelivered}</span></div>
+                  <div className="text-right space-y-1 text-sm text-muted-foreground">
+                    <div>Total scheduled: <span className="font-semibold text-foreground">{data.lunchTotal}</span></div>
+                    <div>Cancelled: <span className="font-semibold text-destructive">{data.lunchCancelled}</span></div>
+                    <div>Delivered: <span className="font-semibold text-green-600">{data.lunchDelivered}</span></div>
                   </div>
                 </div>
               </CardContent>
@@ -94,18 +119,21 @@ export default function UpcomingMeals() {
 
             <Card className="border-l-4 border-l-blue-500">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Dinner Shift</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+                  Dinner Shift
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex justify-between items-end">
                   <div>
-                    <div className="text-3xl font-bold">{data.dinnerLocked}</div>
+                    <div className="text-4xl font-bold">{data.dinnerLocked}</div>
                     <p className="text-sm text-muted-foreground">Locked for prep</p>
                   </div>
-                  <div className="text-right space-y-1 text-sm">
-                    <div>Total: <span className="font-medium">{data.dinnerTotal}</span></div>
-                    <div className="text-destructive">Cancelled: <span className="font-medium">{data.dinnerCancelled}</span></div>
-                    <div className="text-green-600">Delivered: <span className="font-medium">{data.dinnerDelivered}</span></div>
+                  <div className="text-right space-y-1 text-sm text-muted-foreground">
+                    <div>Total scheduled: <span className="font-semibold text-foreground">{data.dinnerTotal}</span></div>
+                    <div>Cancelled: <span className="font-semibold text-destructive">{data.dinnerCancelled}</span></div>
+                    <div>Delivered: <span className="font-semibold text-green-600">{data.dinnerDelivered}</span></div>
                   </div>
                 </div>
               </CardContent>
@@ -116,8 +144,8 @@ export default function UpcomingMeals() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Order List</CardTitle>
               {data.isLockPassed && (
-                <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
-                  <Clock className="w-3 h-3 mr-1" /> Prep Locked
+                <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                  <Clock className="w-3 h-3 mr-1" /> Prep window closed
                 </Badge>
               )}
             </CardHeader>
@@ -128,6 +156,7 @@ export default function UpcomingMeals() {
                     <TableHead>Student</TableHead>
                     <TableHead>Package</TableHead>
                     <TableHead>Slot</TableHead>
+                    <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
@@ -135,7 +164,8 @@ export default function UpcomingMeals() {
                 <TableBody>
                   {data.orders.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                        <UtensilsCrossed className="mx-auto h-7 w-7 mb-2 opacity-40" />
                         No orders scheduled for this date.
                       </TableCell>
                     </TableRow>
@@ -146,51 +176,76 @@ export default function UpcomingMeals() {
                           <div className="font-medium">{order.studentName}</div>
                           <div className="text-xs text-muted-foreground">{order.studentPhoneMasked}</div>
                         </TableCell>
-                        <TableCell>{order.packageName}</TableCell>
-                        <TableCell className="capitalize">
-                          <Badge variant="outline" className={order.mealSlot === 'lunch' ? 'text-orange-600 border-orange-200 bg-orange-50' : 'text-blue-600 border-blue-200 bg-blue-50'}>
-                            {order.mealSlot}
+                        <TableCell className="text-sm">{order.packageName}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              order.mealSlot === "lunch"
+                                ? "text-orange-600 border-orange-200 bg-orange-50"
+                                : "text-blue-600 border-blue-200 bg-blue-50"
+                            }
+                          >
+                            {order.mealSlot === "lunch" ? "Lunch" : "Dinner"}
                           </Badge>
                         </TableCell>
+                        <TableCell className="font-medium">{inr(order.pricePerDay)}</TableCell>
                         <TableCell>
-                          <Badge variant={
-                            order.status === 'delivered' ? 'default' : 
-                            order.status === 'cancelled' ? 'destructive' : 
-                            'secondary'
-                          } className={order.status === 'delivered' ? 'bg-green-600' : ''}>
-                            {order.status.replace('_', ' ')}
+                          <Badge
+                            variant="outline"
+                            className={statusStyle[order.status] ?? ""}
+                          >
+                            {order.status.replace("_", " ")}
                           </Badge>
-                          {order.isLocked && order.status !== 'cancelled' && order.status !== 'delivered' && (
-                            <div className="text-xs text-primary mt-1 font-medium flex items-center">
-                              <Clock className="w-3 h-3 mr-1" /> Locked
-                            </div>
-                          )}
+                          {order.isLocked &&
+                            order.status !== "cancelled" &&
+                            order.status !== "delivered" &&
+                            order.status !== "no_show" && (
+                              <div className="text-xs text-primary mt-1 font-medium flex items-center">
+                                <Clock className="w-3 h-3 mr-1" /> Locked
+                              </div>
+                            )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {order.status !== 'cancelled' && order.status !== 'delivered' && order.status !== 'no_show' && (
+                          {order.status !== "cancelled" &&
+                          order.status !== "delivered" &&
+                          order.status !== "no_show" ? (
                             <div className="flex justify-end gap-2">
-                              {order.status === 'scheduled' && order.isLocked && (
-                                <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(order.id, 'preparing')}>
+                              {order.status === "scheduled" && order.isLocked && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleStatusUpdate(order.id, "preparing")}
+                                >
                                   Prep
                                 </Button>
                               )}
-                              {(order.status === 'preparing' || order.status === 'scheduled') && order.isLocked && (
-                                <Button size="sm" onClick={() => handleStatusUpdate(order.id, 'delivered')} className="bg-green-600 hover:bg-green-700">
-                                  Deliver
-                                </Button>
-                              )}
-                              {order.status !== 'scheduled' && (
-                                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleStatusUpdate(order.id, 'no_show')}>
+                              {(order.status === "preparing" || order.status === "scheduled") &&
+                                order.isLocked && (
+                                  <Button
+                                    size="sm"
+                                    className="bg-green-600 hover:bg-green-700"
+                                    onClick={() => handleStatusUpdate(order.id, "delivered")}
+                                  >
+                                    Delivered
+                                  </Button>
+                                )}
+                              {order.status === "preparing" && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleStatusUpdate(order.id, "no_show")}
+                                >
                                   No Show
                                 </Button>
                               )}
                             </div>
-                          )}
-                          {order.status === 'delivered' && (
+                          ) : order.status === "delivered" ? (
                             <span className="text-green-600 flex items-center justify-end text-sm font-medium">
                               <CheckCircle2 className="w-4 h-4 mr-1" /> Done
                             </span>
-                          )}
+                          ) : null}
                         </TableCell>
                       </TableRow>
                     ))
