@@ -72,17 +72,18 @@ export default function MealOrderCard({
     return "Scheduled";
   }
 
+  const cardBg = order.slot === "lunch" ? "#FFFBEB" : "#F5F3FF";
+
   return (
     <Pressable
       onPress={() => router.push(`/order-tracking/${order.id}`)}
       style={({ pressed }) => [
         styles.card,
-        { backgroundColor: colors.card, borderColor: colors.border },
+        { backgroundColor: cardBg, borderColor: order.slot === "lunch" ? "#FDE68A" : "#DDD6FE" },
         pressed && { opacity: 0.95, transform: [{ scale: 0.99 }] },
         isCancelled && { opacity: 0.5 },
       ]}
     >
-      <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
       <View style={styles.cardInner}>
         <View style={styles.topRow}>
           <View style={styles.dateSlot}>
@@ -155,9 +156,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 10,
     overflow: "hidden",
-    flexDirection: "row",
   },
-  accentBar: { width: 4 },
   cardInner: { flex: 1 },
   topRow: {
     flexDirection: "row",
