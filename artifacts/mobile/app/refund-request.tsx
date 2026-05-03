@@ -21,7 +21,7 @@ import { useColors } from "@/hooks/useColors";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Step = "confirm" | "refund-method" | "success" | "feedback";
+type Step = "confirm" | "refund-method" | "feedback" | "success";
 
 type RefundMethod = {
   id: "wallet" | "upi" | "bank";
@@ -70,7 +70,7 @@ const FEEDBACK_OPTIONS = [
   { id: "other", label: "Other reason", icon: "more-horizontal" },
 ] as const;
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(d: string) {
   return new Date(d + "T12:00:00").toLocaleDateString("en-IN", {
@@ -79,21 +79,18 @@ function formatDate(d: string) {
   });
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Step dots ────────────────────────────────────────────────────────────────
+
+const STEP_ORDER: Step[] = ["confirm", "refund-method", "feedback", "success"];
 
 function StepDots({ current }: { current: Step }) {
-  const steps: Step[] = ["confirm", "refund-method", "success", "feedback"];
-  const idx = steps.indexOf(current);
+  const idx = STEP_ORDER.indexOf(current);
   return (
     <View style={dot.row}>
-      {steps.map((_, i) => (
+      {STEP_ORDER.map((_, i) => (
         <View
           key={i}
-          style={[
-            dot.dot,
-            i === idx && dot.active,
-            i < idx && dot.done,
-          ]}
+          style={[dot.dot, i === idx && dot.active, i < idx && dot.done]}
         />
       ))}
     </View>
@@ -121,7 +118,7 @@ const sh = StyleSheet.create({
   sub: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#71717A", lineHeight: 20 },
 });
 
-// ─── Confirm Step ─────────────────────────────────────────────────────────────
+// ─── Step 1: Confirm ──────────────────────────────────────────────────────────
 
 function ConfirmStep({
   sub,
@@ -151,7 +148,6 @@ function ConfirmStep({
           subtitle="Review your refund before proceeding."
         />
 
-        {/* Subscription card */}
         <View style={[cs.subCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={cs.emoji}>{sub.slot === "lunch" ? "☀️" : "🌙"}</Text>
           <View style={{ flex: 1 }}>
@@ -162,7 +158,6 @@ function ConfirmStep({
           </View>
         </View>
 
-        {/* Refund breakdown */}
         <View style={[cs.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[cs.cardTitle, { color: colors.foreground }]}>Refund breakdown</Text>
 
@@ -188,7 +183,6 @@ function ConfirmStep({
           </View>
         </View>
 
-        {/* Warning */}
         <View style={cs.warning}>
           <Feather name="alert-triangle" size={15} color="#EF4444" />
           <View style={{ flex: 1 }}>
@@ -229,10 +223,7 @@ function ConfirmStep({
 }
 
 const cs = StyleSheet.create({
-  subCard: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 16,
-  },
+  subCard: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 16 },
   emoji: { fontSize: 26 },
   name: { fontSize: 15, fontFamily: "Inter_700Bold", marginBottom: 2 },
   detail: { fontSize: 12, fontFamily: "Inter_400Regular" },
@@ -244,11 +235,7 @@ const cs = StyleSheet.create({
   totalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: 10 },
   totalLabel: { fontSize: 14, fontFamily: "Inter_700Bold" },
   totalValue: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#16A34A" },
-  warning: {
-    flexDirection: "row", gap: 10, alignItems: "flex-start",
-    borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 14,
-    backgroundColor: "#FEF2F2", borderColor: "#FEE2E2",
-  },
+  warning: { flexDirection: "row", gap: 10, alignItems: "flex-start", borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 14, backgroundColor: "#FEF2F2", borderColor: "#FEE2E2" },
   warnTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#991B1B", marginBottom: 3 },
   warnBody: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#991B1B", lineHeight: 17 },
   footer: { borderTopWidth: 1, paddingHorizontal: 20, paddingTop: 12, gap: 8 },
@@ -258,20 +245,16 @@ const cs = StyleSheet.create({
   secondaryBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
 });
 
-// ─── Refund Method Step ───────────────────────────────────────────────────────
+// ─── Step 2: Refund Method ────────────────────────────────────────────────────
 
 function RefundMethodStep({
-  refundAmount,
   selectedMethod,
   onSelect,
   onNext,
-  isLoading,
 }: {
-  refundAmount: number;
   selectedMethod: RefundMethod["id"] | null;
   onSelect: (id: RefundMethod["id"]) => void;
   onNext: () => void;
-  isLoading: boolean;
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -287,7 +270,7 @@ function RefundMethodStep({
       >
         <SectionHeader
           title="How would you like your refund?"
-          subtitle={`₹${refundAmount.toLocaleString("en-IN")} will be refunded to your chosen method.`}
+          subtitle="Choose your preferred refund method. You'll confirm everything on the next step."
         />
 
         <View style={{ gap: 12 }}>
@@ -345,16 +328,15 @@ function RefundMethodStep({
       >
         <Pressable
           onPress={onNext}
-          disabled={!selectedMethod || isLoading}
+          disabled={!selectedMethod}
           style={({ pressed }) => [
-            rm.confirmBtn,
-            (!selectedMethod || isLoading) && { opacity: 0.5 },
+            rm.nextBtn,
+            !selectedMethod && { opacity: 0.45 },
             pressed && { opacity: 0.85 },
           ]}
         >
-          <Text style={cs.primaryBtnText}>
-            {isLoading ? "Processing cancellation…" : "Confirm Cancellation"}
-          </Text>
+          <Text style={cs.primaryBtnText}>Continue</Text>
+          <Feather name="arrow-right" size={18} color="#FFFFFF" />
         </Pressable>
       </View>
     </>
@@ -362,10 +344,7 @@ function RefundMethodStep({
 }
 
 const rm = StyleSheet.create({
-  option: {
-    flexDirection: "row", alignItems: "center", gap: 14,
-    borderRadius: 16, borderWidth: 1.5, padding: 16,
-  },
+  option: { flexDirection: "row", alignItems: "center", gap: 14, borderRadius: 16, borderWidth: 1.5, padding: 16 },
   iconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   methodLabel: { fontSize: 15, fontFamily: "Inter_700Bold", marginBottom: 2 },
   methodTagline: { fontSize: 12, fontFamily: "Inter_400Regular" },
@@ -373,23 +352,164 @@ const rm = StyleSheet.create({
   checkCircle: { width: 18, height: 18, borderRadius: 9, backgroundColor: "#3B82F6", alignItems: "center", justifyContent: "center" },
   noteBox: { flexDirection: "row", gap: 8, alignItems: "flex-start", borderRadius: 12, borderWidth: 1, padding: 12, marginTop: 16 },
   noteText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
-  confirmBtn: { height: 54, backgroundColor: "#EF4444", borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  nextBtn: { height: 54, backgroundColor: "#3B82F6", borderRadius: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
 });
 
-// ─── Success Step ─────────────────────────────────────────────────────────────
+// ─── Step 3: Feedback ─────────────────────────────────────────────────────────
+
+function FeedbackStep({
+  restaurantName,
+  isLoading,
+  onSubmit,
+}: {
+  restaurantName: string;
+  isLoading: boolean;
+  onSubmit: () => void;
+}) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [note, setNote] = useState("");
+
+  function toggleOption(id: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function handleSubmit() {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onSubmit();
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{
+          padding: 20,
+          paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 120,
+        }}
+      >
+        <SectionHeader
+          title="What went wrong?"
+          subtitle={`Help us improve your experience with ${restaurantName} and the Meal Pass platform.`}
+        />
+
+        <Text style={[fb.chipGroupLabel, { color: colors.mutedForeground }]}>
+          Select all that apply
+        </Text>
+
+        <View style={fb.chipGrid}>
+          {FEEDBACK_OPTIONS.map((opt) => {
+            const active = selected.has(opt.id);
+            return (
+              <Pressable
+                key={opt.id}
+                onPress={() => toggleOption(opt.id)}
+                style={[
+                  fb.chip,
+                  { borderColor: active ? "#3B82F6" : colors.border, backgroundColor: active ? "#EFF6FF" : colors.card },
+                ]}
+              >
+                <Feather
+                  name={opt.icon as any}
+                  size={14}
+                  color={active ? "#2563EB" : colors.mutedForeground}
+                />
+                <Text style={[fb.chipText, { color: active ? "#1D4ED8" : colors.foreground }]}>
+                  {opt.label}
+                </Text>
+                {active && (
+                  <View style={fb.chipCheck}>
+                    <Feather name="check" size={10} color="#FFFFFF" />
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={{ marginTop: 20 }}>
+          <Text style={[fb.noteLabel, { color: colors.foreground }]}>
+            Anything else? (optional)
+          </Text>
+          <TextInput
+            value={note}
+            onChangeText={setNote}
+            multiline
+            numberOfLines={4}
+            placeholder="Tell us more about your experience…"
+            placeholderTextColor={colors.mutedForeground}
+            style={[
+              fb.noteInput,
+              { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card },
+            ]}
+            textAlignVertical="top"
+          />
+        </View>
+      </ScrollView>
+
+      <View
+        style={[
+          cs.footer,
+          {
+            backgroundColor: colors.background,
+            borderTopColor: colors.border,
+            paddingBottom: insets.bottom + (Platform.OS === "web" ? 24 : 0) + 8,
+          },
+        ]}
+      >
+        <Pressable
+          onPress={handleSubmit}
+          disabled={selected.size === 0 || isLoading}
+          style={({ pressed }) => [
+            fb.submitBtn,
+            (selected.size === 0 || isLoading) && { opacity: 0.45 },
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <Text style={cs.primaryBtnText}>
+            {isLoading ? "Processing refund…" : "Submit Feedback & Confirm Refund"}
+          </Text>
+        </Pressable>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+const fb = StyleSheet.create({
+  chipGroupLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 12 },
+  chipGrid: { gap: 10 },
+  chip: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, borderWidth: 1.5, paddingVertical: 12, paddingHorizontal: 14 },
+  chipText: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium" },
+  chipCheck: { width: 18, height: 18, borderRadius: 9, backgroundColor: "#3B82F6", alignItems: "center", justifyContent: "center" },
+  noteLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 8 },
+  noteInput: { borderRadius: 12, borderWidth: 1, padding: 12, fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20, minHeight: 100 },
+  submitBtn: { height: 54, backgroundColor: "#EF4444", borderRadius: 14, alignItems: "center", justifyContent: "center" },
+});
+
+// ─── Step 4: Success ──────────────────────────────────────────────────────────
 
 function SuccessStep({
   refundAmount,
   remainingDays,
   selectedMethod,
-  onNext,
+  onDone,
 }: {
   refundAmount: number;
   remainingDays: number;
   selectedMethod: RefundMethod["id"] | null;
-  onNext: () => void;
+  onDone: () => void;
 }) {
-  const colors = useColors();
   const insets = useSafeAreaInsets();
   const scaleAnim = useRef(new Animated.Value(0)).current;
 
@@ -435,7 +555,6 @@ function SuccessStep({
         flexGrow: 1,
       }}
     >
-      {/* Animated check */}
       <View style={ss.heroArea}>
         <Animated.View style={[ss.checkCircle, { transform: [{ scale: scaleAnim }] }]}>
           <Feather name="check" size={36} color="#FFFFFF" />
@@ -444,7 +563,6 @@ function SuccessStep({
         <Text style={ss.heroSub}>Your refund has been initiated</Text>
       </View>
 
-      {/* Refund card */}
       <View style={[ss.refundCard, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
         <Text style={ss.refundLabel}>Refund amount</Text>
         <Text style={ss.refundAmount}>₹{refundAmount.toLocaleString("en-IN")}</Text>
@@ -457,7 +575,6 @@ function SuccessStep({
         </View>
       </View>
 
-      {/* Timeline */}
       <View style={[ss.timelineBox, { borderColor: "#E4E4E7" }]}>
         <Text style={ss.timelineTitle}>What happens next</Text>
         {timeline.map((step, i) => (
@@ -470,7 +587,6 @@ function SuccessStep({
         ))}
       </View>
 
-      {/* Unused days note */}
       <View style={[ss.noteBox, { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" }]}>
         <Feather name="info" size={13} color="#2563EB" />
         <Text style={ss.noteText}>
@@ -478,17 +594,11 @@ function SuccessStep({
         </Text>
       </View>
 
-      {/* CTA */}
       <Pressable
-        onPress={onNext}
-        style={({ pressed }) => [ss.feedbackBtn, pressed && { opacity: 0.9 }]}
+        onPress={onDone}
+        style={({ pressed }) => [ss.doneBtn, pressed && { opacity: 0.9 }]}
       >
-        <Text style={ss.feedbackBtnText}>Share feedback (1 min)</Text>
-        <Feather name="arrow-right" size={16} color="#FFFFFF" />
-      </Pressable>
-
-      <Pressable onPress={onNext} style={ss.skipBtn}>
-        <Text style={ss.skipText}>Skip feedback</Text>
+        <Text style={ss.doneBtnText}>Go to My Plans</Text>
       </Pressable>
     </ScrollView>
   );
@@ -512,197 +622,10 @@ const ss = StyleSheet.create({
   timelineNum: { width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   timelineNumText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
   timelineStep: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: "#52525B" },
-  noteBox: { flexDirection: "row", gap: 8, alignItems: "flex-start", borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 20 },
+  noteBox: { flexDirection: "row", gap: 8, alignItems: "flex-start", borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 24 },
   noteText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: "#1D4ED8", lineHeight: 17 },
-  feedbackBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, height: 52, backgroundColor: "#3B82F6", borderRadius: 14, marginBottom: 10 },
-  feedbackBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
-  skipBtn: { height: 44, alignItems: "center", justifyContent: "center" },
-  skipText: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#A1A1AA" },
-});
-
-// ─── Feedback Step ────────────────────────────────────────────────────────────
-
-function FeedbackStep({
-  restaurantName,
-  onDone,
-}: {
-  restaurantName: string;
-  onDone: () => void;
-}) {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [note, setNote] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const checkAnim = useRef(new Animated.Value(0)).current;
-
-  function toggleOption(id: string) {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  function handleSubmit() {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setSubmitted(true);
-    Animated.sequence([
-      Animated.timing(checkAnim, { toValue: 1, duration: 300, useNativeDriver: true, easing: Easing.out(Easing.back(1.5)) }),
-    ]).start();
-    setTimeout(onDone, 1600);
-  }
-
-  if (submitted) {
-    return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 32 }}>
-        <Animated.View
-          style={[
-            fb.thankCircle,
-            { transform: [{ scale: checkAnim }] },
-          ]}
-        >
-          <Feather name="heart" size={28} color="#FFFFFF" />
-        </Animated.View>
-        <Text style={[fb.thankTitle, { color: colors.foreground }]}>Thanks for the feedback!</Text>
-        <Text style={[fb.thankSub, { color: colors.mutedForeground }]}>
-          It helps us bring better restaurants and experiences to you.
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{
-          padding: 20,
-          paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 120,
-        }}
-      >
-        <SectionHeader
-          title="What went wrong?"
-          subtitle={`Help us improve your experience with ${restaurantName} and the Meal Pass platform.`}
-        />
-
-        <Text style={[fb.chipGroupLabel, { color: colors.mutedForeground }]}>
-          Select all that apply
-        </Text>
-
-        <View style={fb.chipGrid}>
-          {FEEDBACK_OPTIONS.map((opt) => {
-            const active = selected.has(opt.id);
-            return (
-              <Pressable
-                key={opt.id}
-                onPress={() => toggleOption(opt.id)}
-                style={[
-                  fb.chip,
-                  {
-                    borderColor: active ? "#3B82F6" : colors.border,
-                    backgroundColor: active ? "#EFF6FF" : colors.card,
-                  },
-                ]}
-              >
-                <Feather
-                  name={opt.icon as any}
-                  size={14}
-                  color={active ? "#2563EB" : colors.mutedForeground}
-                />
-                <Text
-                  style={[
-                    fb.chipText,
-                    { color: active ? "#1D4ED8" : colors.foreground },
-                  ]}
-                >
-                  {opt.label}
-                </Text>
-                {active && (
-                  <View style={fb.chipCheck}>
-                    <Feather name="check" size={10} color="#FFFFFF" />
-                  </View>
-                )}
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {/* Additional note */}
-        <View style={{ marginTop: 20 }}>
-          <Text style={[fb.noteLabel, { color: colors.foreground }]}>
-            Anything else? (optional)
-          </Text>
-          <TextInput
-            value={note}
-            onChangeText={setNote}
-            multiline
-            numberOfLines={4}
-            placeholder="Tell us more about your experience…"
-            placeholderTextColor={colors.mutedForeground}
-            style={[
-              fb.noteInput,
-              { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card },
-            ]}
-            textAlignVertical="top"
-          />
-        </View>
-      </ScrollView>
-
-      <View
-        style={[
-          cs.footer,
-          {
-            backgroundColor: colors.background,
-            borderTopColor: colors.border,
-            paddingBottom: insets.bottom + (Platform.OS === "web" ? 24 : 0) + 8,
-          },
-        ]}
-      >
-        <Pressable
-          onPress={handleSubmit}
-          disabled={selected.size === 0}
-          style={({ pressed }) => [
-            fb.submitBtn,
-            selected.size === 0 && { opacity: 0.45 },
-            pressed && { opacity: 0.85 },
-          ]}
-        >
-          <Text style={cs.primaryBtnText}>Submit feedback</Text>
-        </Pressable>
-        <Pressable onPress={onDone} style={cs.secondaryBtn}>
-          <Text style={[cs.secondaryBtnText, { color: colors.mutedForeground }]}>Skip</Text>
-        </Pressable>
-      </View>
-    </KeyboardAvoidingView>
-  );
-}
-
-const fb = StyleSheet.create({
-  chipGroupLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 12 },
-  chipGrid: { gap: 10 },
-  chip: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    borderRadius: 12, borderWidth: 1.5, paddingVertical: 12, paddingHorizontal: 14,
-  },
-  chipText: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium" },
-  chipCheck: { width: 18, height: 18, borderRadius: 9, backgroundColor: "#3B82F6", alignItems: "center", justifyContent: "center" },
-  noteLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 8 },
-  noteInput: {
-    borderRadius: 12, borderWidth: 1, padding: 12,
-    fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20,
-    minHeight: 100,
-  },
-  submitBtn: { height: 54, backgroundColor: "#3B82F6", borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  thankCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: "#3B82F6", alignItems: "center", justifyContent: "center" },
-  thankTitle: { fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center" },
-  thankSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20, maxWidth: 260 },
+  doneBtn: { height: 54, backgroundColor: "#3B82F6", borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  doneBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -723,7 +646,7 @@ export default function RefundRequestScreen() {
 
   if (!sub) {
     return (
-      <View style={[{ flex: 1, backgroundColor: colors.background }]}>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
           <Feather name="alert-circle" size={32} color={colors.mutedForeground} />
           <Text style={{ fontSize: 15, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
@@ -740,10 +663,10 @@ export default function RefundRequestScreen() {
     );
   }
 
-  const refundAmount = refundResult?.refundAmount ??
-    Math.max(0, sub.remainingDays * sub.pricePerDay - sub.lateCancellationFees);
+  const estimatedRefund = Math.max(0, sub.remainingDays * sub.pricePerDay - sub.lateCancellationFees);
+  const actualRefund = refundResult?.refundAmount ?? estimatedRefund;
 
-  async function handleConfirmCancellation() {
+  async function handleFeedbackSubmit() {
     if (!selectedMethod) return;
     setIsLoading(true);
     try {
@@ -758,23 +681,27 @@ export default function RefundRequestScreen() {
     }
   }
 
-  function handleDone() {
-    router.replace("/(tabs)/pass");
+  function goBack() {
+    if (step === "confirm") router.back();
+    else if (step === "refund-method") setStep("confirm");
+    else if (step === "feedback") setStep("refund-method");
   }
 
   const stepTitle: Record<Step, string> = {
     "confirm": "Cancel & Refund",
     "refund-method": "Refund Method",
-    "success": "Cancelled",
-    "feedback": "Feedback",
+    "feedback": "Quick Feedback",
+    "success": "All Done",
   };
+
+  const canGoBack = step === "confirm" || step === "refund-method" || step === "feedback";
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
       <View
         style={[
-          header.bar,
+          hdr.bar,
           {
             paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) + 8,
             backgroundColor: colors.background,
@@ -782,31 +709,24 @@ export default function RefundRequestScreen() {
           },
         ]}
       >
-        <Pressable
-          onPress={() => {
-            if (step === "confirm") router.back();
-            else if (step === "refund-method") setStep("confirm");
-          }}
-          style={header.backBtn}
-        >
-          {step !== "success" && step !== "feedback" ? (
+        <Pressable onPress={canGoBack ? goBack : undefined} style={hdr.backBtn}>
+          {canGoBack ? (
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           ) : (
             <View style={{ width: 22 }} />
           )}
         </Pressable>
         <View style={{ flex: 1, alignItems: "center" }}>
-          <Text style={[header.title, { color: colors.foreground }]}>{stepTitle[step]}</Text>
+          <Text style={[hdr.title, { color: colors.foreground }]}>{stepTitle[step]}</Text>
           <StepDots current={step} />
         </View>
         <View style={{ width: 44 }} />
       </View>
 
-      {/* Step content */}
       {step === "confirm" && (
         <ConfirmStep
           sub={sub}
-          refundAmount={refundAmount}
+          refundAmount={estimatedRefund}
           onKeep={() => router.back()}
           onNext={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -817,19 +737,8 @@ export default function RefundRequestScreen() {
 
       {step === "refund-method" && (
         <RefundMethodStep
-          refundAmount={refundAmount}
           selectedMethod={selectedMethod}
           onSelect={setSelectedMethod}
-          onNext={handleConfirmCancellation}
-          isLoading={isLoading}
-        />
-      )}
-
-      {step === "success" && (
-        <SuccessStep
-          refundAmount={refundResult?.refundAmount ?? refundAmount}
-          remainingDays={sub.remainingDays}
-          selectedMethod={selectedMethod}
           onNext={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setStep("feedback");
@@ -840,18 +749,25 @@ export default function RefundRequestScreen() {
       {step === "feedback" && (
         <FeedbackStep
           restaurantName={sub.restaurantName}
-          onDone={handleDone}
+          isLoading={isLoading}
+          onSubmit={handleFeedbackSubmit}
+        />
+      )}
+
+      {step === "success" && (
+        <SuccessStep
+          refundAmount={actualRefund}
+          remainingDays={sub.remainingDays}
+          selectedMethod={selectedMethod}
+          onDone={() => router.replace("/(tabs)/pass")}
         />
       )}
     </View>
   );
 }
 
-const header = StyleSheet.create({
-  bar: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 8, paddingBottom: 10, borderBottomWidth: 1,
-  },
+const hdr = StyleSheet.create({
+  bar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingBottom: 10, borderBottomWidth: 1 },
   backBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 22 },
   title: { fontSize: 16, fontFamily: "Inter_700Bold", marginBottom: 4 },
 });
