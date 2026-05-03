@@ -19,7 +19,11 @@ import { useColors } from "@/hooks/useColors";
 type Slot = "lunch" | "dinner" | "both";
 
 export default function BuyPassScreen() {
-  const { restaurantId } = useLocalSearchParams<{ restaurantId?: string }>();
+  const { restaurantId, defaultSlot, defaultDays } = useLocalSearchParams<{
+    restaurantId?: string;
+    defaultSlot?: string;
+    defaultDays?: string;
+  }>();
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -35,10 +39,27 @@ export default function BuyPassScreen() {
     getRestaurant(restaurantId)
       .then((r) => {
         setRestaurant(r);
-        const firstSlot: Slot = r.lunchAvailable ? "lunch" : r.dinnerAvailable ? "dinner" : "lunch";
-        setSelectedSlot(firstSlot);
-        const firstPkg = r.packages.find((p) => p.mealSlot === firstSlot || p.mealSlot === "both");
-        if (firstPkg) setSelectedPkgId(firstPkg.id);
+
+        // Pre-select slot: use defaultSlot param if valid, else first available
+        const preferredSlot =
+          defaultSlot === "lunch" || defaultSlot === "dinner" || defaultSlot === "both"
+            ? (defaultSlot as Slot)
+            : r.lunchAvailable
+              ? "lunch"
+              : r.dinnerAvailable
+                ? "dinner"
+                : "lunch";
+        setSelectedSlot(preferredSlot);
+
+        // Pre-select package: match by duration days if provided, else first
+        const slotPkgs = r.packages.filter(
+          (p) => p.mealSlot === preferredSlot || p.mealSlot === "both",
+        );
+        const targetDays = defaultDays ? parseInt(defaultDays, 10) : NaN;
+        const matchedPkg = !isNaN(targetDays)
+          ? (slotPkgs.find((p) => p.durationDays === targetDays) ?? slotPkgs[0])
+          : slotPkgs[0];
+        if (matchedPkg) setSelectedPkgId(matchedPkg.id);
       })
       .catch(() => {})
       .finally(() => setLoading(false));

@@ -159,6 +159,30 @@ function SubscriptionCard({
             </Text>
           </View>
         )}
+
+        {isCancelled && (
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push({
+                pathname: "/buy-pass" as never,
+                params: {
+                  restaurantId: sub.restaurantId,
+                  defaultSlot: sub.slot,
+                  defaultDays: String(sub.totalDays),
+                },
+              });
+            }}
+            style={({ pressed }) => [
+              cardStyles.resubBtn,
+              pressed && { opacity: 0.75 },
+            ]}
+          >
+            <Feather name="refresh-cw" size={13} color="#3B82F6" />
+            <Text style={cardStyles.resubBtnText}>Subscribe again</Text>
+            <Feather name="arrow-right" size={13} color="#3B82F6" style={{ marginLeft: "auto" }} />
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -186,6 +210,17 @@ const cardStyles = StyleSheet.create({
   actionBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   refundNote: { flexDirection: "row", gap: 8, alignItems: "flex-start", padding: 10, borderRadius: 10 },
   refundNoteText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: "#1D4ED8", lineHeight: 17 },
+  resubBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#EFF6FF",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 2,
+  },
+  resubBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#3B82F6", flex: 1 },
 });
 
 export default function PlansScreen() {
