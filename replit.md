@@ -61,8 +61,8 @@ Tables in `lib/db/src/schema/`:
 | owner@spicegarden.com | demo1234 | restaurant_owner | Spice Garden |
 | staff@spicegarden.com | demo1234 | restaurant_staff | Spice Garden |
 | owner@curryhouse.com | demo1234 | restaurant_owner | The Curry House |
-| admin@mealpass.com | admin1234 | admin | all |
-| super@mealpass.com | admin1234 | super_admin | all |
+| admin@mealpass.com | demo1234 | admin | all |
+| super@mealpass.com | demo1234 | super_admin | all |
 
 ## Codegen Notes
 
