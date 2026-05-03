@@ -93,11 +93,7 @@ function NavigationController() {
       />
       <Stack.Screen
         name="refund-request"
-        options={{
-          headerShown: true,
-          headerTitle: "Request Refund",
-          headerBackTitle: "Back",
-        }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ledger"
