@@ -124,10 +124,224 @@ export const GetRestaurantPackagesResponseItem = zod.object({
   revenueGenerated: zod.number(),
   status: zod.enum(["active", "paused", "archived"]),
   discountPct: zod.number().optional(),
+  description: zod.string().optional(),
 });
 export const GetRestaurantPackagesResponse = zod.array(
   GetRestaurantPackagesResponseItem,
 );
+
+/**
+ * @summary Create a new subscription package
+ */
+export const CreateRestaurantPackageParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const createRestaurantPackageBodyPricePerDayMin = 0;
+
+export const createRestaurantPackageBodyDiscountPctMin = 0;
+export const createRestaurantPackageBodyDiscountPctMax = 100;
+
+export const CreateRestaurantPackageBody = zod.object({
+  name: zod.string(),
+  mealSlot: zod.enum(["lunch", "dinner", "both"]),
+  validityDays: zod.number().min(1),
+  pricePerDay: zod.number().min(createRestaurantPackageBodyPricePerDayMin),
+  discountPct: zod
+    .number()
+    .min(createRestaurantPackageBodyDiscountPctMin)
+    .max(createRestaurantPackageBodyDiscountPctMax)
+    .optional(),
+  description: zod.string().optional(),
+  status: zod.enum(["active", "paused", "archived"]).optional(),
+});
+
+/**
+ * @summary Update an existing subscription package
+ */
+export const UpdateRestaurantPackageParams = zod.object({
+  restaurantId: zod.coerce.string(),
+  packageId: zod.coerce.string(),
+});
+
+export const updateRestaurantPackageBodyPricePerDayMin = 0;
+
+export const updateRestaurantPackageBodyDiscountPctMin = 0;
+export const updateRestaurantPackageBodyDiscountPctMax = 100;
+
+export const UpdateRestaurantPackageBody = zod.object({
+  name: zod.string(),
+  mealSlot: zod.enum(["lunch", "dinner", "both"]),
+  validityDays: zod.number().min(1),
+  pricePerDay: zod.number().min(updateRestaurantPackageBodyPricePerDayMin),
+  discountPct: zod
+    .number()
+    .min(updateRestaurantPackageBodyDiscountPctMin)
+    .max(updateRestaurantPackageBodyDiscountPctMax)
+    .optional(),
+  description: zod.string().optional(),
+  status: zod.enum(["active", "paused", "archived"]).optional(),
+});
+
+export const UpdateRestaurantPackageResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  mealSlot: zod.enum(["lunch", "dinner", "both"]),
+  mealCount: zod.number(),
+  pricePerDay: zod.number(),
+  totalPrice: zod.number(),
+  validityDays: zod.number(),
+  activeSubscribers: zod.number(),
+  totalSold: zod.number(),
+  revenueGenerated: zod.number(),
+  status: zod.enum(["active", "paused", "archived"]),
+  discountPct: zod.number().optional(),
+  description: zod.string().optional(),
+});
+
+/**
+ * @summary Archive/delete a subscription package
+ */
+export const DeleteRestaurantPackageParams = zod.object({
+  restaurantId: zod.coerce.string(),
+  packageId: zod.coerce.string(),
+});
+
+export const DeleteRestaurantPackageResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Get all meals/products for a restaurant
+ */
+export const GetRestaurantMealsParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const GetRestaurantMealsQueryParams = zod.object({
+  isActive: zod
+    .union([zod.literal("all"), zod.literal(true), zod.literal(false)])
+    .optional(),
+  category: zod.coerce.string().optional(),
+});
+
+export const GetRestaurantMealsResponseItem = zod.object({
+  id: zod.string(),
+  restaurantId: zod.string(),
+  name: zod.string(),
+  shortDescription: zod.string().optional(),
+  description: zod.string().optional(),
+  category: zod.string().optional(),
+  vegType: zod.enum(["veg", "non-veg", "egg"]),
+  calories: zod.number().optional(),
+  protein: zod.string().optional(),
+  carbs: zod.string().optional(),
+  fat: zod.string().optional(),
+  fiber: zod.string().optional(),
+  allergens: zod.string().optional(),
+  spiceLevel: zod.enum(["mild", "medium", "hot"]).optional(),
+  imageUrl: zod.string().optional(),
+  isAvailableForLunch: zod.boolean(),
+  isAvailableForDinner: zod.boolean(),
+  isActive: zod.boolean(),
+  sortOrder: zod.number(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const GetRestaurantMealsResponse = zod.array(
+  GetRestaurantMealsResponseItem,
+);
+
+/**
+ * @summary Create a new meal/product
+ */
+export const CreateRestaurantMealParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const CreateRestaurantMealBody = zod.object({
+  name: zod.string(),
+  shortDescription: zod.string().optional(),
+  description: zod.string().optional(),
+  category: zod.string().optional(),
+  vegType: zod.enum(["veg", "non-veg", "egg"]).optional(),
+  calories: zod.number().optional(),
+  protein: zod.string().optional(),
+  carbs: zod.string().optional(),
+  fat: zod.string().optional(),
+  fiber: zod.string().optional(),
+  allergens: zod.string().optional(),
+  spiceLevel: zod.enum(["mild", "medium", "hot"]).optional(),
+  imageUrl: zod.string().optional(),
+  isAvailableForLunch: zod.boolean().optional(),
+  isAvailableForDinner: zod.boolean().optional(),
+  isActive: zod.boolean().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Update an existing meal/product
+ */
+export const UpdateRestaurantMealParams = zod.object({
+  restaurantId: zod.coerce.string(),
+  mealId: zod.coerce.string(),
+});
+
+export const UpdateRestaurantMealBody = zod.object({
+  name: zod.string(),
+  shortDescription: zod.string().optional(),
+  description: zod.string().optional(),
+  category: zod.string().optional(),
+  vegType: zod.enum(["veg", "non-veg", "egg"]).optional(),
+  calories: zod.number().optional(),
+  protein: zod.string().optional(),
+  carbs: zod.string().optional(),
+  fat: zod.string().optional(),
+  fiber: zod.string().optional(),
+  allergens: zod.string().optional(),
+  spiceLevel: zod.enum(["mild", "medium", "hot"]).optional(),
+  imageUrl: zod.string().optional(),
+  isAvailableForLunch: zod.boolean().optional(),
+  isAvailableForDinner: zod.boolean().optional(),
+  isActive: zod.boolean().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateRestaurantMealResponse = zod.object({
+  id: zod.string(),
+  restaurantId: zod.string(),
+  name: zod.string(),
+  shortDescription: zod.string().optional(),
+  description: zod.string().optional(),
+  category: zod.string().optional(),
+  vegType: zod.enum(["veg", "non-veg", "egg"]),
+  calories: zod.number().optional(),
+  protein: zod.string().optional(),
+  carbs: zod.string().optional(),
+  fat: zod.string().optional(),
+  fiber: zod.string().optional(),
+  allergens: zod.string().optional(),
+  spiceLevel: zod.enum(["mild", "medium", "hot"]).optional(),
+  imageUrl: zod.string().optional(),
+  isAvailableForLunch: zod.boolean(),
+  isAvailableForDinner: zod.boolean(),
+  isActive: zod.boolean(),
+  sortOrder: zod.number(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete a meal/product
+ */
+export const DeleteRestaurantMealParams = zod.object({
+  restaurantId: zod.coerce.string(),
+  mealId: zod.coerce.string(),
+});
+
+export const DeleteRestaurantMealResponse = zod.object({
+  success: zod.boolean(),
+});
 
 /**
  * @summary Get upcoming meals for preparation

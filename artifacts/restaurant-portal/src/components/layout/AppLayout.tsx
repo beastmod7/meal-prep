@@ -14,13 +14,14 @@ import {
   SidebarTrigger,
   SidebarHeader
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Package, UtensilsCrossed, XCircle, DollarSign, LogOut, Loader2 } from "lucide-react";
+import { LayoutDashboard, Package, UtensilsCrossed, XCircle, DollarSign, LogOut, Loader2, ChefHat } from "lucide-react";
 import { useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
 const menuItems = [
   { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Menu CMS", url: "/dashboard/menu", icon: ChefHat },
   { title: "Packages", url: "/dashboard/packages", icon: Package },
   { title: "Daily Prep", url: "/dashboard/upcoming-meals", icon: UtensilsCrossed },
   { title: "Cancellations", url: "/dashboard/cancellations", icon: XCircle },

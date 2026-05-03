@@ -16,6 +16,8 @@ tags:
     description: Restaurant portal overview dashboard
   - name: restaurant-portal-packages
     description: Restaurant portal meal packages
+  - name: restaurant-portal-meals
+    description: Restaurant portal meal/product CMS
   - name: restaurant-portal-upcoming
     description: Restaurant portal upcoming meals
   - name: restaurant-portal-cancellations
@@ -146,6 +148,180 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/RestaurantPackage"
+    post:
+      operationId: createRestaurantPackage
+      tags: [restaurant-portal-packages]
+      summary: Create a new subscription package
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePackageBody"
+      responses:
+        "201":
+          description: Package created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantPackage"
+
+  /restaurant-portal/restaurants/{restaurantId}/packages/{packageId}:
+    put:
+      operationId: updateRestaurantPackage
+      tags: [restaurant-portal-packages]
+      summary: Update an existing subscription package
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: packageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePackageBody"
+      responses:
+        "200":
+          description: Package updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantPackage"
+    delete:
+      operationId: deleteRestaurantPackage
+      tags: [restaurant-portal-packages]
+      summary: Archive/delete a subscription package
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: packageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Package archived
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required: [success]
+
+  /restaurant-portal/restaurants/{restaurantId}/meals:
+    get:
+      operationId: getRestaurantMeals
+      tags: [restaurant-portal-meals]
+      summary: Get all meals/products for a restaurant
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: isActive
+          in: query
+          schema:
+            type: string
+            enum: [all, true, false]
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of meals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RestaurantMeal"
+    post:
+      operationId: createRestaurantMeal
+      tags: [restaurant-portal-meals]
+      summary: Create a new meal/product
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMealBody"
+      responses:
+        "201":
+          description: Meal created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantMeal"
+
+  /restaurant-portal/restaurants/{restaurantId}/meals/{mealId}:
+    put:
+      operationId: updateRestaurantMeal
+      tags: [restaurant-portal-meals]
+      summary: Update an existing meal/product
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: mealId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMealBody"
+      responses:
+        "200":
+          description: Meal updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantMeal"
+    delete:
+      operationId: deleteRestaurantMeal
+      tags: [restaurant-portal-meals]
+      summary: Delete a meal/product
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: mealId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Meal deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required: [success]
 
   /restaurant-portal/restaurants/{restaurantId}/upcoming-meals:
     get:
@@ -541,6 +717,8 @@ components:
           enum: [active, paused, archived]
         discountPct:
           type: number
+        description:
+          type: string
       required:
         - id
         - name
@@ -553,6 +731,136 @@ components:
         - totalSold
         - revenueGenerated
         - status
+
+    CreatePackageBody:
+      type: object
+      properties:
+        name:
+          type: string
+        mealSlot:
+          type: string
+          enum: [lunch, dinner, both]
+        validityDays:
+          type: integer
+          minimum: 1
+        pricePerDay:
+          type: number
+          minimum: 0
+        discountPct:
+          type: number
+          minimum: 0
+          maximum: 100
+        description:
+          type: string
+        status:
+          type: string
+          enum: [active, paused, archived]
+      required:
+        - name
+        - mealSlot
+        - validityDays
+        - pricePerDay
+
+    RestaurantMeal:
+      type: object
+      properties:
+        id:
+          type: string
+        restaurantId:
+          type: string
+        name:
+          type: string
+        shortDescription:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        vegType:
+          type: string
+          enum: [veg, non-veg, egg]
+        calories:
+          type: integer
+        protein:
+          type: string
+        carbs:
+          type: string
+        fat:
+          type: string
+        fiber:
+          type: string
+        allergens:
+          type: string
+        spiceLevel:
+          type: string
+          enum: [mild, medium, hot]
+        imageUrl:
+          type: string
+        isAvailableForLunch:
+          type: boolean
+        isAvailableForDinner:
+          type: boolean
+        isActive:
+          type: boolean
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - restaurantId
+        - name
+        - vegType
+        - isAvailableForLunch
+        - isAvailableForDinner
+        - isActive
+        - sortOrder
+        - createdAt
+        - updatedAt
+
+    CreateMealBody:
+      type: object
+      properties:
+        name:
+          type: string
+        shortDescription:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        vegType:
+          type: string
+          enum: [veg, non-veg, egg]
+        calories:
+          type: integer
+        protein:
+          type: string
+        carbs:
+          type: string
+        fat:
+          type: string
+        fiber:
+          type: string
+        allergens:
+          type: string
+        spiceLevel:
+          type: string
+          enum: [mild, medium, hot]
+        imageUrl:
+          type: string
+        isAvailableForLunch:
+          type: boolean
+        isAvailableForDinner:
+          type: boolean
+        isActive:
+          type: boolean
+        sortOrder:
+          type: integer
+      required:
+        - name
 
     UpcomingMealsData:
       type: object

@@ -107,6 +107,121 @@ export interface RestaurantPackage {
   revenueGenerated: number;
   status: RestaurantPackageStatus;
   discountPct?: number;
+  description?: string;
+}
+
+export type CreatePackageBodyMealSlot =
+  (typeof CreatePackageBodyMealSlot)[keyof typeof CreatePackageBodyMealSlot];
+
+export const CreatePackageBodyMealSlot = {
+  lunch: "lunch",
+  dinner: "dinner",
+  both: "both",
+} as const;
+
+export type CreatePackageBodyStatus =
+  (typeof CreatePackageBodyStatus)[keyof typeof CreatePackageBodyStatus];
+
+export const CreatePackageBodyStatus = {
+  active: "active",
+  paused: "paused",
+  archived: "archived",
+} as const;
+
+export interface CreatePackageBody {
+  name: string;
+  mealSlot: CreatePackageBodyMealSlot;
+  /** @minimum 1 */
+  validityDays: number;
+  /** @minimum 0 */
+  pricePerDay: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  discountPct?: number;
+  description?: string;
+  status?: CreatePackageBodyStatus;
+}
+
+export type RestaurantMealVegType =
+  (typeof RestaurantMealVegType)[keyof typeof RestaurantMealVegType];
+
+export const RestaurantMealVegType = {
+  veg: "veg",
+  "non-veg": "non-veg",
+  egg: "egg",
+} as const;
+
+export type RestaurantMealSpiceLevel =
+  (typeof RestaurantMealSpiceLevel)[keyof typeof RestaurantMealSpiceLevel];
+
+export const RestaurantMealSpiceLevel = {
+  mild: "mild",
+  medium: "medium",
+  hot: "hot",
+} as const;
+
+export interface RestaurantMeal {
+  id: string;
+  restaurantId: string;
+  name: string;
+  shortDescription?: string;
+  description?: string;
+  category?: string;
+  vegType: RestaurantMealVegType;
+  calories?: number;
+  protein?: string;
+  carbs?: string;
+  fat?: string;
+  fiber?: string;
+  allergens?: string;
+  spiceLevel?: RestaurantMealSpiceLevel;
+  imageUrl?: string;
+  isAvailableForLunch: boolean;
+  isAvailableForDinner: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateMealBodyVegType =
+  (typeof CreateMealBodyVegType)[keyof typeof CreateMealBodyVegType];
+
+export const CreateMealBodyVegType = {
+  veg: "veg",
+  "non-veg": "non-veg",
+  egg: "egg",
+} as const;
+
+export type CreateMealBodySpiceLevel =
+  (typeof CreateMealBodySpiceLevel)[keyof typeof CreateMealBodySpiceLevel];
+
+export const CreateMealBodySpiceLevel = {
+  mild: "mild",
+  medium: "medium",
+  hot: "hot",
+} as const;
+
+export interface CreateMealBody {
+  name: string;
+  shortDescription?: string;
+  description?: string;
+  category?: string;
+  vegType?: CreateMealBodyVegType;
+  calories?: number;
+  protein?: string;
+  carbs?: string;
+  fat?: string;
+  fiber?: string;
+  allergens?: string;
+  spiceLevel?: CreateMealBodySpiceLevel;
+  imageUrl?: string;
+  isAvailableForLunch?: boolean;
+  isAvailableForDinner?: boolean;
+  isActive?: boolean;
+  sortOrder?: number;
 }
 
 export type MealOrderDetailMealSlot =
@@ -286,6 +401,28 @@ export const GetRestaurantPackagesStatus = {
   paused: "paused",
   archived: "archived",
 } as const;
+
+export type DeleteRestaurantPackage200 = {
+  success: boolean;
+};
+
+export type GetRestaurantMealsParams = {
+  isActive?: GetRestaurantMealsIsActive;
+  category?: string;
+};
+
+export type GetRestaurantMealsIsActive =
+  (typeof GetRestaurantMealsIsActive)[keyof typeof GetRestaurantMealsIsActive];
+
+export const GetRestaurantMealsIsActive = {
+  all: "all",
+  true: true,
+  false: false,
+} as const;
+
+export type DeleteRestaurantMeal200 = {
+  success: boolean;
+};
 
 export type GetRestaurantUpcomingMealsParams = {
   date?: string;

@@ -11,6 +11,7 @@ import Packages from "@/pages/dashboard/packages";
 import UpcomingMeals from "@/pages/dashboard/upcoming-meals";
 import Cancellations from "@/pages/dashboard/cancellations";
 import Settlements from "@/pages/dashboard/settlements";
+import Menu from "@/pages/dashboard/menu";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ function Router() {
         <AppLayout>
           <Switch>
             <Route path="/dashboard" component={Overview} />
+            <Route path="/dashboard/menu" component={Menu} />
             <Route path="/dashboard/packages" component={Packages} />
             <Route path="/dashboard/upcoming-meals" component={UpcomingMeals} />
             <Route path="/dashboard/cancellations" component={Cancellations} />

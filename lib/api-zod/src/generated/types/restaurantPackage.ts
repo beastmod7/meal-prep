@@ -21,4 +21,5 @@ export interface RestaurantPackage {
   revenueGenerated: number;
   status: RestaurantPackageStatus;
   discountPct?: number;
+  description?: string;
 }
