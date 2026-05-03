@@ -14,7 +14,7 @@ import {
   SidebarTrigger,
   SidebarHeader
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Package, UtensilsCrossed, XCircle, DollarSign, LogOut, Loader2, ChefHat, FileText, ShieldCheck, Scale } from "lucide-react";
+import { LayoutDashboard, Package, UtensilsCrossed, XCircle, DollarSign, LogOut, Loader2, ChefHat, FileText, ShieldCheck, Scale, BookOpen } from "lucide-react";
 import { useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ const menuItems = [
   { title: "Invoices & GST", url: "/dashboard/invoices", icon: FileText },
   { title: "Disputes", url: "/dashboard/disputes", icon: Scale },
   { title: "Compliance", url: "/dashboard/compliance", icon: ShieldCheck },
+  { title: "Redemption Ledger", url: "/dashboard/redemptions", icon: BookOpen },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {

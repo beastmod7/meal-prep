@@ -26,6 +26,8 @@ tags:
     description: Restaurant portal settlements
   - name: restaurant-portal-reports
     description: Restaurant portal reports
+  - name: restaurant-portal-redemptions
+    description: Restaurant portal meal redemption ledger
   - name: student-auth
     description: Student phone OTP authentication
   - name: student-profile
@@ -494,6 +496,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SettlementsData"
+
+  /restaurant-portal/restaurants/{restaurantId}/redemptions:
+    get:
+      operationId: getRestaurantRedemptions
+      tags: [restaurant-portal-redemptions]
+      summary: Get meal redemption ledger for a restaurant
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: mealSlot
+          in: query
+          schema:
+            type: string
+            enum: [all, lunch, dinner]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [all, scheduled, locked, delivered, cancelled, no_show]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Meal redemption ledger
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RedemptionLedgerData"
 
   /restaurant-portal/restaurants/{restaurantId}/reports/export:
     get:
@@ -1536,6 +1585,93 @@ components:
         - netPayable
         - status
         - mealsDelivered
+
+    RedemptionLedgerData:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            totalDelivered:
+              type: integer
+            totalScheduled:
+              type: integer
+            totalCancelled:
+              type: integer
+            grossDeliveredValue:
+              type: number
+          required:
+            - totalDelivered
+            - totalScheduled
+            - totalCancelled
+            - grossDeliveredValue
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+            totalPages:
+              type: integer
+          required: [page, limit, total, totalPages]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RedemptionItem"
+      required:
+        - summary
+        - pagination
+        - items
+
+    RedemptionItem:
+      type: object
+      properties:
+        id:
+          type: string
+        subscriptionId:
+          type: string
+        packageName:
+          type: string
+        studentName:
+          type: string
+        studentPhoneMasked:
+          type: string
+        mealSlot:
+          type: string
+        scheduledDate:
+          type: string
+        status:
+          type: string
+        pricePerDay:
+          type: number
+        mealNumber:
+          type: integer
+        totalDays:
+          type: integer
+          nullable: true
+        markedBy:
+          type: string
+          nullable: true
+        scanMethod:
+          type: string
+          nullable: true
+        updatedAt:
+          type: string
+      required:
+        - id
+        - subscriptionId
+        - packageName
+        - studentName
+        - studentPhoneMasked
+        - mealSlot
+        - scheduledDate
+        - status
+        - pricePerDay
+        - mealNumber
+        - updatedAt
 
     ReportExport:
       type: object

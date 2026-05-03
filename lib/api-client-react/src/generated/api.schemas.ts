@@ -358,6 +358,43 @@ export interface SettlementsData {
   periods: SettlementPeriod[];
 }
 
+export type RedemptionLedgerDataSummary = {
+  totalDelivered: number;
+  totalScheduled: number;
+  totalCancelled: number;
+  grossDeliveredValue: number;
+};
+
+export type RedemptionLedgerDataPagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+export interface RedemptionItem {
+  id: string;
+  subscriptionId: string;
+  packageName: string;
+  studentName: string;
+  studentPhoneMasked: string;
+  mealSlot: string;
+  scheduledDate: string;
+  status: string;
+  pricePerDay: number;
+  mealNumber: number;
+  totalDays?: number | null;
+  markedBy?: string | null;
+  scanMethod?: string | null;
+  updatedAt: string;
+}
+
+export interface RedemptionLedgerData {
+  summary: RedemptionLedgerDataSummary;
+  pagination: RedemptionLedgerDataPagination;
+  items: RedemptionItem[];
+}
+
 export type ReportExportDateRange = {
   from: string;
   to: string;
@@ -831,6 +868,36 @@ export const GetRestaurantSettlementsStatus = {
   processing: "processing",
   paid: "paid",
   on_hold: "on_hold",
+} as const;
+
+export type GetRestaurantRedemptionsParams = {
+  dateFrom?: string;
+  dateTo?: string;
+  mealSlot?: GetRestaurantRedemptionsMealSlot;
+  status?: GetRestaurantRedemptionsStatus;
+  page?: number;
+  limit?: number;
+};
+
+export type GetRestaurantRedemptionsMealSlot =
+  (typeof GetRestaurantRedemptionsMealSlot)[keyof typeof GetRestaurantRedemptionsMealSlot];
+
+export const GetRestaurantRedemptionsMealSlot = {
+  all: "all",
+  lunch: "lunch",
+  dinner: "dinner",
+} as const;
+
+export type GetRestaurantRedemptionsStatus =
+  (typeof GetRestaurantRedemptionsStatus)[keyof typeof GetRestaurantRedemptionsStatus];
+
+export const GetRestaurantRedemptionsStatus = {
+  all: "all",
+  scheduled: "scheduled",
+  locked: "locked",
+  delivered: "delivered",
+  cancelled: "cancelled",
+  no_show: "no_show",
 } as const;
 
 export type ExportRestaurantReportParams = {

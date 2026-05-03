@@ -16,6 +16,7 @@ import Menu from "@/pages/dashboard/menu";
 import InvoicesGst from "@/pages/dashboard/invoices";
 import CompliancePage from "@/pages/dashboard/compliance";
 import Disputes from "@/pages/dashboard/disputes";
+import Redemptions from "@/pages/dashboard/redemptions";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,9 @@ function Router() {
       </Route>
       <Route path="/dashboard/compliance">
         <DashboardPage component={CompliancePage} />
+      </Route>
+      <Route path="/dashboard/redemptions">
+        <DashboardPage component={Redemptions} />
       </Route>
       <Route component={NotFound} />
     </Switch>

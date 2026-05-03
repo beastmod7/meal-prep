@@ -527,6 +527,60 @@ export const GetRestaurantSettlementsResponse = zod.object({
 });
 
 /**
+ * @summary Get meal redemption ledger for a restaurant
+ */
+export const GetRestaurantRedemptionsParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const getRestaurantRedemptionsQueryPageDefault = 1;
+export const getRestaurantRedemptionsQueryLimitDefault = 50;
+
+export const GetRestaurantRedemptionsQueryParams = zod.object({
+  dateFrom: zod.date().optional(),
+  dateTo: zod.date().optional(),
+  mealSlot: zod.enum(["all", "lunch", "dinner"]).optional(),
+  status: zod
+    .enum(["all", "scheduled", "locked", "delivered", "cancelled", "no_show"])
+    .optional(),
+  page: zod.coerce.number().default(getRestaurantRedemptionsQueryPageDefault),
+  limit: zod.coerce.number().default(getRestaurantRedemptionsQueryLimitDefault),
+});
+
+export const GetRestaurantRedemptionsResponse = zod.object({
+  summary: zod.object({
+    totalDelivered: zod.number(),
+    totalScheduled: zod.number(),
+    totalCancelled: zod.number(),
+    grossDeliveredValue: zod.number(),
+  }),
+  pagination: zod.object({
+    page: zod.number(),
+    limit: zod.number(),
+    total: zod.number(),
+    totalPages: zod.number(),
+  }),
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      subscriptionId: zod.string(),
+      packageName: zod.string(),
+      studentName: zod.string(),
+      studentPhoneMasked: zod.string(),
+      mealSlot: zod.string(),
+      scheduledDate: zod.string(),
+      status: zod.string(),
+      pricePerDay: zod.number(),
+      mealNumber: zod.number(),
+      totalDays: zod.number().nullish(),
+      markedBy: zod.string().nullish(),
+      scanMethod: zod.string().nullish(),
+      updatedAt: zod.string(),
+    }),
+  ),
+});
+
+/**
  * @summary Export a restaurant report as CSV
  */
 export const ExportRestaurantReportParams = zod.object({

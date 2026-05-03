@@ -36,6 +36,7 @@ import type {
   GetRestaurantMealsParams,
   GetRestaurantOverviewParams,
   GetRestaurantPackagesParams,
+  GetRestaurantRedemptionsParams,
   GetRestaurantSettlementsParams,
   GetRestaurantUpcomingMealsParams,
   HealthStatus,
@@ -47,6 +48,7 @@ import type {
   PauseStudentSubscriptionBody,
   RateRestaurant201,
   RateRestaurantBody,
+  RedemptionLedgerData,
   ReportExport,
   RestaurantMeal,
   RestaurantOverview,
@@ -1851,6 +1853,130 @@ export function useGetRestaurantSettlements<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetRestaurantSettlementsQueryOptions(
+    restaurantId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get meal redemption ledger for a restaurant
+ */
+export const getGetRestaurantRedemptionsUrl = (
+  restaurantId: string,
+  params?: GetRestaurantRedemptionsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/restaurant-portal/restaurants/${restaurantId}/redemptions?${stringifiedParams}`
+    : `/api/restaurant-portal/restaurants/${restaurantId}/redemptions`;
+};
+
+export const getRestaurantRedemptions = async (
+  restaurantId: string,
+  params?: GetRestaurantRedemptionsParams,
+  options?: RequestInit,
+): Promise<RedemptionLedgerData> => {
+  return customFetch<RedemptionLedgerData>(
+    getGetRestaurantRedemptionsUrl(restaurantId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetRestaurantRedemptionsQueryKey = (
+  restaurantId: string,
+  params?: GetRestaurantRedemptionsParams,
+) => {
+  return [
+    `/api/restaurant-portal/restaurants/${restaurantId}/redemptions`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetRestaurantRedemptionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRestaurantRedemptions>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params?: GetRestaurantRedemptionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantRedemptions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetRestaurantRedemptionsQueryKey(restaurantId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getRestaurantRedemptions>>
+  > = ({ signal }) =>
+    getRestaurantRedemptions(restaurantId, params, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!restaurantId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRestaurantRedemptions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRestaurantRedemptionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRestaurantRedemptions>>
+>;
+export type GetRestaurantRedemptionsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get meal redemption ledger for a restaurant
+ */
+
+export function useGetRestaurantRedemptions<
+  TData = Awaited<ReturnType<typeof getRestaurantRedemptions>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  params?: GetRestaurantRedemptionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantRedemptions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRestaurantRedemptionsQueryOptions(
     restaurantId,
     params,
     options,
