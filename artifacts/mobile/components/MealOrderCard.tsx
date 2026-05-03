@@ -82,30 +82,18 @@ export default function MealOrderCard({
         isCancelled && { opacity: 0.5 },
       ]}
     >
-      {/* Left accent stripe */}
       <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
-
       <View style={styles.cardInner}>
         <View style={styles.topRow}>
           <View style={styles.dateSlot}>
-            <Text style={[styles.date, { color: colors.foreground }]}>
-              {formatDate(order.scheduledDate)}
-            </Text>
+            <Text style={[styles.date, { color: colors.foreground }]}>{formatDate(order.scheduledDate)}</Text>
             <View
               style={[
                 styles.slotPill,
-                {
-                  backgroundColor:
-                    order.slot === "lunch" ? "#FEF3C7" : "#EDE9FE",
-                },
+                { backgroundColor: order.slot === "lunch" ? "#FEF3C7" : "#EDE9FE" },
               ]}
             >
-              <Text
-                style={[
-                  styles.slotText,
-                  { color: order.slot === "lunch" ? "#92400E" : "#5B21B6" },
-                ]}
-              >
+              <Text style={[styles.slotText, { color: order.slot === "lunch" ? "#92400E" : "#5B21B6" }]}>
                 {order.slot === "lunch" ? "☀️ Lunch" : "🌙 Dinner"}
               </Text>
             </View>
@@ -118,12 +106,8 @@ export default function MealOrderCard({
             <Feather name="coffee" size={16} color={accentColor} />
           </View>
           <View style={styles.mealInfo}>
-            <Text style={[styles.mealName, { color: colors.foreground }]}>
-              {order.mealName}
-            </Text>
-            <Text style={[styles.restaurantName, { color: colors.mutedForeground }]}>
-              {order.restaurantName}
-            </Text>
+            <Text style={[styles.mealName, { color: colors.foreground }]}>{order.mealName}</Text>
+            <Text style={[styles.restaurantName, { color: colors.mutedForeground }]}>{order.restaurantName}</Text>
           </View>
           <View style={styles.priceWrap}>
             <Text style={[styles.price, { color: colors.foreground }]}>₹{order.pricePerDay}</Text>
@@ -132,7 +116,7 @@ export default function MealOrderCard({
         </View>
 
         {showActions && isActive && onCancel && (
-          <View style={[styles.actionsRow, { borderTopColor: colors.border }]}>
+          <View style={[styles.actionsRow, { borderTopColor: colors.border }]}> 
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -145,9 +129,7 @@ export default function MealOrderCard({
               ]}
             >
               <Feather name="x" size={13} color={colors.mutedForeground} />
-              <Text style={[styles.cancelBtnText, { color: colors.mutedForeground }]}>
-                Cancel this day
-              </Text>
+              <Text style={[styles.cancelBtnText, { color: colors.mutedForeground }]}>Cancel this day</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push(`/order-tracking/${order.id}`)}
@@ -175,12 +157,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     flexDirection: "row",
   },
-  accentBar: {
-    width: 4,
-  },
-  cardInner: {
-    flex: 1,
-  },
+  accentBar: { width: 4 },
+  cardInner: { flex: 1 },
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -189,48 +167,15 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
   },
-  dateSlot: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  date: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
-  slotPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 100,
-  },
-  slotText: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-  },
-  mealRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingBottom: 12,
-    gap: 10,
-  },
-  mealIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  dateSlot: { flexDirection: "row", alignItems: "center", gap: 8 },
+  date: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  slotPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100 },
+  slotText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  mealRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingBottom: 12, gap: 10 },
+  mealIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   mealInfo: { flex: 1 },
-  mealName: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    marginBottom: 2,
-  },
-  restaurantName: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
+  mealName: { fontSize: 15, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+  restaurantName: { fontSize: 12, fontFamily: "Inter_400Regular" },
   priceWrap: { alignItems: "flex-end" },
   price: { fontSize: 15, fontFamily: "Inter_700Bold" },
   priceSub: { fontSize: 10, fontFamily: "Inter_400Regular" },
@@ -250,10 +195,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
   },
-  cancelBtnText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-  },
+  cancelBtnText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   trackBtn: {
     flex: 1,
     flexDirection: "row",
@@ -264,8 +206,5 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
   },
-  trackBtnText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-  },
+  trackBtnText: { fontSize: 12, fontFamily: "Inter_500Medium" },
 });

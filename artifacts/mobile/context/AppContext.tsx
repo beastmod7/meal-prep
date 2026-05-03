@@ -72,6 +72,21 @@ export interface LedgerEntry {
   createdAt: string;
 }
 
+export interface RestaurantRating {
+  id: string;
+  restaurantId: string;
+  restaurantName: string;
+  foodQuality: number;
+  packaging: number;
+  delivery: number;
+  valueForMoney: number;
+  hygiene: number;
+  communication: number;
+  overall: number;
+  note: string;
+  createdAt: string;
+}
+
 interface SubscribeParams {
   restaurantId: string;
   restaurantName: string;
@@ -82,6 +97,12 @@ interface SubscribeParams {
   defaultMealName: string;
 }
 
+interface RateRestaurantParams {
+  restaurantId: string;
+  restaurantName: string;
+  ratings: Omit<RestaurantRating, "id" | "restaurantId" | "restaurantName" | "createdAt">;
+}
+
 interface AppContextType {
   isLoading: boolean;
   isOnboarded: boolean;
@@ -89,6 +110,7 @@ interface AppContextType {
   subscriptions: RestaurantSubscription[];
   orders: MealOrder[];
   ledger: LedgerEntry[];
+  restaurantRatings: RestaurantRating[];
   setOnboarded: () => Promise<void>;
   setUser: (user: User) => Promise<void>;
   subscribe: (params: SubscribeParams) => Promise<void>;
@@ -105,6 +127,7 @@ interface AppContextType {
   getOrderCancelStatus: (
     order: MealOrder
   ) => "free" | "late" | "full" | "none";
+  rateRestaurant: (params: RateRestaurantParams) => Promise<void>;
   refreshOrders: () => void;
 }
 
@@ -116,6 +139,7 @@ const STORAGE_KEYS = {
   SUBSCRIPTIONS: "mp_subscriptions",
   ORDERS: "mp_orders",
   LEDGER: "mp_ledger",
+  RATINGS: "mp_ratings",
 };
 
 function dateStr(d: Date): string {
@@ -245,9 +269,6 @@ function makeSeedData() {
   const orders1 = makeOrdersForSub(sub1, "m1", "Mini Thali");
   const orders2 = makeOrdersForSub(sub2, "m6", "Veg Tiffin");
 
-  const sevenDaysAgo = new Date(today);
-  sevenDaysAgo.setDate(today.getDate() - 7);
-
   const ledger: LedgerEntry[] = [
     {
       id: "l1",
@@ -278,10 +299,28 @@ function makeSeedData() {
     },
   ];
 
+  const ratings: RestaurantRating[] = [
+    {
+      id: "r1_rating",
+      restaurantId: "r1",
+      restaurantName: "Green Bowl",
+      foodQuality: 5,
+      packaging: 4,
+      delivery: 5,
+      valueForMoney: 4,
+      hygiene: 5,
+      communication: 4,
+      overall: 4.5,
+      note: "Fresh meals and smooth delivery.",
+      createdAt: new Date(today.getTime() - 2 * 86400000).toISOString(),
+    },
+  ];
+
   return {
     subscriptions: [sub1, sub2],
     orders: [...orders1, ...orders2],
     ledger,
+    ratings,
   };
 }
 
@@ -294,25 +333,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
   const [orders, setOrders] = useState<MealOrder[]>([]);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [restaurantRatings, setRestaurantRatings] = useState<RestaurantRating[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
-        const [onboardedRaw, userRaw, subsRaw, ordersRaw, ledgerRaw] =
+        const [onboardedRaw, userRaw, subsRaw, ordersRaw, ledgerRaw, ratingsRaw] =
           await Promise.all([
             AsyncStorage.getItem(STORAGE_KEYS.IS_ONBOARDED),
             AsyncStorage.getItem(STORAGE_KEYS.USER),
             AsyncStorage.getItem(STORAGE_KEYS.SUBSCRIPTIONS),
             AsyncStorage.getItem(STORAGE_KEYS.ORDERS),
             AsyncStorage.getItem(STORAGE_KEYS.LEDGER),
+            AsyncStorage.getItem(STORAGE_KEYS.RATINGS),
           ]);
         if (onboardedRaw === "true") setIsOnboarded(true);
         if (userRaw) setUserState(JSON.parse(userRaw));
         if (subsRaw) setSubscriptions(JSON.parse(subsRaw));
         if (ordersRaw) setOrders(JSON.parse(ordersRaw));
         if (ledgerRaw) setLedger(JSON.parse(ledgerRaw));
+        if (ratingsRaw) setRestaurantRatings(JSON.parse(ratingsRaw));
       } catch {
-        // ignore
       } finally {
         setIsLoading(false);
       }
@@ -344,10 +385,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           STORAGE_KEYS.LEDGER,
           JSON.stringify(seed.ledger)
         ),
+        AsyncStorage.setItem(
+          STORAGE_KEYS.RATINGS,
+          JSON.stringify(seed.ratings)
+        ),
       ]);
       setSubscriptions(seed.subscriptions);
       setOrders(seed.orders);
       setLedger(seed.ledger);
+      setRestaurantRatings(seed.ratings);
     }
   }, []);
 
@@ -598,6 +644,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [orders, subscriptions, ledger, getOrderCancelStatus]
   );
 
+  const rateRestaurant = useCallback(async (params: RateRestaurantParams) => {
+    const rating: RestaurantRating = {
+      id: `rating_${Date.now()}`,
+      restaurantId: params.restaurantId,
+      restaurantName: params.restaurantName,
+      ...params.ratings,
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [rating, ...restaurantRatings];
+    await AsyncStorage.setItem(STORAGE_KEYS.RATINGS, JSON.stringify(updated));
+    setRestaurantRatings(updated);
+  }, [restaurantRatings]);
+
   const refreshOrders = useCallback(() => {
     setOrders((prev) => [...prev]);
   }, []);
@@ -611,6 +670,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         subscriptions,
         orders,
         ledger,
+        restaurantRatings,
         setOnboarded,
         setUser,
         subscribe,
@@ -618,6 +678,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         pauseSubscription,
         cancelOrder,
         getOrderCancelStatus,
+        rateRestaurant,
         refreshOrders,
       }}
     >
