@@ -748,6 +748,128 @@ export interface LedgerEntry {
   createdAt: string;
 }
 
+export interface ComplianceProfile {
+  id?: string;
+  restaurantId: string;
+  legalName?: string | null;
+  tradeName?: string | null;
+  businessType?: string | null;
+  gstin?: string | null;
+  pan?: string | null;
+  fssaiLicenceNo?: string | null;
+  fssaiExpiry?: string | null;
+  registeredAddress?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pinCode?: string | null;
+  bankHolderName?: string | null;
+  bankName?: string | null;
+  accountNumber?: string | null;
+  accountType?: string | null;
+  ifscCode?: string | null;
+  upiId?: string | null;
+  bankVerified: boolean;
+  agreementSigned: boolean;
+  payoutsEnabled: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type ComplianceDocumentDocumentType =
+  (typeof ComplianceDocumentDocumentType)[keyof typeof ComplianceDocumentDocumentType];
+
+export const ComplianceDocumentDocumentType = {
+  gstin_certificate: "gstin_certificate",
+  pan_card: "pan_card",
+  fssai_licence: "fssai_licence",
+  trade_licence: "trade_licence",
+  cancelled_cheque: "cancelled_cheque",
+  owner_aadhaar: "owner_aadhaar",
+  owner_pan: "owner_pan",
+  incorporation_certificate: "incorporation_certificate",
+  utility_bill: "utility_bill",
+  menu_card: "menu_card",
+} as const;
+
+export type ComplianceDocumentStatus =
+  (typeof ComplianceDocumentStatus)[keyof typeof ComplianceDocumentStatus];
+
+export const ComplianceDocumentStatus = {
+  not_submitted: "not_submitted",
+  pending_review: "pending_review",
+  verified: "verified",
+  rejected: "rejected",
+} as const;
+
+export interface ComplianceDocument {
+  id: string;
+  restaurantId: string;
+  documentType: ComplianceDocumentDocumentType;
+  fileName: string;
+  fileType: string;
+  fileSizeBytes?: string | null;
+  status: ComplianceDocumentStatus;
+  rejectionReason?: string | null;
+  reviewedAt?: string | null;
+  notes?: string | null;
+  uploadedAt: string;
+}
+
+export type ComplianceDocumentWithContent = ComplianceDocument & {
+  fileContent: string;
+};
+
+export interface ComplianceData {
+  profile?: ComplianceProfile | null;
+  documents: ComplianceDocument[];
+}
+
+export interface UpdateComplianceBody {
+  legalName?: string;
+  tradeName?: string;
+  businessType?: string;
+  gstin?: string;
+  pan?: string;
+  fssaiLicenceNo?: string;
+  fssaiExpiry?: string;
+  registeredAddress?: string;
+  city?: string;
+  state?: string;
+  pinCode?: string;
+  bankHolderName?: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountType?: string;
+  ifscCode?: string;
+  upiId?: string;
+}
+
+export type UploadDocumentBodyDocumentType =
+  (typeof UploadDocumentBodyDocumentType)[keyof typeof UploadDocumentBodyDocumentType];
+
+export const UploadDocumentBodyDocumentType = {
+  gstin_certificate: "gstin_certificate",
+  pan_card: "pan_card",
+  fssai_licence: "fssai_licence",
+  trade_licence: "trade_licence",
+  cancelled_cheque: "cancelled_cheque",
+  owner_aadhaar: "owner_aadhaar",
+  owner_pan: "owner_pan",
+  incorporation_certificate: "incorporation_certificate",
+  utility_bill: "utility_bill",
+  menu_card: "menu_card",
+} as const;
+
+export interface UploadDocumentBody {
+  documentType: UploadDocumentBodyDocumentType;
+  fileName: string;
+  fileType: string;
+  /** Base64-encoded file content */
+  fileContent: string;
+  fileSizeBytes?: string;
+  notes?: string;
+}
+
 export type GetRestaurantOverviewParams = {
   dateFrom?: string;
   dateTo?: string;
@@ -928,6 +1050,10 @@ export const GetRestaurantRedemptionsPreset = {
   month: "month",
   last30: "last30",
 } as const;
+
+export type DeleteRestaurantDocument200 = {
+  success: boolean;
+};
 
 export type ExportRestaurantReportParams = {
   reportType: ExportRestaurantReportReportType;

@@ -22,11 +22,16 @@ import type {
   CancelStudentSubscription200,
   CancelStudentSubscriptionBody,
   CancellationsData,
+  ComplianceData,
+  ComplianceDocument,
+  ComplianceDocumentWithContent,
+  ComplianceProfile,
   CreateMealBody,
   CreatePackageBody,
   CreateSubscriptionBody,
   CreateSubscriptionResponse,
   DailyMealCount,
+  DeleteRestaurantDocument200,
   DeleteRestaurantMeal200,
   DeleteRestaurantPackage200,
   ErrorResponse,
@@ -68,7 +73,9 @@ import type {
   StudentUpdateProfileBody,
   StudentVerifyOtpBody,
   UpcomingMealsData,
+  UpdateComplianceBody,
   UpdateOrderStatusBody,
+  UploadDocumentBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -1988,6 +1995,486 @@ export function useGetRestaurantRedemptions<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Get compliance profile and document list
+ */
+export const getGetRestaurantComplianceUrl = (restaurantId: string) => {
+  return `/api/restaurant-portal/restaurants/${restaurantId}/compliance`;
+};
+
+export const getRestaurantCompliance = async (
+  restaurantId: string,
+  options?: RequestInit,
+): Promise<ComplianceData> => {
+  return customFetch<ComplianceData>(
+    getGetRestaurantComplianceUrl(restaurantId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetRestaurantComplianceQueryKey = (restaurantId: string) => {
+  return [
+    `/api/restaurant-portal/restaurants/${restaurantId}/compliance`,
+  ] as const;
+};
+
+export const getGetRestaurantComplianceQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRestaurantCompliance>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantCompliance>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetRestaurantComplianceQueryKey(restaurantId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getRestaurantCompliance>>
+  > = ({ signal }) =>
+    getRestaurantCompliance(restaurantId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!restaurantId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRestaurantCompliance>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRestaurantComplianceQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRestaurantCompliance>>
+>;
+export type GetRestaurantComplianceQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get compliance profile and document list
+ */
+
+export function useGetRestaurantCompliance<
+  TData = Awaited<ReturnType<typeof getRestaurantCompliance>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantCompliance>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRestaurantComplianceQueryOptions(
+    restaurantId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update compliance profile fields
+ */
+export const getUpdateRestaurantComplianceUrl = (restaurantId: string) => {
+  return `/api/restaurant-portal/restaurants/${restaurantId}/compliance`;
+};
+
+export const updateRestaurantCompliance = async (
+  restaurantId: string,
+  updateComplianceBody: UpdateComplianceBody,
+  options?: RequestInit,
+): Promise<ComplianceProfile> => {
+  return customFetch<ComplianceProfile>(
+    getUpdateRestaurantComplianceUrl(restaurantId),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateComplianceBody),
+    },
+  );
+};
+
+export const getUpdateRestaurantComplianceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateRestaurantCompliance>>,
+    TError,
+    { restaurantId: string; data: BodyType<UpdateComplianceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateRestaurantCompliance>>,
+  TError,
+  { restaurantId: string; data: BodyType<UpdateComplianceBody> },
+  TContext
+> => {
+  const mutationKey = ["updateRestaurantCompliance"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateRestaurantCompliance>>,
+    { restaurantId: string; data: BodyType<UpdateComplianceBody> }
+  > = (props) => {
+    const { restaurantId, data } = props ?? {};
+
+    return updateRestaurantCompliance(restaurantId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateRestaurantComplianceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateRestaurantCompliance>>
+>;
+export type UpdateRestaurantComplianceMutationBody =
+  BodyType<UpdateComplianceBody>;
+export type UpdateRestaurantComplianceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update compliance profile fields
+ */
+export const useUpdateRestaurantCompliance = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateRestaurantCompliance>>,
+    TError,
+    { restaurantId: string; data: BodyType<UpdateComplianceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateRestaurantCompliance>>,
+  TError,
+  { restaurantId: string; data: BodyType<UpdateComplianceBody> },
+  TContext
+> => {
+  return useMutation(getUpdateRestaurantComplianceMutationOptions(options));
+};
+
+/**
+ * @summary Upload a compliance document
+ */
+export const getUploadRestaurantDocumentUrl = (restaurantId: string) => {
+  return `/api/restaurant-portal/restaurants/${restaurantId}/compliance/documents`;
+};
+
+export const uploadRestaurantDocument = async (
+  restaurantId: string,
+  uploadDocumentBody: UploadDocumentBody,
+  options?: RequestInit,
+): Promise<ComplianceDocument> => {
+  return customFetch<ComplianceDocument>(
+    getUploadRestaurantDocumentUrl(restaurantId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(uploadDocumentBody),
+    },
+  );
+};
+
+export const getUploadRestaurantDocumentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadRestaurantDocument>>,
+    TError,
+    { restaurantId: string; data: BodyType<UploadDocumentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadRestaurantDocument>>,
+  TError,
+  { restaurantId: string; data: BodyType<UploadDocumentBody> },
+  TContext
+> => {
+  const mutationKey = ["uploadRestaurantDocument"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadRestaurantDocument>>,
+    { restaurantId: string; data: BodyType<UploadDocumentBody> }
+  > = (props) => {
+    const { restaurantId, data } = props ?? {};
+
+    return uploadRestaurantDocument(restaurantId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadRestaurantDocumentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadRestaurantDocument>>
+>;
+export type UploadRestaurantDocumentMutationBody = BodyType<UploadDocumentBody>;
+export type UploadRestaurantDocumentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Upload a compliance document
+ */
+export const useUploadRestaurantDocument = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadRestaurantDocument>>,
+    TError,
+    { restaurantId: string; data: BodyType<UploadDocumentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadRestaurantDocument>>,
+  TError,
+  { restaurantId: string; data: BodyType<UploadDocumentBody> },
+  TContext
+> => {
+  return useMutation(getUploadRestaurantDocumentMutationOptions(options));
+};
+
+/**
+ * @summary Get document with file content (for viewing/download)
+ */
+export const getGetRestaurantDocumentUrl = (
+  restaurantId: string,
+  documentId: string,
+) => {
+  return `/api/restaurant-portal/restaurants/${restaurantId}/compliance/documents/${documentId}`;
+};
+
+export const getRestaurantDocument = async (
+  restaurantId: string,
+  documentId: string,
+  options?: RequestInit,
+): Promise<ComplianceDocumentWithContent> => {
+  return customFetch<ComplianceDocumentWithContent>(
+    getGetRestaurantDocumentUrl(restaurantId, documentId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetRestaurantDocumentQueryKey = (
+  restaurantId: string,
+  documentId: string,
+) => {
+  return [
+    `/api/restaurant-portal/restaurants/${restaurantId}/compliance/documents/${documentId}`,
+  ] as const;
+};
+
+export const getGetRestaurantDocumentQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRestaurantDocument>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  documentId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantDocument>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetRestaurantDocumentQueryKey(restaurantId, documentId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getRestaurantDocument>>
+  > = ({ signal }) =>
+    getRestaurantDocument(restaurantId, documentId, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(restaurantId && documentId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRestaurantDocument>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRestaurantDocumentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRestaurantDocument>>
+>;
+export type GetRestaurantDocumentQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get document with file content (for viewing/download)
+ */
+
+export function useGetRestaurantDocument<
+  TData = Awaited<ReturnType<typeof getRestaurantDocument>>,
+  TError = ErrorType<unknown>,
+>(
+  restaurantId: string,
+  documentId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRestaurantDocument>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRestaurantDocumentQueryOptions(
+    restaurantId,
+    documentId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Delete a compliance document
+ */
+export const getDeleteRestaurantDocumentUrl = (
+  restaurantId: string,
+  documentId: string,
+) => {
+  return `/api/restaurant-portal/restaurants/${restaurantId}/compliance/documents/${documentId}`;
+};
+
+export const deleteRestaurantDocument = async (
+  restaurantId: string,
+  documentId: string,
+  options?: RequestInit,
+): Promise<DeleteRestaurantDocument200> => {
+  return customFetch<DeleteRestaurantDocument200>(
+    getDeleteRestaurantDocumentUrl(restaurantId, documentId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeleteRestaurantDocumentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteRestaurantDocument>>,
+    TError,
+    { restaurantId: string; documentId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteRestaurantDocument>>,
+  TError,
+  { restaurantId: string; documentId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteRestaurantDocument"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteRestaurantDocument>>,
+    { restaurantId: string; documentId: string }
+  > = (props) => {
+    const { restaurantId, documentId } = props ?? {};
+
+    return deleteRestaurantDocument(restaurantId, documentId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteRestaurantDocumentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteRestaurantDocument>>
+>;
+
+export type DeleteRestaurantDocumentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a compliance document
+ */
+export const useDeleteRestaurantDocument = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteRestaurantDocument>>,
+    TError,
+    { restaurantId: string; documentId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteRestaurantDocument>>,
+  TError,
+  { restaurantId: string; documentId: string },
+  TContext
+> => {
+  return useMutation(getDeleteRestaurantDocumentMutationOptions(options));
+};
 
 /**
  * @summary Export a restaurant report as CSV

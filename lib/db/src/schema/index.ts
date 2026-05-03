@@ -11,3 +11,4 @@ export * from "./cancellations";
 export * from "./settlementPeriods";
 export * from "./restaurantRatings";
 export * from "./ledger";
+export * from "./restaurantCompliance";

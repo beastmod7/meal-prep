@@ -560,6 +560,113 @@ paths:
               schema:
                 $ref: "#/components/schemas/RedemptionLedgerData"
 
+  /restaurant-portal/restaurants/{restaurantId}/compliance:
+    get:
+      operationId: getRestaurantCompliance
+      tags: [restaurant-portal-compliance]
+      summary: Get compliance profile and document list
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+      responses:
+        "200":
+          description: Compliance profile and documents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceData"
+    put:
+      operationId: updateRestaurantCompliance
+      tags: [restaurant-portal-compliance]
+      summary: Update compliance profile fields
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateComplianceBody"
+      responses:
+        "200":
+          description: Updated compliance profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceProfile"
+
+  /restaurant-portal/restaurants/{restaurantId}/compliance/documents:
+    post:
+      operationId: uploadRestaurantDocument
+      tags: [restaurant-portal-compliance]
+      summary: Upload a compliance document
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadDocumentBody"
+      responses:
+        "201":
+          description: Document uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceDocument"
+
+  /restaurant-portal/restaurants/{restaurantId}/compliance/documents/{documentId}:
+    get:
+      operationId: getRestaurantDocument
+      tags: [restaurant-portal-compliance]
+      summary: Get document with file content (for viewing/download)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Document with content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceDocumentWithContent"
+    delete:
+      operationId: deleteRestaurantDocument
+      tags: [restaurant-portal-compliance]
+      summary: Delete a compliance document
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RestaurantIdParam"
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Document deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required: [success]
+
   /restaurant-portal/restaurants/{restaurantId}/reports/export:
     get:
       operationId: exportRestaurantReport
@@ -2149,3 +2256,184 @@ components:
         createdAt:
           type: string
       required: [id, type, description, amountDelta, createdAt]
+
+    ComplianceProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        restaurantId:
+          type: string
+        legalName:
+          type: string
+          nullable: true
+        tradeName:
+          type: string
+          nullable: true
+        businessType:
+          type: string
+          nullable: true
+        gstin:
+          type: string
+          nullable: true
+        pan:
+          type: string
+          nullable: true
+        fssaiLicenceNo:
+          type: string
+          nullable: true
+        fssaiExpiry:
+          type: string
+          nullable: true
+        registeredAddress:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        pinCode:
+          type: string
+          nullable: true
+        bankHolderName:
+          type: string
+          nullable: true
+        bankName:
+          type: string
+          nullable: true
+        accountNumber:
+          type: string
+          nullable: true
+        accountType:
+          type: string
+          nullable: true
+        ifscCode:
+          type: string
+          nullable: true
+        upiId:
+          type: string
+          nullable: true
+        bankVerified:
+          type: boolean
+        agreementSigned:
+          type: boolean
+        payoutsEnabled:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [restaurantId, bankVerified, agreementSigned, payoutsEnabled]
+
+    ComplianceDocument:
+      type: object
+      properties:
+        id:
+          type: string
+        restaurantId:
+          type: string
+        documentType:
+          type: string
+          enum: [gstin_certificate, pan_card, fssai_licence, trade_licence, cancelled_cheque, owner_aadhaar, owner_pan, incorporation_certificate, utility_bill, menu_card]
+        fileName:
+          type: string
+        fileType:
+          type: string
+        fileSizeBytes:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [not_submitted, pending_review, verified, rejected]
+        rejectionReason:
+          type: string
+          nullable: true
+        reviewedAt:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        uploadedAt:
+          type: string
+      required: [id, restaurantId, documentType, fileName, fileType, status, uploadedAt]
+
+    ComplianceDocumentWithContent:
+      allOf:
+        - $ref: "#/components/schemas/ComplianceDocument"
+        - type: object
+          properties:
+            fileContent:
+              type: string
+          required: [fileContent]
+
+    ComplianceData:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/ComplianceProfile"
+          nullable: true
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComplianceDocument"
+      required: [documents]
+
+    UpdateComplianceBody:
+      type: object
+      properties:
+        legalName:
+          type: string
+        tradeName:
+          type: string
+        businessType:
+          type: string
+        gstin:
+          type: string
+        pan:
+          type: string
+        fssaiLicenceNo:
+          type: string
+        fssaiExpiry:
+          type: string
+        registeredAddress:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        pinCode:
+          type: string
+        bankHolderName:
+          type: string
+        bankName:
+          type: string
+        accountNumber:
+          type: string
+        accountType:
+          type: string
+        ifscCode:
+          type: string
+        upiId:
+          type: string
+
+    UploadDocumentBody:
+      type: object
+      properties:
+        documentType:
+          type: string
+          enum: [gstin_certificate, pan_card, fssai_licence, trade_licence, cancelled_cheque, owner_aadhaar, owner_pan, incorporation_certificate, utility_bill, menu_card]
+        fileName:
+          type: string
+        fileType:
+          type: string
+        fileContent:
+          type: string
+          description: Base64-encoded file content
+        fileSizeBytes:
+          type: string
+        notes:
+          type: string
+      required: [documentType, fileName, fileType, fileContent]

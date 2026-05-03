@@ -604,6 +604,212 @@ export const GetRestaurantRedemptionsResponse = zod.object({
 });
 
 /**
+ * @summary Get compliance profile and document list
+ */
+export const GetRestaurantComplianceParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const GetRestaurantComplianceResponse = zod.object({
+  profile: zod
+    .object({
+      id: zod.string().optional(),
+      restaurantId: zod.string(),
+      legalName: zod.string().nullish(),
+      tradeName: zod.string().nullish(),
+      businessType: zod.string().nullish(),
+      gstin: zod.string().nullish(),
+      pan: zod.string().nullish(),
+      fssaiLicenceNo: zod.string().nullish(),
+      fssaiExpiry: zod.string().nullish(),
+      registeredAddress: zod.string().nullish(),
+      city: zod.string().nullish(),
+      state: zod.string().nullish(),
+      pinCode: zod.string().nullish(),
+      bankHolderName: zod.string().nullish(),
+      bankName: zod.string().nullish(),
+      accountNumber: zod.string().nullish(),
+      accountType: zod.string().nullish(),
+      ifscCode: zod.string().nullish(),
+      upiId: zod.string().nullish(),
+      bankVerified: zod.boolean(),
+      agreementSigned: zod.boolean(),
+      payoutsEnabled: zod.boolean(),
+      createdAt: zod.string().optional(),
+      updatedAt: zod.string().optional(),
+    })
+    .nullish(),
+  documents: zod.array(
+    zod.object({
+      id: zod.string(),
+      restaurantId: zod.string(),
+      documentType: zod.enum([
+        "gstin_certificate",
+        "pan_card",
+        "fssai_licence",
+        "trade_licence",
+        "cancelled_cheque",
+        "owner_aadhaar",
+        "owner_pan",
+        "incorporation_certificate",
+        "utility_bill",
+        "menu_card",
+      ]),
+      fileName: zod.string(),
+      fileType: zod.string(),
+      fileSizeBytes: zod.string().nullish(),
+      status: zod.enum([
+        "not_submitted",
+        "pending_review",
+        "verified",
+        "rejected",
+      ]),
+      rejectionReason: zod.string().nullish(),
+      reviewedAt: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      uploadedAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update compliance profile fields
+ */
+export const UpdateRestaurantComplianceParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const UpdateRestaurantComplianceBody = zod.object({
+  legalName: zod.string().optional(),
+  tradeName: zod.string().optional(),
+  businessType: zod.string().optional(),
+  gstin: zod.string().optional(),
+  pan: zod.string().optional(),
+  fssaiLicenceNo: zod.string().optional(),
+  fssaiExpiry: zod.string().optional(),
+  registeredAddress: zod.string().optional(),
+  city: zod.string().optional(),
+  state: zod.string().optional(),
+  pinCode: zod.string().optional(),
+  bankHolderName: zod.string().optional(),
+  bankName: zod.string().optional(),
+  accountNumber: zod.string().optional(),
+  accountType: zod.string().optional(),
+  ifscCode: zod.string().optional(),
+  upiId: zod.string().optional(),
+});
+
+export const UpdateRestaurantComplianceResponse = zod.object({
+  id: zod.string().optional(),
+  restaurantId: zod.string(),
+  legalName: zod.string().nullish(),
+  tradeName: zod.string().nullish(),
+  businessType: zod.string().nullish(),
+  gstin: zod.string().nullish(),
+  pan: zod.string().nullish(),
+  fssaiLicenceNo: zod.string().nullish(),
+  fssaiExpiry: zod.string().nullish(),
+  registeredAddress: zod.string().nullish(),
+  city: zod.string().nullish(),
+  state: zod.string().nullish(),
+  pinCode: zod.string().nullish(),
+  bankHolderName: zod.string().nullish(),
+  bankName: zod.string().nullish(),
+  accountNumber: zod.string().nullish(),
+  accountType: zod.string().nullish(),
+  ifscCode: zod.string().nullish(),
+  upiId: zod.string().nullish(),
+  bankVerified: zod.boolean(),
+  agreementSigned: zod.boolean(),
+  payoutsEnabled: zod.boolean(),
+  createdAt: zod.string().optional(),
+  updatedAt: zod.string().optional(),
+});
+
+/**
+ * @summary Upload a compliance document
+ */
+export const UploadRestaurantDocumentParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const UploadRestaurantDocumentBody = zod.object({
+  documentType: zod.enum([
+    "gstin_certificate",
+    "pan_card",
+    "fssai_licence",
+    "trade_licence",
+    "cancelled_cheque",
+    "owner_aadhaar",
+    "owner_pan",
+    "incorporation_certificate",
+    "utility_bill",
+    "menu_card",
+  ]),
+  fileName: zod.string(),
+  fileType: zod.string(),
+  fileContent: zod.string().describe("Base64-encoded file content"),
+  fileSizeBytes: zod.string().optional(),
+  notes: zod.string().optional(),
+});
+
+/**
+ * @summary Get document with file content (for viewing/download)
+ */
+export const GetRestaurantDocumentParams = zod.object({
+  restaurantId: zod.coerce.string(),
+  documentId: zod.coerce.string(),
+});
+
+export const GetRestaurantDocumentResponse = zod
+  .object({
+    id: zod.string(),
+    restaurantId: zod.string(),
+    documentType: zod.enum([
+      "gstin_certificate",
+      "pan_card",
+      "fssai_licence",
+      "trade_licence",
+      "cancelled_cheque",
+      "owner_aadhaar",
+      "owner_pan",
+      "incorporation_certificate",
+      "utility_bill",
+      "menu_card",
+    ]),
+    fileName: zod.string(),
+    fileType: zod.string(),
+    fileSizeBytes: zod.string().nullish(),
+    status: zod.enum([
+      "not_submitted",
+      "pending_review",
+      "verified",
+      "rejected",
+    ]),
+    rejectionReason: zod.string().nullish(),
+    reviewedAt: zod.string().nullish(),
+    notes: zod.string().nullish(),
+    uploadedAt: zod.string(),
+  })
+  .and(
+    zod.object({
+      fileContent: zod.string(),
+    }),
+  );
+
+/**
+ * @summary Delete a compliance document
+ */
+export const DeleteRestaurantDocumentParams = zod.object({
+  restaurantId: zod.coerce.string(),
+  documentId: zod.coerce.string(),
+});
+
+export const DeleteRestaurantDocumentResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
  * @summary Export a restaurant report as CSV
  */
 export const ExportRestaurantReportParams = zod.object({
