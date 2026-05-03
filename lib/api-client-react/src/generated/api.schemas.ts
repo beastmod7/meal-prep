@@ -282,6 +282,8 @@ export const UpdateOrderStatusBodyStatus = {
 export interface UpdateOrderStatusBody {
   status: UpdateOrderStatusBodyStatus;
   note?: string;
+  /** 4-digit OTP shown on the student's app. Required when status is delivered and verification is enforced. */
+  verificationCode?: string;
 }
 
 export type CancellationsDataSummary = {

@@ -1465,6 +1465,9 @@ components:
           enum: [accepted, preparing, ready, delivered, no_show]
         note:
           type: string
+        verificationCode:
+          type: string
+          description: 4-digit OTP shown on the student's app. Required when status is delivered and verification is enforced.
       required:
         - status
 

@@ -20,6 +20,9 @@ import {
   UserX,
   Utensils,
   AlertTriangle,
+  ShieldCheck,
+  ShieldX,
+  KeyRound,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -40,7 +43,15 @@ import { inr } from "@/lib/fmt";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type OrderStatus = "scheduled" | "locked" | "accepted" | "preparing" | "ready" | "delivered" | "no_show" | "cancelled";
+type OrderStatus =
+  | "scheduled"
+  | "locked"
+  | "accepted"
+  | "preparing"
+  | "ready"
+  | "delivered"
+  | "no_show"
+  | "cancelled";
 
 interface LocalOrder {
   id: string;
@@ -53,6 +64,7 @@ interface LocalOrder {
   isLocked: boolean;
   pricePerDay: number;
   freeCancelUntil: string;
+  subscriptionId: string;
 }
 
 interface RecentAction {
@@ -60,7 +72,8 @@ interface RecentAction {
   studentName: string;
   prevStatus: OrderStatus;
   newStatus: OrderStatus;
-  time: number; // Date.now()
+  time: number;
+  verified?: boolean;
 }
 
 type ViewMode = "table" | "staff";
@@ -70,6 +83,21 @@ type SlotFilter = "all" | "lunch" | "dinner";
 
 const TERMINAL = new Set(["delivered", "no_show", "cancelled"]);
 const isTerminal = (s: string) => TERMINAL.has(s);
+
+/**
+ * Derives the same 4-digit verification code as the mobile app.
+ * Inputs: subscriptionId (from order) + scheduledDate (YYYY-MM-DD).
+ * Code rotates daily — same subscription yields a different code each day.
+ */
+function deriveVerificationCode(subscriptionId: string, date: string): string {
+  const input = subscriptionId.replace(/-/g, "") + date.replace(/-/g, "");
+  let hash = 5381;
+  for (let i = 0; i < input.length; i++) {
+    hash = ((hash << 5) + hash) + input.charCodeAt(i);
+    hash = hash & 0x7fffffff;
+  }
+  return String(hash % 10000).padStart(4, "0");
+}
 
 const statusStyle: Record<string, string> = {
   delivered: "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -105,24 +133,112 @@ function downloadCsv(headers: string[], rows: string[][], filename: string) {
   URL.revokeObjectURL(url);
 }
 
+// ─── OTP Input ────────────────────────────────────────────────────────────────
+
+function OtpInput({
+  value,
+  onChange,
+  error,
+}: {
+  value: string[];
+  onChange: (digits: string[]) => void;
+  error: boolean;
+}) {
+  const refs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+  ];
+
+  const handleChange = (idx: number, raw: string) => {
+    const digit = raw.replace(/\D/g, "").slice(-1);
+    const next = [...value];
+    next[idx] = digit;
+    onChange(next);
+    if (digit && idx < 3) refs[idx + 1]?.current?.focus();
+  };
+
+  const handleKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !value[idx] && idx > 0) {
+      refs[idx - 1]?.current?.focus();
+    }
+    if (e.key === "ArrowLeft" && idx > 0) refs[idx - 1]?.current?.focus();
+    if (e.key === "ArrowRight" && idx < 3) refs[idx + 1]?.current?.focus();
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4).split("");
+    const next = ["", "", "", ""].map((_, i) => digits[i] ?? "");
+    onChange(next);
+    const lastFilled = Math.min(digits.length, 3);
+    refs[lastFilled]?.current?.focus();
+  };
+
+  return (
+    <div className="flex gap-2 justify-center">
+      {[0, 1, 2, 3].map((idx) => (
+        <input
+          key={idx}
+          ref={refs[idx]}
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          value={value[idx] ?? ""}
+          onChange={(e) => handleChange(idx, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(idx, e)}
+          onPaste={handlePaste}
+          className={`w-12 h-14 text-center text-2xl font-bold rounded-xl border-2 outline-none transition-colors
+            focus:border-primary
+            ${error ? "border-destructive bg-destructive/5 text-destructive" : "border-border bg-background"}
+            ${value[idx] ? "border-primary/60" : ""}`}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ─── Staff card ───────────────────────────────────────────────────────────────
 
 function StaffCard({
   order,
   updating,
   recentAction,
+  codeError,
   onMark,
   onUndo,
 }: {
   order: LocalOrder;
   updating: boolean;
   recentAction?: RecentAction;
-  onMark: (id: string, status: UpdateOrderStatusBodyStatus, prev: OrderStatus) => void;
+  codeError: boolean;
+  onMark: (
+    id: string,
+    status: UpdateOrderStatusBodyStatus,
+    prev: OrderStatus,
+    code?: string,
+  ) => void;
   onUndo: (action: RecentAction) => void;
 }) {
   const done = isTerminal(order.status);
+  const [verifyMode, setVerifyMode] = useState(false);
+  const [otpDigits, setOtpDigits] = useState(["", "", "", ""]);
   const [undoSecsLeft, setUndoSecsLeft] = useState(0);
 
+  // Reset verify mode when order becomes terminal
+  useEffect(() => {
+    if (done) setVerifyMode(false);
+  }, [done]);
+
+  // Reset OTP when codeError clears (new attempt)
+  useEffect(() => {
+    if (!codeError && verifyMode) {
+      // keep digits so user can re-try
+    }
+  }, [codeError, verifyMode]);
+
+  // Undo countdown
   useEffect(() => {
     if (!recentAction) { setUndoSecsLeft(0); return; }
     const update = () => {
@@ -134,6 +250,29 @@ function StaffCard({
     return () => clearInterval(iv);
   }, [recentAction]);
 
+  const otpCode = otpDigits.join("");
+  const otpComplete = otpCode.length === 4;
+
+  const handleDeliverTap = () => {
+    setVerifyMode(true);
+    setOtpDigits(["", "", "", ""]);
+  };
+
+  const handleVerifyDeliver = () => {
+    if (!otpComplete) return;
+    onMark(order.id, "delivered", order.status, otpCode);
+  };
+
+  const handleOverrideDeliver = () => {
+    setVerifyMode(false);
+    onMark(order.id, "delivered", order.status, undefined);
+  };
+
+  const handleCancelVerify = () => {
+    setVerifyMode(false);
+    setOtpDigits(["", "", "", ""]);
+  };
+
   return (
     <div
       className={`rounded-xl border-2 transition-all duration-200 overflow-hidden
@@ -143,14 +282,19 @@ function StaffCard({
             : order.status === "no_show"
               ? "border-orange-200 bg-orange-50/60 opacity-70"
               : "border-gray-200 bg-gray-50/60 opacity-50"
-          : "border-border bg-card shadow-sm hover:shadow-md"
+          : verifyMode
+            ? "border-primary shadow-md"
+            : "border-border bg-card shadow-sm hover:shadow-md"
         }`}
     >
       {/* Card header */}
       <div className="flex items-start justify-between px-4 pt-4 pb-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            {done && order.status === "delivered" && (
+            {done && order.status === "delivered" && recentAction?.verified && (
+              <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+            )}
+            {done && order.status === "delivered" && !recentAction?.verified && (
               <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
             )}
             {done && order.status === "no_show" && (
@@ -170,19 +314,69 @@ function StaffCard({
                 : "bg-indigo-50 text-indigo-700 border-indigo-200"
             }
           >
-            {order.mealSlot === "lunch" ? "Lunch" : "Dinner"}
+            {order.mealSlot === "lunch" ? "☀️ Lunch" : "🌙 Dinner"}
           </Badge>
           <span className="text-sm font-semibold text-foreground">{inr(order.pricePerDay)}</span>
         </div>
       </div>
 
+      {/* OTP Verify panel */}
+      {verifyMode && !done && (
+        <div className="mx-4 mb-3 rounded-xl bg-muted/60 border border-border p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <KeyRound className="h-4 w-4 text-primary shrink-0" />
+            <p className="text-sm font-semibold text-foreground">Enter student's 4-digit code</p>
+          </div>
+          <p className="text-xs text-muted-foreground -mt-1">
+            Ask the student to open their app → My Plans → Show Code
+          </p>
+
+          <OtpInput value={otpDigits} onChange={setOtpDigits} error={codeError} />
+
+          {codeError && (
+            <div className="flex items-center gap-2 text-destructive text-xs">
+              <ShieldX className="h-3.5 w-3.5 shrink-0" />
+              <span>Wrong code — ask the student to check their app again.</span>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button
+              className="flex-1 h-10 bg-emerald-600 hover:bg-emerald-700 gap-1.5"
+              disabled={!otpComplete || updating}
+              onClick={handleVerifyDeliver}
+            >
+              {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+              Verify & Deliver
+            </Button>
+            <Button variant="outline" size="sm" className="h-10" onClick={handleCancelVerify}>
+              Cancel
+            </Button>
+          </div>
+
+          <button
+            onClick={handleOverrideDeliver}
+            className="w-full text-xs text-muted-foreground hover:text-foreground text-center pt-0.5 underline underline-offset-2"
+          >
+            Deliver without code (manager override)
+          </button>
+        </div>
+      )}
+
       {/* Status / actions */}
       <div className="px-4 pb-4">
         {done ? (
-          <div className="flex items-center justify-between mt-1">
-            <Badge variant="outline" className={`text-xs ${statusStyle[order.status]}`}>
-              {statusLabel[order.status]}
-            </Badge>
+          <div className="flex items-center justify-between mt-1 gap-2">
+            <div className="flex items-center gap-1.5">
+              <Badge variant="outline" className={`text-xs ${statusStyle[order.status]}`}>
+                {statusLabel[order.status]}
+              </Badge>
+              {order.status === "delivered" && recentAction?.verified && (
+                <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                  <ShieldCheck className="h-3 w-3" /> Verified
+                </span>
+              )}
+            </div>
             {recentAction && undoSecsLeft > 0 && (
               <Button
                 size="sm"
@@ -195,10 +389,11 @@ function StaffCard({
               </Button>
             )}
           </div>
-        ) : (
+        ) : !verifyMode ? (
           <div className="flex gap-2 mt-2">
-            {/* Preparing — acknowledge kitchen has started */}
-            {(order.status === "scheduled" || order.status === "locked" || order.status === "accepted") && (
+            {(order.status === "scheduled" ||
+              order.status === "locked" ||
+              order.status === "accepted") && (
               <Button
                 size="sm"
                 variant="outline"
@@ -215,22 +410,17 @@ function StaffCard({
               </Button>
             )}
 
-            {/* Mark Delivered — main CTA, always visible for active orders */}
+            {/* Delivered — opens OTP verify panel */}
             <Button
               size="sm"
               className="flex-[2] h-10 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
               disabled={updating}
-              onClick={() => onMark(order.id, "delivered", order.status)}
+              onClick={handleDeliverTap}
             >
-              {updating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4" />
-              )}
+              <CheckCircle2 className="h-4 w-4" />
               Delivered
             </Button>
 
-            {/* No Show */}
             <Button
               size="sm"
               variant="outline"
@@ -246,7 +436,7 @@ function StaffCard({
               No Show
             </Button>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -264,13 +454,11 @@ export default function UpcomingMeals() {
   const [slotFilter, setSlotFilter] = useState<SlotFilter>("all");
   const [exporting, setExporting] = useState(false);
 
-  // Local order state for optimistic updates
   const [localOrders, setLocalOrders] = useState<LocalOrder[]>([]);
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
   const [recentActions, setRecentActions] = useState<RecentAction[]>([]);
+  const [codeErrorIds, setCodeErrorIds] = useState<Set<string>>(new Set());
   const [bulkConfirmSlot, setBulkConfirmSlot] = useState<SlotFilter | null>(null);
-  const recentActionsRef = useRef(recentActions);
-  recentActionsRef.current = recentActions;
 
   const { data, isLoading } = useGetRestaurantUpcomingMeals(
     activeRestaurantId!,
@@ -283,7 +471,6 @@ export default function UpcomingMeals() {
     },
   );
 
-  // Sync server data → local state (but preserve optimistic updates)
   useEffect(() => {
     if (!data?.orders) return;
     setLocalOrders(
@@ -298,6 +485,7 @@ export default function UpcomingMeals() {
         isLocked: o.isLocked,
         pricePerDay: o.pricePerDay,
         freeCancelUntil: o.freeCancelUntil,
+        subscriptionId: (o as { subscriptionId?: string }).subscriptionId ?? "",
       })),
     );
   }, [data]);
@@ -316,7 +504,15 @@ export default function UpcomingMeals() {
     orderId: string,
     newStatus: UpdateOrderStatusBodyStatus,
     prevStatus: OrderStatus,
+    verificationCode?: string,
   ) => {
+    // Clear any previous code error for this order
+    setCodeErrorIds((prev) => {
+      const s = new Set(prev);
+      s.delete(orderId);
+      return s;
+    });
+
     // Optimistic update
     setLocalOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: newStatus as OrderStatus } : o)),
@@ -324,18 +520,24 @@ export default function UpcomingMeals() {
     setUpdatingIds((prev) => new Set(prev).add(orderId));
 
     updateStatus.mutate(
-      { restaurantId: activeRestaurantId!, orderId, data: { status: newStatus } },
+      { restaurantId: activeRestaurantId!, orderId, data: { status: newStatus, verificationCode } },
       {
         onSuccess: (updated) => {
-          // Commit the server response
           setLocalOrders((prev) =>
             prev.map((o) =>
               o.id === orderId ? { ...o, status: updated.status as OrderStatus } : o,
             ),
           );
-          // Record undo-able action
+          const verified = !!(verificationCode && (updated as { verified?: boolean }).verified);
           setRecentActions((prev) => [
-            { orderId, studentName: updated.studentName, prevStatus, newStatus: updated.status as OrderStatus, time: Date.now() },
+            {
+              orderId,
+              studentName: updated.studentName,
+              prevStatus,
+              newStatus: updated.status as OrderStatus,
+              time: Date.now(),
+              verified,
+            },
             ...prev.filter((a) => a.orderId !== orderId),
           ]);
           queryClient.invalidateQueries({
@@ -343,11 +545,20 @@ export default function UpcomingMeals() {
           });
         },
         onError: () => {
-          // Revert
+          // Revert optimistic update
           setLocalOrders((prev) =>
             prev.map((o) => (o.id === orderId ? { ...o, status: prevStatus } : o)),
           );
-          toast({ title: "Update failed", description: "Could not update order. Try again.", variant: "destructive" });
+          if (verificationCode !== undefined) {
+            // Code was provided but rejected — show inline error on card
+            setCodeErrorIds((prev) => new Set(prev).add(orderId));
+          } else {
+            toast({
+              title: "Update failed",
+              description: "Could not update order. Try again.",
+              variant: "destructive",
+            });
+          }
         },
         onSettled: () => {
           setUpdatingIds((prev) => {
@@ -363,17 +574,17 @@ export default function UpcomingMeals() {
   const handleUndo = (action: RecentAction) => {
     handleMark(action.orderId, action.prevStatus as UpdateOrderStatusBodyStatus, action.newStatus);
     setRecentActions((prev) => prev.filter((a) => a.orderId !== action.orderId));
-    toast({ description: `Reverted ${action.studentName} to ${statusLabel[action.prevStatus] ?? action.prevStatus}` });
+    toast({
+      description: `Reverted ${action.studentName} to ${statusLabel[action.prevStatus] ?? action.prevStatus}`,
+    });
   };
 
   const handleBulkDeliver = (slot: SlotFilter) => {
     const targets = localOrders.filter(
-      (o) =>
-        !isTerminal(o.status) &&
-        (slot === "all" || o.mealSlot === slot),
+      (o) => !isTerminal(o.status) && (slot === "all" || o.mealSlot === slot),
     );
     setBulkConfirmSlot(null);
-    targets.forEach((o) => handleMark(o.id, "delivered", o.status));
+    targets.forEach((o) => handleMark(o.id, "delivered", o.status, undefined));
     toast({ description: `Marking ${targets.length} orders as delivered…` });
   };
 
@@ -389,7 +600,11 @@ export default function UpcomingMeals() {
       const json = await res.json();
       downloadCsv(json.headers, json.rows, `daily-prep-${date}.csv`);
     } catch {
-      toast({ title: "Export failed", description: "Could not download report.", variant: "destructive" });
+      toast({
+        title: "Export failed",
+        description: "Could not download report.",
+        variant: "destructive",
+      });
     } finally {
       setExporting(false);
     }
@@ -397,15 +612,25 @@ export default function UpcomingMeals() {
 
   if (!activeRestaurantId) return null;
 
-  // ── Slot counts (from server summary) ───────────────────────────────────────
-  const lunchPending = localOrders.filter((o) => o.mealSlot === "lunch" && !isTerminal(o.status)).length;
-  const lunchDelivered = localOrders.filter((o) => o.mealSlot === "lunch" && o.status === "delivered").length;
-  const lunchTotal = localOrders.filter((o) => o.mealSlot === "lunch" && o.status !== "cancelled").length;
-  const dinnerPending = localOrders.filter((o) => o.mealSlot === "dinner" && !isTerminal(o.status)).length;
-  const dinnerDelivered = localOrders.filter((o) => o.mealSlot === "dinner" && o.status === "delivered").length;
-  const dinnerTotal = localOrders.filter((o) => o.mealSlot === "dinner" && o.status !== "cancelled").length;
+  const lunchPending = localOrders.filter(
+    (o) => o.mealSlot === "lunch" && !isTerminal(o.status),
+  ).length;
+  const lunchDelivered = localOrders.filter(
+    (o) => o.mealSlot === "lunch" && o.status === "delivered",
+  ).length;
+  const lunchTotal = localOrders.filter(
+    (o) => o.mealSlot === "lunch" && o.status !== "cancelled",
+  ).length;
+  const dinnerPending = localOrders.filter(
+    (o) => o.mealSlot === "dinner" && !isTerminal(o.status),
+  ).length;
+  const dinnerDelivered = localOrders.filter(
+    (o) => o.mealSlot === "dinner" && o.status === "delivered",
+  ).length;
+  const dinnerTotal = localOrders.filter(
+    (o) => o.mealSlot === "dinner" && o.status !== "cancelled",
+  ).length;
 
-  // ── Visible cards (sorted: pending first, then done) ─────────────────────
   const visibleOrders = localOrders
     .filter((o) => slotFilter === "all" || o.mealSlot === slotFilter)
     .sort((a, b) => {
@@ -425,12 +650,11 @@ export default function UpcomingMeals() {
           <h1 className="text-2xl font-bold tracking-tight">Daily Prep</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
             {viewMode === "staff"
-              ? "Tap to mark deliveries — no small buttons, no hunting."
+              ? "Tap Delivered → enter student's 4-digit code to verify."
               : "Kitchen locks, order count, and meal fulfillment."}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Date picker */}
           <div className="flex items-center gap-1.5 bg-card border rounded-lg px-3 py-1.5 shadow-sm">
             <CalendarIcon className="w-4 h-4 text-muted-foreground" />
             <Input
@@ -440,8 +664,6 @@ export default function UpcomingMeals() {
               className="border-0 shadow-none focus-visible:ring-0 w-[130px] p-0 h-auto text-sm"
             />
           </div>
-
-          {/* View toggle */}
           <div className="flex rounded-lg border bg-card overflow-hidden shadow-sm">
             <button
               onClick={() => setViewMode("staff")}
@@ -466,9 +688,12 @@ export default function UpcomingMeals() {
               Table
             </button>
           </div>
-
           <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
-            {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+            {exporting ? (
+              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 mr-1" />
+            )}
             CSV
           </Button>
         </div>
@@ -486,9 +711,6 @@ export default function UpcomingMeals() {
           </CardContent>
         </Card>
       ) : viewMode === "table" ? (
-        // ════════════════════════════════════════════════════════════════════
-        //  TABLE VIEW (unchanged, for managers)
-        // ════════════════════════════════════════════════════════════════════
         <>
           <div className="grid gap-4 md:grid-cols-2">
             <Card className="border-l-4 border-l-amber-500">
@@ -504,9 +726,17 @@ export default function UpcomingMeals() {
                     <p className="text-sm text-muted-foreground">pending</p>
                   </div>
                   <div className="text-right space-y-1 text-sm text-muted-foreground">
-                    <div>Total: <span className="font-semibold text-foreground">{lunchTotal}</span></div>
-                    <div>Cancelled: <span className="font-semibold text-destructive">{data.lunchCancelled}</span></div>
-                    <div>Delivered: <span className="font-semibold text-emerald-600">{lunchDelivered}</span></div>
+                    <div>
+                      Total: <span className="font-semibold text-foreground">{lunchTotal}</span>
+                    </div>
+                    <div>
+                      Cancelled:{" "}
+                      <span className="font-semibold text-destructive">{data.lunchCancelled}</span>
+                    </div>
+                    <div>
+                      Delivered:{" "}
+                      <span className="font-semibold text-emerald-600">{lunchDelivered}</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -524,9 +754,19 @@ export default function UpcomingMeals() {
                     <p className="text-sm text-muted-foreground">pending</p>
                   </div>
                   <div className="text-right space-y-1 text-sm text-muted-foreground">
-                    <div>Total: <span className="font-semibold text-foreground">{dinnerTotal}</span></div>
-                    <div>Cancelled: <span className="font-semibold text-destructive">{data.dinnerCancelled}</span></div>
-                    <div>Delivered: <span className="font-semibold text-emerald-600">{dinnerDelivered}</span></div>
+                    <div>
+                      Total: <span className="font-semibold text-foreground">{dinnerTotal}</span>
+                    </div>
+                    <div>
+                      Cancelled:{" "}
+                      <span className="font-semibold text-destructive">
+                        {data.dinnerCancelled}
+                      </span>
+                    </div>
+                    <div>
+                      Delivered:{" "}
+                      <span className="font-semibold text-emerald-600">{dinnerDelivered}</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -556,7 +796,10 @@ export default function UpcomingMeals() {
                 <TableBody>
                   {localOrders.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                      <TableCell
+                        colSpan={6}
+                        className="text-center py-10 text-muted-foreground"
+                      >
                         <UtensilsCrossed className="mx-auto h-7 w-7 mb-2 opacity-40" />
                         No orders scheduled for this date.
                       </TableCell>
@@ -566,7 +809,9 @@ export default function UpcomingMeals() {
                       <TableRow key={order.id}>
                         <TableCell>
                           <div className="font-medium">{order.studentName}</div>
-                          <div className="text-xs text-muted-foreground">{order.studentPhoneMasked}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {order.studentPhoneMasked}
+                          </div>
                         </TableCell>
                         <TableCell className="text-sm">{order.packageName}</TableCell>
                         <TableCell>
@@ -583,7 +828,10 @@ export default function UpcomingMeals() {
                         </TableCell>
                         <TableCell className="font-medium">{inr(order.pricePerDay)}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={statusStyle[order.status] ?? ""}>
+                          <Badge
+                            variant="outline"
+                            className={statusStyle[order.status] ?? ""}
+                          >
                             {statusLabel[order.status] ?? order.status}
                           </Badge>
                         </TableCell>
@@ -597,8 +845,7 @@ export default function UpcomingMeals() {
                                 disabled={updatingIds.has(order.id)}
                                 onClick={() => handleMark(order.id, "preparing", order.status)}
                               >
-                                {updatingIds.has(order.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <ChefHat className="h-3 w-3" />}
-                                Prep
+                                <ChefHat className="h-3 w-3" />
                               </Button>
                               <Button
                                 size="sm"
@@ -633,16 +880,14 @@ export default function UpcomingMeals() {
           </Card>
         </>
       ) : (
-        // ════════════════════════════════════════════════════════════════════
-        //  STAFF CHECK-IN MODE
-        // ════════════════════════════════════════════════════════════════════
+        // ── STAFF CHECK-IN MODE ──────────────────────────────────────────────
         <div className="space-y-4">
           {/* Progress bars */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: "Lunch", delivered: lunchDelivered, total: lunchTotal, color: "bg-amber-500" },
-              { label: "Dinner", delivered: dinnerDelivered, total: dinnerTotal, color: "bg-indigo-500" },
-            ].map(({ label, delivered, total, color }) => (
+              { label: "Lunch ☀️", delivered: lunchDelivered, total: lunchTotal },
+              { label: "Dinner 🌙", delivered: dinnerDelivered, total: dinnerTotal },
+            ].map(({ label, delivered, total }) => (
               <Card key={label} className="py-0">
                 <CardContent className="px-4 py-3">
                   <div className="flex items-center justify-between mb-1.5">
@@ -652,10 +897,7 @@ export default function UpcomingMeals() {
                       <span className="text-muted-foreground"> / {total}</span>
                     </span>
                   </div>
-                  <Progress
-                    value={total > 0 ? (delivered / total) * 100 : 0}
-                    className="h-2"
-                  />
+                  <Progress value={total > 0 ? (delivered / total) * 100 : 0} className="h-2" />
                   <p className="text-xs text-muted-foreground mt-1">
                     {total > 0
                       ? delivered === total
@@ -666,6 +908,15 @@ export default function UpcomingMeals() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+
+          {/* Verification badge */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 border rounded-lg px-3 py-2">
+            <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+            <span>
+              <strong className="text-foreground">OTP Verification active.</strong> Tap Delivered
+              → enter the 4-digit code from the student's app to confirm pickup.
+            </span>
           </div>
 
           {/* Slot tabs + bulk action */}
@@ -682,28 +933,39 @@ export default function UpcomingMeals() {
                   }`}
                 >
                   {s}
-                  {s !== "all" && (
-                    <span className="ml-1.5 text-xs opacity-70">
-                      ({s === "lunch" ? lunchPending : dinnerPending})
-                    </span>
-                  )}
                   {s === "all" && pendingCount > 0 && (
                     <span className="ml-1.5 text-xs opacity-70">({pendingCount})</span>
+                  )}
+                  {s === "lunch" && (
+                    <span className="ml-1.5 text-xs opacity-70">({lunchPending})</span>
+                  )}
+                  {s === "dinner" && (
+                    <span className="ml-1.5 text-xs opacity-70">({dinnerPending})</span>
                   )}
                 </button>
               ))}
             </div>
 
-            {/* Bulk deliver */}
-            {pendingCount > 0 && (
-              bulkConfirmSlot === slotFilter ? (
+            {pendingCount > 0 &&
+              (bulkConfirmSlot === slotFilter ? (
                 <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
                   <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                  <span className="text-sm text-amber-800">Mark all {pendingCount} as delivered?</span>
-                  <Button size="sm" className="h-7 bg-emerald-600 hover:bg-emerald-700" onClick={() => handleBulkDeliver(slotFilter)}>
-                    Yes, confirm
+                  <span className="text-sm text-amber-800">
+                    Mark all {pendingCount} as delivered (no code)?
+                  </span>
+                  <Button
+                    size="sm"
+                    className="h-7 bg-emerald-600 hover:bg-emerald-700"
+                    onClick={() => handleBulkDeliver(slotFilter)}
+                  >
+                    Confirm
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-7" onClick={() => setBulkConfirmSlot(null)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7"
+                    onClick={() => setBulkConfirmSlot(null)}
+                  >
                     Cancel
                   </Button>
                 </div>
@@ -715,10 +977,9 @@ export default function UpcomingMeals() {
                   onClick={() => setBulkConfirmSlot(slotFilter)}
                 >
                   <CheckCircle2 className="h-4 w-4" />
-                  Mark all {slotFilter === "all" ? "" : slotFilter + " "}({pendingCount}) delivered
+                  Bulk mark ({pendingCount}) delivered
                 </Button>
-              )
-            )}
+              ))}
           </div>
 
           {/* Cards grid */}
@@ -737,6 +998,7 @@ export default function UpcomingMeals() {
                   order={order}
                   updating={updatingIds.has(order.id)}
                   recentAction={recentActions.find((a) => a.orderId === order.id)}
+                  codeError={codeErrorIds.has(order.id)}
                   onMark={handleMark}
                   onUndo={handleUndo}
                 />
@@ -749,16 +1011,25 @@ export default function UpcomingMeals() {
             <Card className="border-dashed">
               <CardHeader className="py-3 px-4">
                 <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Recent updates (undo within 30s)
+                  Recent updates — undo within 30s
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-3 space-y-1.5">
                 {recentActions.slice(0, 5).map((action) => (
-                  <div key={action.orderId} className="flex items-center justify-between text-sm">
+                  <div
+                    key={action.orderId}
+                    className="flex items-center justify-between text-sm"
+                  >
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className={`text-xs ${statusStyle[action.newStatus]}`}>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs ${statusStyle[action.newStatus]}`}
+                      >
                         {statusLabel[action.newStatus]}
                       </Badge>
+                      {action.verified && (
+                        <ShieldCheck className="h-3 w-3 text-emerald-600" />
+                      )}
                       <span className="text-foreground font-medium">{action.studentName}</span>
                     </div>
                     <Button

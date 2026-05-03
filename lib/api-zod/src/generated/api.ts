@@ -420,6 +420,12 @@ export const UpdateMealOrderStatusParams = zod.object({
 export const UpdateMealOrderStatusBody = zod.object({
   status: zod.enum(["accepted", "preparing", "ready", "delivered", "no_show"]),
   note: zod.string().optional(),
+  verificationCode: zod
+    .string()
+    .optional()
+    .describe(
+      "4-digit OTP shown on the student's app. Required when status is delivered and verification is enforced.",
+    ),
 });
 
 export const UpdateMealOrderStatusResponse = zod.object({

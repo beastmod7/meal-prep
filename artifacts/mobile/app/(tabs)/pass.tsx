@@ -46,6 +46,21 @@ const progressStyles = StyleSheet.create({
   },
 });
 
+/**
+ * Derives the same 4-digit OTP as the portal (deriveVerificationCode).
+ * This is intentionally duplicated (no shared lib between Expo and API) to keep
+ * the algorithm auditable side-by-side.
+ */
+function deriveVerificationCode(subscriptionId: string, date: string): string {
+  const input = subscriptionId.replace(/-/g, "") + date.replace(/-/g, "");
+  let hash = 5381;
+  for (let i = 0; i < input.length; i++) {
+    hash = ((hash << 5) + hash) + input.charCodeAt(i);
+    hash = hash & 0x7fffffff;
+  }
+  return String(hash % 10000).padStart(4, "0");
+}
+
 function SubscriptionCard({
   sub,
   onPause,
@@ -121,6 +136,77 @@ function SubscriptionCard({
         <Text style={[cardStyles.progressText, { color: colors.mutedForeground }]}>
           {sub.usedDays} of {sub.totalDays} days used
         </Text>
+
+        {/* Show My Code — primary action for active subs */}
+        {isActive && (() => {
+          const today = new Date().toISOString().split("T")[0]!;
+          const code = deriveVerificationCode(sub.id, today);
+          const isLunch = sub.slot !== "dinner";
+          return (
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                router.push({
+                  pathname: "/show-pass" as never,
+                  params: {
+                    subscriptionId: sub.id,
+                    slot: sub.slot,
+                    restaurantName: sub.restaurantName,
+                  },
+                });
+              }}
+              style={({ pressed }) => [
+                cardStyles.showCodeBtn,
+                {
+                  backgroundColor: isLunch ? "#FEF3C7" : "#EDE9FE",
+                  borderColor: isLunch ? "#FCD34D" : "#C4B5FD",
+                },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <View style={cardStyles.showCodeLeft}>
+                <Feather
+                  name="shield"
+                  size={15}
+                  color={isLunch ? "#92400E" : "#4C1D95"}
+                />
+                <View>
+                  <Text
+                    style={[
+                      cardStyles.showCodeLabel,
+                      { color: isLunch ? "#78350F" : "#3B0764" },
+                    ]}
+                  >
+                    Show My Code
+                  </Text>
+                  <Text
+                    style={[
+                      cardStyles.showCodeHint,
+                      { color: isLunch ? "#92400E" : "#4C1D95" },
+                    ]}
+                  >
+                    Today's pickup code
+                  </Text>
+                </View>
+              </View>
+              <View style={cardStyles.showCodeRight}>
+                <Text
+                  style={[
+                    cardStyles.showCodeDigits,
+                    { color: isLunch ? "#92400E" : "#4C1D95" },
+                  ]}
+                >
+                  {code}
+                </Text>
+                <Feather
+                  name="chevron-right"
+                  size={14}
+                  color={isLunch ? "#92400E" : "#4C1D95"}
+                />
+              </View>
+            </Pressable>
+          );
+        })()}
 
         {!isCancelled && (
           <View style={cardStyles.actions}>
@@ -221,6 +307,20 @@ const cardStyles = StyleSheet.create({
     marginTop: 2,
   },
   resubBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#3B82F6", flex: 1 },
+  showCodeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 12,
+    borderWidth: 1.5,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  showCodeLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  showCodeLabel: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  showCodeHint: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  showCodeRight: { flexDirection: "row", alignItems: "center", gap: 6 },
+  showCodeDigits: { fontSize: 22, fontFamily: "Inter_700Bold", letterSpacing: 4 },
 });
 
 export default function PlansScreen() {

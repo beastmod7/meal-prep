@@ -11,6 +11,21 @@ const router = Router({ mergeParams: true });
 
 router.use(requirePortalAuth, requireRestaurantAccess);
 
+/**
+ * Derive a deterministic 4-digit verification code from a subscriptionId + date.
+ * The same algorithm runs in the mobile app (student side) and the portal (staff side).
+ * Code rotates daily — same subscription yields a different code each day.
+ */
+function deriveVerificationCode(subscriptionId: string, date: string): string {
+  const input = subscriptionId.replace(/-/g, "") + date.replace(/-/g, "");
+  let hash = 5381;
+  for (let i = 0; i < input.length; i++) {
+    hash = ((hash << 5) + hash) + input.charCodeAt(i);
+    hash = hash & 0x7fffffff; // keep positive 32-bit int
+  }
+  return String(hash % 10000).padStart(4, "0");
+}
+
 router.get("/", async (req, res) => {
   const restaurantId = (req.params as Record<string, string>)["restaurantId"]!;
   const { date, mealSlot, status } = req.query as {
@@ -59,8 +74,12 @@ router.get("/", async (req, res) => {
     lunchDelivered: orders.filter((o) => o.mealSlot === "lunch" && o.status === "delivered").length,
     dinnerTotal: dinnerOrders.length,
     dinnerLocked: dinnerOrders.filter((o) => o.isLocked).length,
-    dinnerCancelled: orders.filter((o) => o.mealSlot === "dinner" && o.status === "cancelled").length,
-    dinnerDelivered: orders.filter((o) => o.mealSlot === "dinner" && o.status === "delivered").length,
+    dinnerCancelled: orders.filter(
+      (o) => o.mealSlot === "dinner" && o.status === "cancelled",
+    ).length,
+    dinnerDelivered: orders.filter(
+      (o) => o.mealSlot === "dinner" && o.status === "delivered",
+    ).length,
     isLockPassed,
     lockTime: "10:00 AM",
     orders: filtered.map((o) => ({
@@ -74,6 +93,7 @@ router.get("/", async (req, res) => {
       freeCancelUntil: o.freeCancelUntil,
       isLocked: o.isLocked,
       pricePerDay: parseFloat(o.pricePerDay),
+      subscriptionId: o.subscriptionId,
     })),
   });
 });
@@ -128,7 +148,11 @@ router.get("/counts", async (req, res) => {
 router.patch("/:orderId/status", async (req, res) => {
   const restaurantId = (req.params as Record<string, string>)["restaurantId"]!;
   const orderId = (req.params as Record<string, string>)["orderId"]!;
-  const { status, note } = req.body as { status: string; note?: string };
+  const { status, note, verificationCode } = req.body as {
+    status: string;
+    note?: string;
+    verificationCode?: string;
+  };
 
   const validStatuses = ["accepted", "preparing", "ready", "delivered", "no_show"];
   if (!validStatuses.includes(status)) {
@@ -150,6 +174,19 @@ router.patch("/:orderId/status", async (req, res) => {
   if (!order) {
     res.status(404).json({ error: "Not Found", message: "Order not found" });
     return;
+  }
+
+  // Verify OTP when marking as delivered and a code is provided
+  if (status === "delivered" && verificationCode) {
+    const expectedCode = deriveVerificationCode(order.subscriptionId, order.scheduledDate);
+    if (verificationCode !== expectedCode) {
+      res.status(400).json({
+        error: "Bad Request",
+        message: "Invalid verification code. Ask the student to show their app.",
+        code: "INVALID_VERIFICATION_CODE",
+      });
+      return;
+    }
   }
 
   const [updated] = await db
@@ -177,6 +214,8 @@ router.patch("/:orderId/status", async (req, res) => {
     freeCancelUntil: updated.freeCancelUntil,
     isLocked: updated.isLocked,
     pricePerDay: parseFloat(updated.pricePerDay),
+    subscriptionId: updated.subscriptionId,
+    verified: !!verificationCode,
   });
 });
 
