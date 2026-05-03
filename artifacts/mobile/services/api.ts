@@ -298,6 +298,29 @@ export async function cancelOrder(
   return request(`/orders/${orderId}/cancel`, { method: "POST" });
 }
 
+// --- Free Meal ---
+
+export async function getFreeMealStatus(): Promise<{ eligible: boolean }> {
+  return request<{ eligible: boolean }>("/free-meal");
+}
+
+export async function bookFreeMeal(data: {
+  restaurantId: string;
+  slot: "lunch" | "dinner";
+}): Promise<{
+  subscriptionId: string;
+  orderId: string;
+  restaurantName: string;
+  slot: "lunch" | "dinner";
+  scheduledDate: string;
+  message: string;
+}> {
+  return request("/free-meal/book", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 // --- Ledger ---
 
 export interface ApiLedgerEntry {

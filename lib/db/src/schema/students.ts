@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, pgEnum, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, pgEnum, numeric, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { campusesTable } from "./campuses";
@@ -33,6 +33,7 @@ export const studentsTable = pgTable("students", {
   walletBalance: numeric("wallet_balance", { precision: 12, scale: 2 })
     .notNull()
     .default("0"),
+  freeTrialUsed: boolean("free_trial_used").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

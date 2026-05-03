@@ -96,6 +96,10 @@ function NavigationController() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="free-meal"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="ledger"
         options={{
           headerShown: true,

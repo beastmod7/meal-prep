@@ -93,6 +93,7 @@ interface AppContextType {
   orders: MealOrder[];
   ledger: LedgerEntry[];
   restaurantRatings: RestaurantRating[];
+  freeTrialEligible: boolean;
   setOnboarded: () => Promise<void>;
   setUser: (user: User) => Promise<void>;
   subscribe: (params: SubscribeParams) => Promise<void>;
@@ -102,6 +103,7 @@ interface AppContextType {
   getOrderCancelStatus: (order: MealOrder) => "free" | "late" | "full" | "none";
   rateRestaurant: (params: RateRestaurantParams) => Promise<void>;
   refreshOrders: () => void;
+  bookFreeMeal: (restaurantId: string, slot: "lunch" | "dinner") => Promise<{ subscriptionId: string; orderId: string; scheduledDate: string }>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -167,6 +169,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = useState<MealOrder[]>([]);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [restaurantRatings, setRestaurantRatings] = useState<RestaurantRating[]>([]);
+  const [freeTrialEligible, setFreeTrialEligible] = useState(true);
 
   useEffect(() => {
     (async () => {
@@ -182,14 +185,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         const token = await api.getToken();
         if (token) {
-          const [subs, apiOrders, apiLedger] = await Promise.all([
+          const [subs, apiOrders, apiLedger, freeMealStatus] = await Promise.all([
             api.getSubscriptions(),
             api.getOrders(),
             api.getLedger(),
+            api.getFreeMealStatus().catch(() => ({ eligible: true })),
           ]);
           setSubscriptions(subs.map(mapApiSub));
           setOrders(apiOrders.map(mapApiOrder));
           setLedger(apiLedger.map(mapApiLedger));
+          setFreeTrialEligible(freeMealStatus.eligible);
         }
       } catch {
       } finally {
@@ -315,6 +320,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     api.getOrders().then((apiOrders) => setOrders(apiOrders.map(mapApiOrder))).catch(() => {});
   }, []);
 
+  const bookFreeMeal = useCallback(
+    async (restaurantId: string, slot: "lunch" | "dinner") => {
+      const result = await api.bookFreeMeal({ restaurantId, slot });
+      setFreeTrialEligible(false);
+      const [subs, apiOrders, apiLedger] = await Promise.all([
+        api.getSubscriptions(),
+        api.getOrders(),
+        api.getLedger(),
+      ]);
+      setSubscriptions(subs.map(mapApiSub));
+      setOrders(apiOrders.map(mapApiOrder));
+      setLedger(apiLedger.map(mapApiLedger));
+      return { subscriptionId: result.subscriptionId, orderId: result.orderId, scheduledDate: result.scheduledDate };
+    },
+    [],
+  );
+
   return (
     <AppContext.Provider
       value={{
@@ -325,6 +347,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         orders,
         ledger,
         restaurantRatings,
+        freeTrialEligible,
         setOnboarded,
         setUser,
         subscribe,
@@ -334,6 +357,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         getOrderCancelStatus,
         rateRestaurant,
         refreshOrders,
+        bookFreeMeal,
       }}
     >
       {children}

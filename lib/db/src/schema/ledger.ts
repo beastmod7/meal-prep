@@ -12,6 +12,7 @@ export const ledgerEntryTypeEnum = pgEnum("ledger_entry_type", [
   "refund",
   "wallet_topup",
   "subscription_cancel_refund",
+  "free_trial",
 ]);
 
 /**

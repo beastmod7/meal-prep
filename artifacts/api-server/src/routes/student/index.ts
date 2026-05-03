@@ -7,6 +7,7 @@ import ordersRouter from "./orders.js";
 import ledgerRouter from "./ledger.js";
 import campusesRouter from "./campuses.js";
 import ratingsRouter from "./ratings.js";
+import freeMealRouter from "./freeMeal.js";
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use("/orders", ordersRouter);
 router.use("/ledger", ledgerRouter);
 router.use("/campuses", campusesRouter);
 router.use("/ratings", ratingsRouter);
+router.use("/free-meal", freeMealRouter);
 
 export default router;

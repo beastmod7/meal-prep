@@ -21,6 +21,38 @@ import { getRestaurants, ApiRestaurant } from "@/services/api";
 import { toCardRestaurant } from "@/utils/restaurants";
 import { useColors } from "@/hooks/useColors";
 
+// ─── Free Meal Banner ─────────────────────────────────────────────────────────
+
+function FreeMealBanner({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [fm.wrap, pressed && { opacity: 0.88 }]}>
+      <LinearGradient colors={["#F59E0B", "#D97706"]} style={fm.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+        <View style={fm.left}>
+          <View style={fm.badge}>
+            <Text style={fm.badgeText}>FREE</Text>
+          </View>
+          <Text style={fm.title}>Your first meal is on us 🎁</Text>
+          <Text style={fm.sub}>Book today — no payment, no commitment needed.</Text>
+        </View>
+        <View style={fm.arrowCircle}>
+          <Feather name="arrow-right" size={20} color="#F59E0B" />
+        </View>
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
+const fm = StyleSheet.create({
+  wrap: { borderRadius: 18, overflow: "hidden" },
+  gradient: { flexDirection: "row", alignItems: "center", padding: 18, gap: 14 },
+  left: { flex: 1, gap: 5 },
+  badge: { backgroundColor: "rgba(255,255,255,0.25)", alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100 },
+  badgeText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#FFFFFF", letterSpacing: 0.6 },
+  title: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+  sub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.88)", lineHeight: 17 },
+  arrowCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
+});
+
 function getGreeting(): string {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning";
@@ -39,7 +71,7 @@ export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, subscriptions, orders, cancelOrder, getOrderCancelStatus } = useApp();
+  const { user, subscriptions, orders, cancelOrder, getOrderCancelStatus, freeTrialEligible } = useApp();
 
   const [cancelTarget, setCancelTarget] = useState<MealOrder | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
@@ -146,7 +178,11 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {activeSubs.length === 0 && (
+          {freeTrialEligible && (
+            <FreeMealBanner onPress={() => router.push("/free-meal")} />
+          )}
+
+          {activeSubs.length === 0 && !freeTrialEligible && (
             <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Feather name="coffee" size={28} color={colors.mutedForeground} />
               <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Subscribe to a restaurant</Text>
