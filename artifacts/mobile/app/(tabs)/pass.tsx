@@ -2,10 +2,8 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
 import {
-  Alert,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -194,11 +192,7 @@ export default function PlansScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { subscriptions, ledger, cancelSubscription } = useApp();
-
-  const [cancelTarget, setCancelTarget] = useState<RestaurantSubscription | null>(null);
-  const [cancelLoading, setCancelLoading] = useState(false);
-  const [cancelResult, setCancelResult] = useState<{ refundAmount: number } | null>(null);
+  const { subscriptions, ledger } = useApp();
 
   const activeSubs = subscriptions.filter((s) => s.status === "active" || s.status === "paused");
   const pastSubs = subscriptions.filter(
@@ -206,20 +200,6 @@ export default function PlansScreen() {
   );
 
   const recentLedger = ledger.slice(0, 6);
-
-  async function confirmCancel() {
-    if (!cancelTarget) return;
-    setCancelLoading(true);
-    const result = await cancelSubscription(cancelTarget.id);
-    setCancelLoading(false);
-    setCancelResult(result);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }
-
-  function closeCancelModal() {
-    setCancelTarget(null);
-    setCancelResult(null);
-  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -270,7 +250,7 @@ export default function PlansScreen() {
                   }}
                   onCancel={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    setCancelTarget(sub);
+                    router.push({ pathname: "/refund-request", params: { subscriptionId: sub.id } });
                   }}
                 />
               ))}
@@ -362,64 +342,6 @@ export default function PlansScreen() {
         </View>
       </ScrollView>
 
-      {/* Cancel confirmation modal */}
-      <Modal visible={!!cancelTarget} transparent animationType="slide" onRequestClose={closeCancelModal}>
-        <Pressable style={styles.overlay} onPress={cancelResult ? closeCancelModal : undefined}>
-          <View style={styles.sheet}>
-            <View style={styles.sheetHandle} />
-            {cancelResult ? (
-              <>
-                <Text style={styles.sheetTitle}>Subscription cancelled</Text>
-                <Text style={styles.sheetBody}>
-                  {cancelResult.refundAmount > 0
-                    ? `₹${cancelResult.refundAmount.toLocaleString("en-IN")} will be refunded for your unused days.`
-                    : "Subscription has been cancelled. No refund is applicable after late cancellation fees."}
-                </Text>
-                <Pressable style={styles.doneBtn} onPress={closeCancelModal}>
-                  <Text style={styles.doneBtnText}>Done</Text>
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <Text style={styles.sheetTitle}>Cancel subscription?</Text>
-                <Text style={styles.sheetMeal}>
-                  {cancelTarget?.restaurantName} · {cancelTarget?.slot} · {cancelTarget?.totalDays}-day pack
-                </Text>
-                <View style={[styles.refundInfo, { backgroundColor: "#F0FDF4" }]}>
-                  <Feather name="rotate-ccw" size={16} color="#16A34A" />
-                  <Text style={styles.refundInfoText}>
-                    You'll receive a refund of{" "}
-                    <Text style={{ fontFamily: "Inter_700Bold" }}>
-                      ₹{cancelTarget ? Math.max(0, cancelTarget.remainingDays * cancelTarget.pricePerDay - cancelTarget.lateCancellationFees).toLocaleString("en-IN") : 0}
-                    </Text>
-                    {" "}for {cancelTarget?.remainingDays} unused days.
-                  </Text>
-                </View>
-                <Text style={styles.sheetWarning}>
-                  All upcoming meals for this subscription will be cancelled. You can subscribe again anytime.
-                </Text>
-                <View style={styles.sheetActions}>
-                  <Pressable style={[styles.keepBtn, { borderColor: colors.border }]} onPress={closeCancelModal}>
-                    <Text style={[styles.keepBtnText, { color: colors.foreground }]}>Keep it</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={confirmCancel}
-                    disabled={cancelLoading}
-                    style={({ pressed }) => [
-                      styles.confirmCancelBtn,
-                      pressed && { opacity: 0.85 },
-                    ]}
-                  >
-                    <Text style={styles.confirmCancelText}>
-                      {cancelLoading ? "Cancelling…" : "Cancel & Refund"}
-                    </Text>
-                  </Pressable>
-                </View>
-              </>
-            )}
-          </View>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
@@ -452,20 +374,4 @@ const styles = StyleSheet.create({
   ledgerDesc: { fontSize: 13, fontFamily: "Inter_500Medium" },
   ledgerDate: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
   ledgerAmount: { fontSize: 13, fontFamily: "Inter_700Bold" },
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 40 },
-  sheetHandle: { width: 40, height: 4, backgroundColor: "#E4E4E7", borderRadius: 2, alignSelf: "center", marginBottom: 20 },
-  sheetTitle: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#1A1A1A", marginBottom: 4 },
-  sheetMeal: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#71717A", marginBottom: 16 },
-  sheetBody: { fontSize: 15, fontFamily: "Inter_400Regular", color: "#71717A", lineHeight: 22, marginBottom: 24 },
-  refundInfo: { flexDirection: "row", gap: 10, borderRadius: 12, padding: 14, marginBottom: 12, alignItems: "flex-start" },
-  refundInfoText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: "#166534", lineHeight: 20 },
-  sheetWarning: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#71717A", lineHeight: 18, marginBottom: 20 },
-  sheetActions: { flexDirection: "row", gap: 10 },
-  keepBtn: { flex: 1, height: 52, borderRadius: 14, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  keepBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  confirmCancelBtn: { flex: 1, height: 52, backgroundColor: "#EF4444", borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  confirmCancelText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#FFFFFF" },
-  doneBtn: { height: 52, backgroundColor: "#3B82F6", borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  doneBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
 });
