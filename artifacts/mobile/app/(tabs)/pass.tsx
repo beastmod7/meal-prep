@@ -155,7 +155,7 @@ function SubscriptionCard({
           <View style={[cardStyles.refundNote, { backgroundColor: "#EFF6FF" }]}>
             <Feather name="info" size={13} color="#3B82F6" />
             <Text style={cardStyles.refundNoteText}>
-              Refund of ₹{Math.max(0, sub.remainingDays * sub.pricePerDay - sub.lateCancellationFees).toLocaleString("en-IN")} is being processed.
+              Refund of ₹{Math.max(0, sub.remainingDays * sub.pricePerDay - sub.lateCancellationFees).toLocaleString("en-IN")} for unused meals is being processed to your original payment method.
             </Text>
           </View>
         )}

@@ -1,0 +1,88 @@
+Yes — **your clarified model is much safer**.
+
+What you described is basically:
+
+> **Advance payment for a fixed service package → consumption of service → cancellation → refund of unused service value to original payment method.**
+
+That is **not the same thing as a wallet**.
+
+## My view
+
+This should **generally not be treated as an RBI PPI wallet** if you keep it exactly like this:
+
+* User buys **20 meals / 30 meals**, not ₹3,000 wallet balance.
+* User cannot add money.
+* User cannot transfer balance.
+* User cannot withdraw balance.
+* User cannot use leftover value on random merchants like a payment instrument.
+* Refund happens only after **plan cancellation**.
+* Refund goes only to the **original payment method**.
+* The app shows **meals remaining**, not “cash balance.”
+
+That is a normal prepaid service/subscription model.
+
+RBI’s PPI FAQ says closed-system instruments used only to buy goods/services from the issuing entity, with no cash withdrawal and no third-party settlement, are not classified as payment systems requiring RBI authorisation. The old RBI circular language similarly says closed-system instruments are for goods/services from the issuer and do not permit cash withdrawal/redemption or third-party settlement. ([Reserve Bank of India][1])
+
+## The one thing to be careful about
+
+The word **“refund”** is okay.
+
+The word **“withdraw”** is not.
+
+So don’t say:
+
+> Withdraw your remaining balance.
+
+Say:
+
+> Cancel plan and get refund for unused meals as per policy.
+
+That keeps the legal character as **service cancellation**, not money redemption.
+
+## Best UI structure
+
+Show this:
+
+```text
+30 Meal Plan
+
+Meals used: 3
+Meals remaining: 27
+
+Cancel plan
+Refund estimate: ₹2,430
+Refund will be sent to your original payment method.
+```
+
+Avoid this:
+
+```text
+Wallet balance: ₹2,430
+Withdraw balance
+Use balance elsewhere
+Transfer balance
+```
+
+The first one is boring and safe. The second one is fintech cosplay. RBI does not enjoy cosplay.
+
+## Terms should clearly say
+
+Add something like this in your terms:
+
+> The meal package is an advance purchase of meal services. Unused meals may be eligible for refund upon cancellation according to the applicable refund policy. The package is not a wallet, prepaid payment instrument, stored-value account, cash balance, or transferable payment method. Refunds, where applicable, will be processed only to the original payment method.
+
+## My blunt answer
+
+Your model is **probably fine from a PPI-wallet angle** as long as you keep it as:
+
+> **Meal package → meal entitlement → cancellation refund**
+
+Not:
+
+> **Money stored → money spent → money withdrawn**
+
+The bigger issues for you will likely be **consumer protection, refund policy clarity, GST/accounting, restaurant settlement, and food-service liability**, not RBI wallet regulation.
+
+Still, before launch, get a fintech/payment lawyer to review the terms and actual money flow. But product-wise, this is the clean direction.
+
+[1]: https://www.rbi.org.in/commonman/English/scripts/FAQs.aspx?Id=2812&utm_source=chatgpt.com "Prepaid Payment Instruments (PPIs)"

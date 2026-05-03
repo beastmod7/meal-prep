@@ -184,6 +184,12 @@ export default function CheckoutScreen() {
                 ₹{totalPrice.toLocaleString("en-IN")}
               </Text>
             </View>
+            <View style={[styles.gstNote, { backgroundColor: colors.muted }]}>
+              <Feather name="file-text" size={11} color={colors.mutedForeground} />
+              <Text style={[styles.gstNoteText, { color: colors.mutedForeground }]}>
+                Price inclusive of all applicable GST. A tax invoice will be available in your order history.
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -398,6 +404,8 @@ const styles = StyleSheet.create({
   priceValue: { fontSize: 13, fontFamily: "Inter_500Medium" },
   totalLabel: { fontSize: 15, fontFamily: "Inter_700Bold" },
   totalValue: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  gstNote: { flexDirection: "row", alignItems: "flex-start", gap: 6, borderRadius: 8, padding: 8, marginTop: 8 },
+  gstNoteText: { flex: 1, fontSize: 10, fontFamily: "Inter_400Regular", lineHeight: 14 },
   sectionTitle: { fontSize: 16, fontFamily: "Inter_700Bold", marginBottom: 10 },
   methodTabs: { flexDirection: "row", borderRadius: 12, padding: 3, marginBottom: 14 },
   methodTab: { flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: "center" },

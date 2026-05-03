@@ -24,8 +24,8 @@ import { useColors } from "@/hooks/useColors";
 type Step = "confirm" | "refund-method" | "feedback" | "success";
 
 type RefundMethod = {
-  id: "wallet" | "upi" | "bank";
-  icon: "pocket" | "smartphone" | "credit-card";
+  id: "upi" | "bank";
+  icon: "smartphone" | "credit-card";
   label: string;
   tagline: string;
   timeLabel: string;
@@ -34,26 +34,18 @@ type RefundMethod = {
 
 const REFUND_METHODS: RefundMethod[] = [
   {
-    id: "wallet",
-    icon: "pocket",
-    label: "Meal Pass Wallet",
-    tagline: "Instant credit — use on any subscription",
-    timeLabel: "Instant",
-    timeColor: "#16A34A",
-  },
-  {
     id: "upi",
     icon: "smartphone",
     label: "UPI",
-    tagline: "Credited to your UPI-linked account",
+    tagline: "Refund to your UPI-linked account",
     timeLabel: "3–5 hours",
     timeColor: "#2563EB",
   },
   {
     id: "bank",
     icon: "credit-card",
-    label: "Bank Account",
-    tagline: "Original payment mode refund",
+    label: "Bank / Card",
+    tagline: "Refund to your original payment source",
     timeLabel: "5–7 business days",
     timeColor: "#D97706",
   },
@@ -311,7 +303,7 @@ function RefundMethodStep({
         <View style={[rm.noteBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
           <Feather name="info" size={13} color={colors.mutedForeground} />
           <Text style={[rm.noteText, { color: colors.mutedForeground }]}>
-            Wallet refunds are instant and can be used for any future subscription. Bank refunds follow your payment provider's timeline.
+            Refunds are returned only to your original payment method. This is not a wallet — no credit is stored in the app.
           </Text>
         </View>
       </ScrollView>
@@ -525,26 +517,19 @@ function SuccessStep({
   const method = REFUND_METHODS.find((m) => m.id === selectedMethod) ?? REFUND_METHODS[0]!;
 
   const timeline =
-    method.id === "wallet"
+    method.id === "upi"
       ? [
           "Subscription cancelled immediately",
           "All upcoming meals cancelled",
-          `₹${refundAmount.toLocaleString("en-IN")} added to your Meal Pass wallet instantly`,
-          "Use wallet balance on your next subscription",
+          `Refund of ₹${refundAmount.toLocaleString("en-IN")} initiated to your UPI account`,
+          "Credited to your original payment source within 3–5 hours",
         ]
-      : method.id === "upi"
-        ? [
-            "Subscription cancelled immediately",
-            "All upcoming meals cancelled",
-            `Refund of ₹${refundAmount.toLocaleString("en-IN")} initiated to UPI`,
-            "Credited within 3–5 business hours",
-          ]
-        : [
-            "Subscription cancelled immediately",
-            "All upcoming meals cancelled",
-            `Refund of ₹${refundAmount.toLocaleString("en-IN")} initiated`,
-            "Credited to your bank in 5–7 business days",
-          ];
+      : [
+          "Subscription cancelled immediately",
+          "All upcoming meals cancelled",
+          `Refund of ₹${refundAmount.toLocaleString("en-IN")} initiated`,
+          "Credited to your original payment source in 5–7 business days",
+        ];
 
   return (
     <ScrollView
