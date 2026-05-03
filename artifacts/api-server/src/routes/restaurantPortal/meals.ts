@@ -37,7 +37,7 @@ const toResponse = (m: typeof mealsTable.$inferSelect) => ({
 });
 
 router.get("/", async (req, res) => {
-  const { restaurantId } = req.params;
+  const restaurantId = (req.params as Record<string, string>)["restaurantId"]!;
   const { isActive, category } = req.query as { isActive?: string; category?: string };
 
   const conditions = [eq(mealsTable.restaurantId, restaurantId)];
@@ -60,7 +60,7 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const { restaurantId } = req.params;
+  const restaurantId = (req.params as Record<string, string>)["restaurantId"]!;
   const body = req.body as {
     name: string;
     shortDescription?: string;
@@ -115,7 +115,8 @@ router.post("/", async (req, res) => {
 });
 
 router.put("/:mealId", async (req, res) => {
-  const { restaurantId, mealId } = req.params;
+  const restaurantId = (req.params as Record<string, string>)["restaurantId"]!;
+  const mealId = (req.params as Record<string, string>)["mealId"]!;
   const body = req.body as {
     name?: string;
     shortDescription?: string;
@@ -176,7 +177,8 @@ router.put("/:mealId", async (req, res) => {
 });
 
 router.delete("/:mealId", async (req, res) => {
-  const { restaurantId, mealId } = req.params;
+  const restaurantId = (req.params as Record<string, string>)["restaurantId"]!;
+  const mealId = (req.params as Record<string, string>)["mealId"]!;
 
   const [existing] = await db
     .select()

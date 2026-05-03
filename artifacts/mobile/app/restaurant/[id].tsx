@@ -2,8 +2,9 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -14,12 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import {
-  MEALS,
-  RESTAURANTS,
-  SUBSCRIPTION_PACKAGES,
-  SubscriptionPackage,
-} from "@/constants/mockData";
+import { getRestaurant, ApiRestaurantDetail, ApiPackage } from "@/services/api";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -29,43 +25,81 @@ const FOOD_IMAGES: Record<string, any> = {
   tiffin: require("@/assets/images/meal_tiffin.png"),
 };
 
-const RESTAURANT_IMAGE_MAP: Record<string, keyof typeof FOOD_IMAGES> = {
-  r1: "thali",
-  r2: "dosa",
-  r3: "tiffin",
-};
-
-function PackageCard({ pkg, selected, onSelect }: { pkg: SubscriptionPackage; selected: boolean; onSelect: () => void; }) {
+function PackageCard({
+  pkg,
+  selected,
+  onSelect,
+}: {
+  pkg: ApiPackage;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const colors = useColors();
-  const baseTotal = Math.round(pkg.pricePerDay * pkg.days);
+  const baseTotal = Math.round(pkg.pricePerDay * pkg.durationDays);
   return (
     <Pressable
-      onPress={() => { Haptics.selectionAsync(); onSelect(); }}
-      style={[styles.pkgCard, { borderColor: colors.border, backgroundColor: colors.card }, selected && { borderColor: colors.primary, backgroundColor: "#EFF6FF" }]}
+      onPress={() => {
+        Haptics.selectionAsync();
+        onSelect();
+      }}
+      style={[
+        styles.pkgCard,
+        { borderColor: colors.border, backgroundColor: colors.card },
+        selected && { borderColor: colors.primary, backgroundColor: "#EFF6FF" },
+      ]}
     >
       <View style={styles.pkgLeft}>
         <View style={styles.pkgTopRow}>
-          <Text style={[styles.pkgDays, { color: colors.foreground }]}>{pkg.days} days</Text>
-          {pkg.popular && <View style={styles.pkgBadge}><Text style={styles.pkgBadgeText}>Popular</Text></View>}
-          {pkg.discountPct && <View style={styles.discountBadge}><Text style={styles.discountText}>{pkg.discountPct}% off</Text></View>}
+          <Text style={[styles.pkgDays, { color: colors.foreground }]}>
+            {pkg.durationDays} days
+          </Text>
+          {pkg.discountPercent > 0 && (
+            <View style={styles.discountBadge}>
+              <Text style={styles.discountText}>{pkg.discountPercent}% off</Text>
+            </View>
+          )}
         </View>
-        <Text style={[styles.pkgPerDay, { color: colors.mutedForeground }]}>₹{pkg.pricePerDay}/day · {pkg.days} meals included</Text>
+        <Text style={[styles.pkgPerDay, { color: colors.mutedForeground }]}>
+          ₹{pkg.pricePerDay}/day · {pkg.durationDays} meals included
+        </Text>
       </View>
       <View style={styles.pkgRight}>
-        {pkg.discountPct ? <Text style={[styles.pkgOldPrice, { color: colors.mutedForeground }]}>₹{baseTotal.toLocaleString("en-IN")}</Text> : null}
-        <Text style={[styles.pkgTotal, { color: colors.foreground }]}>₹{pkg.totalPrice.toLocaleString("en-IN")}</Text>
+        {pkg.discountPercent > 0 ? (
+          <Text style={[styles.pkgOldPrice, { color: colors.mutedForeground }]}>
+            ₹{baseTotal.toLocaleString("en-IN")}
+          </Text>
+        ) : null}
+        <Text style={[styles.pkgTotal, { color: colors.foreground }]}>
+          ₹{pkg.totalPrice.toLocaleString("en-IN")}
+        </Text>
         {selected && <Feather name="check-circle" size={18} color={colors.primary} />}
       </View>
     </Pressable>
   );
 }
 
-function RatingStars({ value, onChange }: { value: number; onChange: (value: number) => void; }) {
+function RatingStars({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
   return (
     <View style={styles.starsRow}>
       {[1, 2, 3, 4, 5].map((n) => (
-        <Pressable key={n} onPress={() => { Haptics.selectionAsync(); onChange(n); }}>
-          <Feather name={n <= value ? "star" : "star"} size={18} color={n <= value ? "#F59E0B" : "#D4D4D8"} />
+        <Pressable
+          key={n}
+          onPress={() => {
+            Haptics.selectionAsync();
+            onChange(n);
+          }}
+        >
+          <Feather
+            name="star"
+            size={18}
+            color={n <= value ? "#F59E0B" : "#D4D4D8"}
+          />
         </Pressable>
       ))}
     </View>
@@ -79,17 +113,12 @@ export default function RestaurantDetailScreen() {
   const insets = useSafeAreaInsets();
   const { restaurantRatings, rateRestaurant } = useApp();
 
-  const restaurant = RESTAURANTS.find((r) => r.id === id);
-  const packages = SUBSCRIPTION_PACKAGES[id ?? ""] ?? [];
+  const [restaurant, setRestaurant] = useState<ApiRestaurantDetail | null>(null);
+  const [loading, setLoading] = useState(true);
 
   type Slot = "lunch" | "dinner" | "both";
-  const availableSlots: Slot[] = [];
-  if (restaurant?.lunchAvailable) availableSlots.push("lunch");
-  if (restaurant?.dinnerAvailable) availableSlots.push("dinner");
-  if (restaurant?.lunchAvailable && restaurant?.dinnerAvailable) availableSlots.push("both");
-
-  const [activeSlot, setActiveSlot] = useState<Slot>(availableSlots[0] ?? "lunch");
-  const [selectedDays, setSelectedDays] = useState<number>(20);
+  const [activeSlot, setActiveSlot] = useState<Slot>("lunch");
+  const [selectedPkgId, setSelectedPkgId] = useState<string | null>(null);
   const [ratingOpen, setRatingOpen] = useState(false);
   const [foodQuality, setFoodQuality] = useState(5);
   const [packaging, setPackaging] = useState(5);
@@ -99,20 +128,54 @@ export default function RestaurantDetailScreen() {
   const [communication, setCommunication] = useState(5);
   const [note, setNote] = useState("");
 
-  const existingRatings = restaurantRatings.filter((r) => r.restaurantId === restaurant?.id);
+  useEffect(() => {
+    if (!id) return;
+    getRestaurant(id)
+      .then((r) => {
+        setRestaurant(r);
+        const firstSlot: Slot = r.lunchAvailable ? "lunch" : "dinner";
+        setActiveSlot(firstSlot);
+        const firstPkg = r.packages.find((p) => p.mealSlot === firstSlot);
+        if (firstPkg) setSelectedPkgId(firstPkg.id);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const existingRatings = restaurantRatings.filter((r) => r.restaurantId === id);
   const avgRating = useMemo(() => {
-    if (existingRatings.length === 0) return restaurant?.rating ?? 0;
-    return existingRatings.reduce((sum, r) => sum + r.overall, 0) / existingRatings.length;
+    if (existingRatings.length > 0) {
+      return existingRatings.reduce((sum, r) => sum + r.overall, 0) / existingRatings.length;
+    }
+    return restaurant?.rating ?? 0;
   }, [existingRatings, restaurant?.rating]);
 
-  if (!restaurant) return <View style={[styles.container, { backgroundColor: colors.background }]}><Text style={{ color: colors.foreground, padding: 20 }}>Restaurant not found</Text></View>;
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }]}>
+        <ActivityIndicator color="#3B82F6" />
+      </View>
+    );
+  }
 
-  const meals = MEALS.filter((m) => restaurant.mealIds.includes(m.id));
-  const imgKey = RESTAURANT_IMAGE_MAP[restaurant.id];
-  const slotPackages = packages.filter((p) => p.slot === activeSlot);
-  const chosenPkg = slotPackages.find((p) => p.days === selectedDays) ?? slotPackages[0];
+  if (!restaurant) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.foreground, padding: 20 }}>Restaurant not found</Text>
+      </View>
+    );
+  }
+
+  const availableSlots: Slot[] = [];
+  if (restaurant.lunchAvailable) availableSlots.push("lunch");
+  if (restaurant.dinnerAvailable) availableSlots.push("dinner");
+  if (restaurant.lunchAvailable && restaurant.dinnerAvailable) availableSlots.push("both");
+
+  const slotPackages = restaurant.packages.filter((p) => p.mealSlot === activeSlot);
+  const chosenPkg = slotPackages.find((p) => p.id === selectedPkgId) ?? slotPackages[0] ?? null;
 
   async function submitRating() {
+    if (!restaurant) return;
     await rateRestaurant({
       restaurantId: restaurant.id,
       restaurantName: restaurant.name,
@@ -123,7 +186,9 @@ export default function RestaurantDetailScreen() {
         valueForMoney,
         hygiene,
         communication,
-        overall: Number(((foodQuality + packaging + delivery + valueForMoney + hygiene + communication) / 6).toFixed(1)),
+        overall: Number(
+          ((foodQuality + packaging + delivery + valueForMoney + hygiene + communication) / 6).toFixed(1),
+        ),
         note,
       },
     });
@@ -132,67 +197,347 @@ export default function RestaurantDetailScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
+  const imgKey = (() => {
+    if (restaurant.name.toLowerCase().includes("spice") || restaurant.name.toLowerCase().includes("thali")) return "thali";
+    if (restaurant.name.toLowerCase().includes("dosa") || restaurant.name.toLowerCase().includes("south")) return "dosa";
+    return "tiffin";
+  })();
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
+      >
+        {/* Hero */}
         <View style={styles.hero}>
-          {imgKey ? <Image source={FOOD_IMAGES[imgKey]} style={styles.heroImage} contentFit="cover" /> : <View style={[styles.heroPlaceholder, { backgroundColor: restaurant.accentColor + "22" }]}><Feather name="coffee" size={40} color={restaurant.accentColor} /></View>}
+          {imgKey ? (
+            <Image source={FOOD_IMAGES[imgKey]} style={styles.heroImage} contentFit="cover" />
+          ) : (
+            <View style={[styles.heroPlaceholder, { backgroundColor: (restaurant.accentColor ?? "#3B82F6") + "22" }]}>
+              <Feather name="coffee" size={40} color={restaurant.accentColor ?? "#3B82F6"} />
+            </View>
+          )}
           <View style={[styles.heroOverlay, StyleSheet.absoluteFill]} />
           <View style={[styles.heroContent, { paddingTop: insets.top + 60 }]}>
             <Text style={styles.heroName}>{restaurant.name}</Text>
-            <Text style={styles.heroTagline}>{restaurant.tagline}</Text>
+            <Text style={styles.heroTagline}>{restaurant.tagline ?? ""}</Text>
             <View style={styles.heroMeta}>
-              <View style={styles.metaChip}><Feather name="star" size={12} color="#F59E0B" /><Text style={styles.metaChipText}>{avgRating.toFixed(1)} ({restaurant.reviewCount + existingRatings.length})</Text></View>
-              <View style={styles.metaChip}><Feather name="map-pin" size={12} color="#FFFFFF" /><Text style={styles.metaChipText}>{restaurant.distance}</Text></View>
-              <View style={styles.metaChip}><Feather name="clock" size={12} color="#FFFFFF" /><Text style={styles.metaChipText}>{restaurant.deliveryTime}</Text></View>
+              <View style={styles.metaChip}>
+                <Feather name="star" size={12} color="#F59E0B" />
+                <Text style={styles.metaChipText}>
+                  {avgRating.toFixed(1)} ({restaurant.reviewCount + existingRatings.length})
+                </Text>
+              </View>
+              {restaurant.distanceLabel ? (
+                <View style={styles.metaChip}>
+                  <Feather name="map-pin" size={12} color="#FFFFFF" />
+                  <Text style={styles.metaChipText}>{restaurant.distanceLabel}</Text>
+                </View>
+              ) : null}
+              {restaurant.deliveryTime ? (
+                <View style={styles.metaChip}>
+                  <Feather name="clock" size={12} color="#FFFFFF" />
+                  <Text style={styles.metaChipText}>{restaurant.deliveryTime}</Text>
+                </View>
+              ) : null}
             </View>
           </View>
         </View>
 
         <View style={styles.content}>
+          {/* About */}
           <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>About</Text>
-            <Text style={[styles.description, { color: colors.mutedForeground }]}>{restaurant.description}</Text>
+            <Text style={[styles.description, { color: colors.mutedForeground }]}>
+              {restaurant.description ?? restaurant.tagline ?? ""}
+            </Text>
             <View style={styles.infoRow}>
-              {[{ icon: "map-pin" as const, text: restaurant.address }, { icon: "clock" as const, text: `Cancel by ${restaurant.cancelCutoff}` }, { icon: "calendar" as const, text: restaurant.days.join(", ") }].map((item, i) => <View key={i} style={styles.infoItem}><Feather name={item.icon} size={13} color={colors.mutedForeground} /><Text style={[styles.infoText, { color: colors.mutedForeground }]}>{item.text}</Text></View>)}
+              {restaurant.address ? (
+                <View style={styles.infoItem}>
+                  <Feather name="map-pin" size={13} color={colors.mutedForeground} />
+                  <Text style={[styles.infoText, { color: colors.mutedForeground }]}>{restaurant.address}</Text>
+                </View>
+              ) : null}
+              {restaurant.operatingDays.length > 0 && (
+                <View style={styles.infoItem}>
+                  <Feather name="calendar" size={13} color={colors.mutedForeground} />
+                  <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
+                    {restaurant.operatingDays.join(", ")}
+                  </Text>
+                </View>
+              )}
+              {restaurant.cuisineType ? (
+                <View style={styles.infoItem}>
+                  <Feather name="coffee" size={13} color={colors.mutedForeground} />
+                  <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
+                    {restaurant.cuisineType}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
 
+          {/* Ratings */}
           <View style={styles.ratingsCard}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.plansTitle, { color: colors.foreground }]}>Ratings</Text>
-              <Pressable onPress={() => setRatingOpen(true)} style={styles.rateBtn}><Feather name="edit-3" size={14} color="#FFFFFF" /><Text style={styles.rateBtnText}>Rate now</Text></Pressable>
+              <Pressable onPress={() => setRatingOpen(true)} style={styles.rateBtn}>
+                <Feather name="edit-3" size={14} color="#FFFFFF" />
+                <Text style={styles.rateBtnText}>Rate now</Text>
+              </Pressable>
             </View>
-            <Text style={[styles.plansSubtitle, { color: colors.mutedForeground }]}>Food quality, packaging, delivery, value, hygiene, and communication.</Text>
+            <Text style={[styles.plansSubtitle, { color: colors.mutedForeground }]}>
+              Food quality, packaging, delivery, value, hygiene, and communication.
+            </Text>
           </View>
 
+          {/* Subscription plans */}
           <View>
             <Text style={[styles.plansTitle, { color: colors.foreground }]}>Subscription plans</Text>
-            <Text style={[styles.plansSubtitle, { color: colors.mutedForeground }]}>Minimum 10 days. Each plan auto-schedules one meal per day.</Text>
-            {availableSlots.length > 1 && <View style={[styles.slotTabs, { backgroundColor: colors.muted }]}>{availableSlots.map((slot) => <Pressable key={slot} onPress={() => { Haptics.selectionAsync(); setActiveSlot(slot); const pkgs = packages.filter((p) => p.slot === slot); if (!pkgs.find((p) => p.days === selectedDays)) setSelectedDays(pkgs[0]?.days ?? 20); }} style={[styles.slotTab, activeSlot === slot && { backgroundColor: colors.card, shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }]}><Text style={[styles.slotTabText, { color: activeSlot === slot ? colors.foreground : colors.mutedForeground, fontFamily: activeSlot === slot ? "Inter_600SemiBold" : "Inter_400Regular" }]}>{slot === "lunch" ? "☀️ Lunch" : slot === "dinner" ? "🌙 Dinner" : "🍽️ Both"}</Text>{slot === "both" && <View style={styles.comboChip}><Text style={styles.comboChipText}>15% off</Text></View>}</Pressable>)}</View>}
-            {slotPackages.map((pkg) => <PackageCard key={`${pkg.slot}-${pkg.days}`} pkg={pkg} selected={selectedDays === pkg.days} onSelect={() => setSelectedDays(pkg.days)} />)}
+            <Text style={[styles.plansSubtitle, { color: colors.mutedForeground }]}>
+              Minimum 10 days. Each plan auto-schedules one meal per day.
+            </Text>
+            {availableSlots.length > 1 && (
+              <View style={[styles.slotTabs, { backgroundColor: colors.muted }]}>
+                {availableSlots.map((slot) => (
+                  <Pressable
+                    key={slot}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setActiveSlot(slot);
+                      const pkgs = restaurant.packages.filter((p) => p.mealSlot === slot);
+                      if (!pkgs.find((p) => p.id === selectedPkgId) && pkgs.length > 0) {
+                        setSelectedPkgId(pkgs[0].id);
+                      }
+                    }}
+                    style={[
+                      styles.slotTab,
+                      activeSlot === slot && {
+                        backgroundColor: colors.card,
+                        shadowColor: "#000",
+                        shadowOpacity: 0.06,
+                        shadowRadius: 4,
+                        elevation: 2,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.slotTabText,
+                        {
+                          color: activeSlot === slot ? colors.foreground : colors.mutedForeground,
+                          fontFamily: activeSlot === slot ? "Inter_600SemiBold" : "Inter_400Regular",
+                        },
+                      ]}
+                    >
+                      {slot === "lunch" ? "☀️ Lunch" : slot === "dinner" ? "🌙 Dinner" : "🍽️ Both"}
+                    </Text>
+                    {slot === "both" && (
+                      <View style={styles.comboChip}>
+                        <Text style={styles.comboChipText}>Save more</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+            )}
+            {slotPackages.map((pkg) => (
+              <PackageCard
+                key={pkg.id}
+                pkg={pkg}
+                selected={chosenPkg?.id === pkg.id}
+                onSelect={() => setSelectedPkgId(pkg.id)}
+              />
+            ))}
           </View>
 
-          {meals.length > 0 && <View><Text style={[styles.plansTitle, { color: colors.foreground }]}>What you'll eat</Text><Text style={[styles.plansSubtitle, { color: colors.mutedForeground }]}>Meals rotate daily — these are example options</Text>{meals.map((meal) => <View key={meal.id} style={[styles.mealCard, { backgroundColor: colors.card, borderColor: colors.border }]}><View style={styles.mealHeader}><View style={styles.mealHeaderLeft}><Text style={[styles.mealName, { color: colors.foreground }]}>{meal.name}</Text><View style={styles.mealMeta}><View style={[styles.vegDot, { backgroundColor: meal.vegType === "veg" ? "#16A34A" : meal.vegType === "egg" ? "#D97706" : "#EF4444" }]} /><Text style={[styles.mealType, { color: colors.mutedForeground }]}>{meal.vegType}</Text><Text style={[styles.metaDot, { color: colors.mutedForeground }]}>·</Text><Text style={[styles.mealType, { color: colors.mutedForeground }]}>{meal.calories} cal</Text><Text style={[styles.metaDot, { color: colors.mutedForeground }]}>·</Text><Text style={[styles.mealType, { color: colors.mutedForeground }]}>{meal.protein} protein</Text></View></View><View style={[styles.spiceBadge, { backgroundColor: meal.spice === "hot" ? "#FEE2E2" : meal.spice === "medium" ? "#FEF9C3" : "#DCFCE7" }]}><Text style={[styles.spiceText, { color: meal.spice === "hot" ? "#991B1B" : meal.spice === "medium" ? "#854D0E" : "#166534" }]}>{meal.spice}</Text></View></View><Text style={[styles.mealDesc, { color: colors.mutedForeground }]}>{meal.description}</Text></View>)}</View>}
+          {/* Meals */}
+          {restaurant.meals.length > 0 && (
+            <View>
+              <Text style={[styles.plansTitle, { color: colors.foreground }]}>What you'll eat</Text>
+              <Text style={[styles.plansSubtitle, { color: colors.mutedForeground }]}>
+                Meals rotate daily — these are example options
+              </Text>
+              {restaurant.meals.map((meal) => (
+                <View
+                  key={meal.id}
+                  style={[styles.mealCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                >
+                  <View style={styles.mealHeader}>
+                    <View style={styles.mealHeaderLeft}>
+                      <Text style={[styles.mealName, { color: colors.foreground }]}>{meal.name}</Text>
+                      <View style={styles.mealMeta}>
+                        <View
+                          style={[
+                            styles.vegDot,
+                            {
+                              backgroundColor:
+                                meal.vegType === "veg"
+                                  ? "#16A34A"
+                                  : meal.vegType === "egg"
+                                    ? "#D97706"
+                                    : "#EF4444",
+                            },
+                          ]}
+                        />
+                        <Text style={[styles.mealType, { color: colors.mutedForeground }]}>
+                          {meal.vegType}
+                        </Text>
+                        {meal.calories != null && (
+                          <>
+                            <Text style={[styles.metaDot, { color: colors.mutedForeground }]}>·</Text>
+                            <Text style={[styles.mealType, { color: colors.mutedForeground }]}>
+                              {meal.calories} cal
+                            </Text>
+                          </>
+                        )}
+                        {meal.spiceLevel && (
+                          <>
+                            <Text style={[styles.metaDot, { color: colors.mutedForeground }]}>·</Text>
+                            <Text style={[styles.mealType, { color: colors.mutedForeground }]}>
+                              {meal.spiceLevel}
+                            </Text>
+                          </>
+                        )}
+                      </View>
+                    </View>
+                    {meal.spiceLevel && (
+                      <View
+                        style={[
+                          styles.spiceBadge,
+                          {
+                            backgroundColor:
+                              meal.spiceLevel === "hot"
+                                ? "#FEE2E2"
+                                : meal.spiceLevel === "medium"
+                                  ? "#FEF9C3"
+                                  : "#DCFCE7",
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.spiceText,
+                            {
+                              color:
+                                meal.spiceLevel === "hot"
+                                  ? "#991B1B"
+                                  : meal.spiceLevel === "medium"
+                                    ? "#854D0E"
+                                    : "#166534",
+                            },
+                          ]}
+                        >
+                          {meal.spiceLevel}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  {meal.shortDescription && (
+                    <Text style={[styles.mealDesc, { color: colors.mutedForeground }]}>
+                      {meal.shortDescription}
+                    </Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
 
-      {chosenPkg && <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: insets.bottom + 8 }]}><View style={styles.footerInfo}><View><Text style={[styles.footerLabel, { color: colors.mutedForeground }]}>{activeSlot === "lunch" ? "Lunch" : activeSlot === "dinner" ? "Dinner" : "Lunch + Dinner"} · {chosenPkg.days} days</Text><Text style={[styles.footerPer, { color: colors.mutedForeground }]}>₹{chosenPkg.pricePerDay}/day</Text></View><Text style={[styles.footerTotal, { color: colors.foreground }]}>₹{chosenPkg.totalPrice.toLocaleString("en-IN")}</Text></View><Pressable onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push({ pathname: "/buy-pass", params: { restaurantId: restaurant.id } }); }} style={({ pressed }) => [styles.subscribeBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.9 }]}><Text style={styles.subscribeBtnText}>Subscribe now</Text></Pressable></View>}
+      {/* Footer CTA */}
+      {chosenPkg && (
+        <View
+          style={[
+            styles.footer,
+            { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: insets.bottom + 8 },
+          ]}
+        >
+          <View style={styles.footerInfo}>
+            <View>
+              <Text style={[styles.footerLabel, { color: colors.mutedForeground }]}>
+                {activeSlot === "lunch" ? "Lunch" : activeSlot === "dinner" ? "Dinner" : "Lunch + Dinner"} · {chosenPkg.durationDays} days
+              </Text>
+              <Text style={[styles.footerPer, { color: colors.mutedForeground }]}>
+                ₹{chosenPkg.pricePerDay}/day
+              </Text>
+            </View>
+            <Text style={[styles.footerTotal, { color: colors.foreground }]}>
+              ₹{chosenPkg.totalPrice.toLocaleString("en-IN")}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push({ pathname: "/buy-pass", params: { restaurantId: restaurant.id } });
+            }}
+            style={({ pressed }) => [
+              styles.subscribeBtn,
+              { backgroundColor: colors.primary },
+              pressed && { opacity: 0.9 },
+            ]}
+          >
+            <Text style={styles.subscribeBtnText}>Subscribe now</Text>
+          </Pressable>
+        </View>
+      )}
 
-      <Modal visible={ratingOpen} transparent animationType="slide" onRequestClose={() => setRatingOpen(false)}>
+      {/* Rating modal */}
+      <Modal
+        visible={ratingOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setRatingOpen(false)}
+      >
         <Pressable style={styles.overlay} onPress={() => setRatingOpen(false)}>
           <Pressable style={styles.sheet}>
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Rate {restaurant.name}</Text>
             <Text style={styles.sheetMeal}>Aspect-based ratings</Text>
-            <View style={styles.ratingBlock}><Text style={styles.ratingLabel}>Food quality</Text><RatingStars value={foodQuality} onChange={setFoodQuality} /></View>
-            <View style={styles.ratingBlock}><Text style={styles.ratingLabel}>Packaging</Text><RatingStars value={packaging} onChange={setPackaging} /></View>
-            <View style={styles.ratingBlock}><Text style={styles.ratingLabel}>Delivery</Text><RatingStars value={delivery} onChange={setDelivery} /></View>
-            <View style={styles.ratingBlock}><Text style={styles.ratingLabel}>Value for money</Text><RatingStars value={valueForMoney} onChange={setValueForMoney} /></View>
-            <View style={styles.ratingBlock}><Text style={styles.ratingLabel}>Hygiene</Text><RatingStars value={hygiene} onChange={setHygiene} /></View>
-            <View style={styles.ratingBlock}><Text style={styles.ratingLabel}>Communication</Text><RatingStars value={communication} onChange={setCommunication} /></View>
-            <TextInput value={note} onChangeText={setNote} placeholder="Add a note" placeholderTextColor="#A1A1AA" style={[styles.noteInput, { borderColor: colors.border, color: colors.foreground }]} multiline />
-            <View style={styles.sheetActions}><Pressable style={[styles.keepBtn, { borderColor: colors.border }]} onPress={() => setRatingOpen(false)}><Text style={[styles.keepBtnText, { color: colors.foreground }]}>Cancel</Text></Pressable><Pressable style={styles.saveBtn} onPress={submitRating}><Text style={styles.saveBtnText}>Save rating</Text></Pressable></View>
+            <View style={styles.ratingBlock}>
+              <Text style={styles.ratingLabel}>Food quality</Text>
+              <RatingStars value={foodQuality} onChange={setFoodQuality} />
+            </View>
+            <View style={styles.ratingBlock}>
+              <Text style={styles.ratingLabel}>Packaging</Text>
+              <RatingStars value={packaging} onChange={setPackaging} />
+            </View>
+            <View style={styles.ratingBlock}>
+              <Text style={styles.ratingLabel}>Delivery</Text>
+              <RatingStars value={delivery} onChange={setDelivery} />
+            </View>
+            <View style={styles.ratingBlock}>
+              <Text style={styles.ratingLabel}>Value for money</Text>
+              <RatingStars value={valueForMoney} onChange={setValueForMoney} />
+            </View>
+            <View style={styles.ratingBlock}>
+              <Text style={styles.ratingLabel}>Hygiene</Text>
+              <RatingStars value={hygiene} onChange={setHygiene} />
+            </View>
+            <View style={styles.ratingBlock}>
+              <Text style={styles.ratingLabel}>Communication</Text>
+              <RatingStars value={communication} onChange={setCommunication} />
+            </View>
+            <TextInput
+              value={note}
+              onChangeText={setNote}
+              placeholder="Add a note"
+              placeholderTextColor="#A1A1AA"
+              style={[styles.noteInput, { borderColor: colors.border, color: colors.foreground }]}
+              multiline
+            />
+            <View style={styles.sheetActions}>
+              <Pressable
+                style={[styles.keepBtn, { borderColor: colors.border }]}
+                onPress={() => setRatingOpen(false)}
+              >
+                <Text style={[styles.keepBtnText, { color: colors.foreground }]}>Cancel</Text>
+              </Pressable>
+              <Pressable style={styles.saveBtn} onPress={submitRating}>
+                <Text style={styles.saveBtnText}>Save rating</Text>
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -234,8 +579,6 @@ const styles = StyleSheet.create({
   pkgLeft: { flex: 1 },
   pkgTopRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 3, flexWrap: "wrap" },
   pkgDays: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  pkgBadge: { backgroundColor: "#EFF6FF", borderRadius: 100, paddingHorizontal: 7, paddingVertical: 2 },
-  pkgBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#2563EB" },
   discountBadge: { backgroundColor: "#DCFCE7", borderRadius: 100, paddingHorizontal: 7, paddingVertical: 2 },
   discountText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#16A34A" },
   pkgPerDay: { fontSize: 11, fontFamily: "Inter_400Regular" },

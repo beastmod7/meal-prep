@@ -26,6 +26,20 @@ tags:
     description: Restaurant portal settlements
   - name: restaurant-portal-reports
     description: Restaurant portal reports
+  - name: student-auth
+    description: Student phone OTP authentication
+  - name: student-profile
+    description: Student profile management
+  - name: student-campuses
+    description: Campus listing
+  - name: student-restaurants
+    description: Restaurant discovery and ratings
+  - name: student-subscriptions
+    description: Subscription purchase and management
+  - name: student-orders
+    description: Meal order management and cancellation
+  - name: student-ledger
+    description: Student transaction ledger
 
 paths:
   /healthz:
@@ -518,6 +532,423 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReportExport"
+
+  # ─── Student API ─────────────────────────────────────────────────────────────
+
+  /student/campuses:
+    get:
+      operationId: listCampuses
+      tags: [student-campuses]
+      summary: List all active campuses (public, no auth)
+      responses:
+        "200":
+          description: Campus list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Campus"
+
+  /student/auth/send-otp:
+    post:
+      operationId: studentSendOtp
+      tags: [student-auth]
+      summary: Send OTP to phone number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentSendOtpBody"
+      responses:
+        "200":
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  devNote:
+                    type: string
+        "400":
+          description: Invalid phone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /student/auth/verify-otp:
+    post:
+      operationId: studentVerifyOtp
+      tags: [student-auth]
+      summary: Verify OTP and get auth token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentVerifyOtpBody"
+      responses:
+        "200":
+          description: Auth token and student profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentAuthResponse"
+        "401":
+          description: Invalid OTP
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /student/profile:
+    get:
+      operationId: getStudentProfile
+      tags: [student-profile]
+      summary: Get own profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Student profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+    put:
+      operationId: updateStudentProfile
+      tags: [student-profile]
+      summary: Update own profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentUpdateProfileBody"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+
+  /student/restaurants:
+    get:
+      operationId: listStudentRestaurants
+      tags: [student-restaurants]
+      summary: List active restaurants
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: campusId
+          in: query
+          schema:
+            type: string
+        - name: slot
+          in: query
+          schema:
+            type: string
+            enum: [lunch, dinner, both]
+      responses:
+        "200":
+          description: Restaurant list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentRestaurant"
+
+  /student/restaurants/{restaurantId}:
+    get:
+      operationId: getStudentRestaurant
+      tags: [student-restaurants]
+      summary: Get restaurant detail with packages and meals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Restaurant detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentRestaurantDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /student/restaurants/{restaurantId}/rate:
+    post:
+      operationId: rateRestaurant
+      tags: [student-restaurants]
+      summary: Submit a rating for a restaurant
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RateRestaurantBody"
+      responses:
+        "201":
+          description: Rating submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  message:
+                    type: string
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /student/subscriptions:
+    get:
+      operationId: listStudentSubscriptions
+      tags: [student-subscriptions]
+      summary: List own subscriptions
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Subscriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentSubscription"
+    post:
+      operationId: createStudentSubscription
+      tags: [student-subscriptions]
+      summary: Purchase a subscription
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSubscriptionBody"
+      responses:
+        "201":
+          description: Subscription created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateSubscriptionResponse"
+        "404":
+          description: Restaurant or package not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /student/subscriptions/{subscriptionId}:
+    get:
+      operationId: getStudentSubscription
+      tags: [student-subscriptions]
+      summary: Get a subscription by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: subscriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentSubscription"
+
+  /student/subscriptions/{subscriptionId}/cancel:
+    post:
+      operationId: cancelStudentSubscription
+      tags: [student-subscriptions]
+      summary: Cancel a subscription
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: subscriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: Subscription cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  refundAmount:
+                    type: number
+                required: [message, refundAmount]
+
+  /student/subscriptions/{subscriptionId}/pause:
+    post:
+      operationId: pauseStudentSubscription
+      tags: [student-subscriptions]
+      summary: Pause a subscription for N days
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: subscriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pauseDays:
+                  type: integer
+                  minimum: 1
+                  maximum: 30
+              required: [pauseDays]
+      responses:
+        "200":
+          description: Paused
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  pausedUntil:
+                    type: string
+                required: [message, pausedUntil]
+
+  /student/orders:
+    get:
+      operationId: listStudentOrders
+      tags: [student-orders]
+      summary: List meal orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentOrder"
+
+  /student/orders/{orderId}/cancel:
+    post:
+      operationId: cancelStudentOrder
+      tags: [student-orders]
+      summary: Cancel a single meal order
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cancellation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancelOrderResponse"
+        "400":
+          description: Cannot cancel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /student/ledger:
+    get:
+      operationId: listStudentLedger
+      tags: [student-ledger]
+      summary: Get student transaction ledger
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Ledger entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LedgerEntry"
 
 components:
   securitySchemes:
@@ -1140,3 +1571,411 @@ components:
         - headers
         - rows
         - totalRows
+
+    # ─── Student schemas ───────────────────────────────────────────────────────
+
+    StudentSendOtpBody:
+      type: object
+      properties:
+        phone:
+          type: string
+      required: [phone]
+
+    StudentVerifyOtpBody:
+      type: object
+      properties:
+        phone:
+          type: string
+        otp:
+          type: string
+      required: [phone, otp]
+
+    StudentProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        phone:
+          type: string
+        name:
+          type: string
+        campusId:
+          type: string
+          nullable: true
+        campusName:
+          type: string
+          nullable: true
+        foodPreference:
+          type: string
+          enum: [veg, non-veg, egg, jain]
+        address:
+          type: string
+          nullable: true
+        walletBalance:
+          type: number
+        isProfileComplete:
+          type: boolean
+        createdAt:
+          type: string
+      required: [id, phone, name, foodPreference, walletBalance, isProfileComplete]
+
+    StudentAuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        student:
+          $ref: "#/components/schemas/StudentProfile"
+      required: [token, student]
+
+    StudentUpdateProfileBody:
+      type: object
+      properties:
+        name:
+          type: string
+        campusId:
+          type: string
+        campusName:
+          type: string
+        foodPreference:
+          type: string
+          enum: [veg, non-veg, egg, jain]
+        address:
+          type: string
+
+    Campus:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        city:
+          type: string
+        area:
+          type: string
+          nullable: true
+      required: [id, name, city]
+
+    StudentRestaurant:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        tagline:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        cuisineType:
+          type: string
+          nullable: true
+        campusId:
+          type: string
+          nullable: true
+        isVeg:
+          type: boolean
+        lunchAvailable:
+          type: boolean
+        dinnerAvailable:
+          type: boolean
+        operatingDays:
+          type: array
+          items:
+            type: string
+        maxCapacity:
+          type: integer
+          nullable: true
+        accentColor:
+          type: string
+          nullable: true
+        lunchStartPrice:
+          type: number
+          nullable: true
+        dinnerStartPrice:
+          type: number
+          nullable: true
+        cancelCutoffHour:
+          type: integer
+        deliveryTime:
+          type: string
+          nullable: true
+        distanceLabel:
+          type: string
+          nullable: true
+        rating:
+          type: number
+          nullable: true
+        reviewCount:
+          type: integer
+      required: [id, name, isVeg, lunchAvailable, dinnerAvailable, operatingDays, cancelCutoffHour, reviewCount]
+
+    StudentPackage:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        durationDays:
+          type: integer
+        mealSlot:
+          type: string
+          enum: [lunch, dinner, both]
+        pricePerDay:
+          type: number
+        totalPrice:
+          type: number
+        discountPercent:
+          type: number
+        mealsPerDay:
+          type: integer
+      required: [id, name, durationDays, mealSlot, pricePerDay, totalPrice, discountPercent, mealsPerDay]
+
+    StudentMeal:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        shortDescription:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        vegType:
+          type: string
+          enum: [veg, non-veg, egg]
+        spiceLevel:
+          type: string
+          enum: [mild, medium, hot]
+          nullable: true
+        calories:
+          type: integer
+          nullable: true
+        storagePath:
+          type: string
+          nullable: true
+        lunchAvailable:
+          type: boolean
+        dinnerAvailable:
+          type: boolean
+      required: [id, name, vegType, lunchAvailable, dinnerAvailable]
+
+    StudentRestaurantDetail:
+      allOf:
+        - $ref: "#/components/schemas/StudentRestaurant"
+        - type: object
+          properties:
+            packages:
+              type: array
+              items:
+                $ref: "#/components/schemas/StudentPackage"
+            meals:
+              type: array
+              items:
+                $ref: "#/components/schemas/StudentMeal"
+            ratingsBreakdown:
+              type: object
+              nullable: true
+              properties:
+                totalReviews:
+                  type: integer
+                overall:
+                  type: number
+                  nullable: true
+                foodQuality:
+                  type: number
+                  nullable: true
+                packaging:
+                  type: number
+                  nullable: true
+                delivery:
+                  type: number
+                  nullable: true
+                valueForMoney:
+                  type: number
+                  nullable: true
+                hygiene:
+                  type: number
+                  nullable: true
+          required: [packages, meals]
+
+    RateRestaurantBody:
+      type: object
+      properties:
+        foodQuality:
+          type: number
+          minimum: 1
+          maximum: 5
+        packaging:
+          type: number
+          minimum: 1
+          maximum: 5
+        delivery:
+          type: number
+          minimum: 1
+          maximum: 5
+        valueForMoney:
+          type: number
+          minimum: 1
+          maximum: 5
+        hygiene:
+          type: number
+          minimum: 1
+          maximum: 5
+        communication:
+          type: number
+          minimum: 1
+          maximum: 5
+        overall:
+          type: number
+          minimum: 1
+          maximum: 5
+        note:
+          type: string
+          nullable: true
+      required: [foodQuality, packaging, delivery, valueForMoney, hygiene, overall]
+
+    StudentSubscription:
+      type: object
+      properties:
+        id:
+          type: string
+        restaurantId:
+          type: string
+        restaurantName:
+          type: string
+        packageId:
+          type: string
+          nullable: true
+        packageName:
+          type: string
+        slot:
+          type: string
+          enum: [lunch, dinner, both]
+        totalDays:
+          type: integer
+        usedDays:
+          type: integer
+        remainingDays:
+          type: integer
+        pricePerDay:
+          type: number
+        totalPaid:
+          type: number
+        startDate:
+          type: string
+        endDate:
+          type: string
+        status:
+          type: string
+          enum: [active, paused, cancelled, completed, refund_requested]
+        pausedUntil:
+          type: string
+          nullable: true
+        lateCancellationFees:
+          type: number
+        createdAt:
+          type: string
+      required: [id, restaurantId, restaurantName, packageName, slot, totalDays, usedDays, remainingDays, pricePerDay, totalPaid, startDate, endDate, status, lateCancellationFees, createdAt]
+
+    CreateSubscriptionBody:
+      type: object
+      properties:
+        restaurantId:
+          type: string
+        packageId:
+          type: string
+        startDate:
+          type: string
+          description: "YYYY-MM-DD, defaults to today"
+      required: [restaurantId, packageId]
+
+    CreateSubscriptionResponse:
+      type: object
+      properties:
+        subscription:
+          $ref: "#/components/schemas/StudentSubscription"
+        ordersCreated:
+          type: integer
+        message:
+          type: string
+      required: [subscription, ordersCreated, message]
+
+    StudentOrder:
+      type: object
+      properties:
+        id:
+          type: string
+        subscriptionId:
+          type: string
+        restaurantId:
+          type: string
+        packageName:
+          type: string
+        mealSlot:
+          type: string
+          enum: [lunch, dinner]
+        scheduledDate:
+          type: string
+        status:
+          type: string
+          enum: [scheduled, locked, accepted, preparing, ready, delivered, cancelled, no_show]
+        pricePerDay:
+          type: number
+        freeCancelUntil:
+          type: string
+        isLocked:
+          type: boolean
+        cancelStatus:
+          type: string
+          enum: [free, late, full, none]
+      required: [id, subscriptionId, restaurantId, packageName, mealSlot, scheduledDate, status, pricePerDay, freeCancelUntil, isLocked, cancelStatus]
+
+    CancelOrderResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [free, late, full]
+        fee:
+          type: number
+        refund:
+          type: number
+        message:
+          type: string
+      required: [type, fee, refund, message]
+
+    LedgerEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        subscriptionId:
+          type: string
+          nullable: true
+        restaurantName:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [subscription_purchase, meal_used, free_cancel, late_cancel, full_charge, refund, wallet_topup, subscription_cancel_refund]
+        description:
+          type: string
+        amountDelta:
+          type: number
+        createdAt:
+          type: string
+      required: [id, type, description, amountDelta, createdAt]

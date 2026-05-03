@@ -17,7 +17,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MealOrderCard from "@/components/MealOrderCard";
 import RestaurantCard from "@/components/RestaurantCard";
 import { MealOrder, useApp } from "@/context/AppContext";
-import { RESTAURANTS } from "@/constants/mockData";
+import { getRestaurants, ApiRestaurant } from "@/services/api";
+import { toCardRestaurant } from "@/utils/restaurants";
 import { useColors } from "@/hooks/useColors";
 
 function getGreeting(): string {
@@ -43,6 +44,11 @@ export default function HomeScreen() {
   const [cancelTarget, setCancelTarget] = useState<MealOrder | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelResult, setCancelResult] = useState<{ type: string; fee: number } | null>(null);
+  const [featuredRestaurants, setFeaturedRestaurants] = useState<ApiRestaurant[]>([]);
+
+  React.useEffect(() => {
+    getRestaurants().then(setFeaturedRestaurants).catch(() => {});
+  }, []);
 
   const today = new Date().toISOString().split("T")[0];
   const activeSubs = subscriptions.filter((s) => s.status === "active" || s.status === "paused");
@@ -154,7 +160,7 @@ export default function HomeScreen() {
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Partner restaurants</Text>
               <Pressable onPress={() => router.push("/(tabs)/meals")}><Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text></Pressable>
             </View>
-            {RESTAURANTS.slice(0, 3).map((r) => <RestaurantCard key={r.id} restaurant={r} />)}
+            {featuredRestaurants.slice(0, 3).map((r) => <RestaurantCard key={r.id} restaurant={toCardRestaurant(r)} />)}
           </View>
         </View>
       </ScrollView>

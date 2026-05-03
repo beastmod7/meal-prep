@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { sendOtp, verifyOtp, saveToken } from "@/services/api";
 
 type Step = "phone" | "otp";
 
@@ -20,16 +22,21 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
-  const otpRefs = useRef<Array<TextInput | null>>([null, null, null, null]);
+  const otpRefs = useRef<Array<TextInput | null>>([null, null, null, null, null, null]);
 
   async function handleSendOtp() {
     if (phone.length < 10) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    setStep("otp");
+    try {
+      await sendOtp(phone);
+      setStep("otp");
+    } catch (err) {
+      Alert.alert("Error", err instanceof Error ? err.message : "Failed to send OTP");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleOtpChange(text: string, index: number) {
@@ -37,7 +44,7 @@ export default function LoginScreen() {
     const newOtp = [...otp];
     newOtp[index] = digits;
     setOtp(newOtp);
-    if (digits && index < 3) {
+    if (digits && index < 5) {
       otpRefs.current[index + 1]?.focus();
     }
   }
@@ -50,11 +57,17 @@ export default function LoginScreen() {
 
   async function handleVerifyOtp() {
     const code = otp.join("");
-    if (code.length < 4) return;
+    if (code.length < 6) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    router.replace("/campus-select");
+    try {
+      const result = await verifyOtp(phone, code);
+      await saveToken(result.token);
+      router.replace("/campus-select");
+    } catch (err) {
+      Alert.alert("Invalid OTP", err instanceof Error ? err.message : "Please try again");
+    } finally {
+      setLoading(false);
+    }
   }
 
   const phoneValid = phone.replace(/\s/g, "").length === 10;
@@ -121,6 +134,10 @@ export default function LoginScreen() {
               )}
             </Pressable>
 
+            <Text style={styles.hint}>
+              Dev mode: use OTP 123456
+            </Text>
+
             <Text style={styles.terms}>
               By signing in, you agree to our Terms of Service and Privacy
               Policy.
@@ -140,15 +157,11 @@ export default function LoginScreen() {
               {otp.map((digit, i) => (
                 <TextInput
                   key={i}
-                  ref={(ref) => {
-                    otpRefs.current[i] = ref;
-                  }}
+                  ref={(ref) => { otpRefs.current[i] = ref; }}
                   style={[styles.otpBox, digit && styles.otpBoxFilled]}
                   value={digit}
                   onChangeText={(text) => handleOtpChange(text, i)}
-                  onKeyPress={({ nativeEvent }) =>
-                    handleOtpKeyPress(nativeEvent.key, i)
-                  }
+                  onKeyPress={({ nativeEvent }) => handleOtpKeyPress(nativeEvent.key, i)}
                   keyboardType="number-pad"
                   maxLength={1}
                   textAlign="center"
@@ -158,7 +171,7 @@ export default function LoginScreen() {
             </View>
 
             <Text style={styles.hint}>
-              Use any 4 digits for the demo (e.g. 1234)
+              Dev mode: use 123456
             </Text>
 
             <Pressable
@@ -184,135 +197,25 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F0F4FF",
-  },
-  topDecor: {
-    paddingHorizontal: 28,
-    paddingBottom: 32,
-  },
-  logo: {
-    fontSize: 28,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-    marginTop: 48,
-    marginBottom: 4,
-  },
-  tagline: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.8)",
-  },
-  card: {
-    flex: 1,
-    backgroundColor: "#F0F4FF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    marginTop: -20,
-  },
-  title: {
-    fontSize: 26,
-    fontFamily: "Inter_700Bold",
-    color: "#1A1A1A",
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    color: "#71717A",
-    marginBottom: 28,
-  },
-  phoneRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 20,
-  },
-  countryCode: {
-    height: 52,
-    paddingHorizontal: 14,
-    backgroundColor: "#F4F4F5",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E4E4E7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  countryText: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-    color: "#1A1A1A",
-  },
-  phoneInput: {
-    flex: 1,
-    height: 52,
-    backgroundColor: "#F4F4F5",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E4E4E7",
-    paddingHorizontal: 16,
-    fontSize: 16,
-    fontFamily: "Inter_500Medium",
-    color: "#1A1A1A",
-  },
-  otpRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 12,
-  },
-  otpBox: {
-    flex: 1,
-    height: 60,
-    backgroundColor: "#F4F4F5",
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#E4E4E7",
-    fontSize: 24,
-    fontFamily: "Inter_700Bold",
-    color: "#1A1A1A",
-  },
-  otpBoxFilled: {
-    borderColor: "#3B82F6",
-    backgroundColor: "#EFF6FF",
-  },
-  hint: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: "#A1A1AA",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  primaryBtn: {
-    height: 56,
-    backgroundColor: "#3B82F6",
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-  },
-  btnDisabled: {
-    backgroundColor: "#D4D4D8",
-  },
-  primaryBtnText: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-  },
-  terms: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: "#A1A1AA",
-    textAlign: "center",
-    lineHeight: 18,
-  },
-  backLink: {
-    marginBottom: 12,
-  },
-  backLinkText: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    color: "#3B82F6",
-  },
+  container: { flex: 1, backgroundColor: "#F0F4FF" },
+  topDecor: { paddingHorizontal: 28, paddingBottom: 32 },
+  logo: { fontSize: 28, fontFamily: "Inter_700Bold", color: "#FFFFFF", marginTop: 48, marginBottom: 4 },
+  tagline: { fontSize: 14, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)" },
+  card: { flex: 1, backgroundColor: "#F0F4FF", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 28, marginTop: -20 },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold", color: "#1A1A1A", marginBottom: 6 },
+  subtitle: { fontSize: 15, fontFamily: "Inter_400Regular", color: "#71717A", marginBottom: 28 },
+  phoneRow: { flexDirection: "row", gap: 10, marginBottom: 20 },
+  countryCode: { height: 52, paddingHorizontal: 14, backgroundColor: "#F4F4F5", borderRadius: 12, borderWidth: 1, borderColor: "#E4E4E7", alignItems: "center", justifyContent: "center" },
+  countryText: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: "#1A1A1A" },
+  phoneInput: { flex: 1, height: 52, backgroundColor: "#F4F4F5", borderRadius: 12, borderWidth: 1, borderColor: "#E4E4E7", paddingHorizontal: 16, fontSize: 16, fontFamily: "Inter_500Medium", color: "#1A1A1A" },
+  otpRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
+  otpBox: { flex: 1, height: 56, backgroundColor: "#F4F4F5", borderRadius: 12, borderWidth: 2, borderColor: "#E4E4E7", fontSize: 22, fontFamily: "Inter_700Bold", color: "#1A1A1A" },
+  otpBoxFilled: { borderColor: "#3B82F6", backgroundColor: "#EFF6FF" },
+  hint: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#A1A1AA", textAlign: "center", marginBottom: 16 },
+  primaryBtn: { height: 56, backgroundColor: "#3B82F6", borderRadius: 16, alignItems: "center", justifyContent: "center", marginBottom: 16 },
+  btnDisabled: { backgroundColor: "#D4D4D8" },
+  primaryBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+  terms: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#A1A1AA", textAlign: "center", lineHeight: 18 },
+  backLink: { marginBottom: 12 },
+  backLinkText: { fontSize: 14, fontFamily: "Inter_500Medium", color: "#3B82F6" },
 });

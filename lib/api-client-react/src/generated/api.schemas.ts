@@ -372,6 +372,338 @@ export interface ReportExport {
   totalRows: number;
 }
 
+export interface StudentSendOtpBody {
+  phone: string;
+}
+
+export interface StudentVerifyOtpBody {
+  phone: string;
+  otp: string;
+}
+
+export type StudentProfileFoodPreference =
+  (typeof StudentProfileFoodPreference)[keyof typeof StudentProfileFoodPreference];
+
+export const StudentProfileFoodPreference = {
+  veg: "veg",
+  "non-veg": "non-veg",
+  egg: "egg",
+  jain: "jain",
+} as const;
+
+export interface StudentProfile {
+  id: string;
+  phone: string;
+  name: string;
+  campusId?: string | null;
+  campusName?: string | null;
+  foodPreference: StudentProfileFoodPreference;
+  address?: string | null;
+  walletBalance: number;
+  isProfileComplete: boolean;
+  createdAt?: string;
+}
+
+export interface StudentAuthResponse {
+  token: string;
+  student: StudentProfile;
+}
+
+export type StudentUpdateProfileBodyFoodPreference =
+  (typeof StudentUpdateProfileBodyFoodPreference)[keyof typeof StudentUpdateProfileBodyFoodPreference];
+
+export const StudentUpdateProfileBodyFoodPreference = {
+  veg: "veg",
+  "non-veg": "non-veg",
+  egg: "egg",
+  jain: "jain",
+} as const;
+
+export interface StudentUpdateProfileBody {
+  name?: string;
+  campusId?: string;
+  campusName?: string;
+  foodPreference?: StudentUpdateProfileBodyFoodPreference;
+  address?: string;
+}
+
+export interface Campus {
+  id: string;
+  name: string;
+  city: string;
+  area?: string | null;
+}
+
+export interface StudentRestaurant {
+  id: string;
+  name: string;
+  tagline?: string | null;
+  description?: string | null;
+  address?: string | null;
+  cuisineType?: string | null;
+  campusId?: string | null;
+  isVeg: boolean;
+  lunchAvailable: boolean;
+  dinnerAvailable: boolean;
+  operatingDays: string[];
+  maxCapacity?: number | null;
+  accentColor?: string | null;
+  lunchStartPrice?: number | null;
+  dinnerStartPrice?: number | null;
+  cancelCutoffHour: number;
+  deliveryTime?: string | null;
+  distanceLabel?: string | null;
+  rating?: number | null;
+  reviewCount: number;
+}
+
+export type StudentPackageMealSlot =
+  (typeof StudentPackageMealSlot)[keyof typeof StudentPackageMealSlot];
+
+export const StudentPackageMealSlot = {
+  lunch: "lunch",
+  dinner: "dinner",
+  both: "both",
+} as const;
+
+export interface StudentPackage {
+  id: string;
+  name: string;
+  description?: string | null;
+  durationDays: number;
+  mealSlot: StudentPackageMealSlot;
+  pricePerDay: number;
+  totalPrice: number;
+  discountPercent: number;
+  mealsPerDay: number;
+}
+
+export type StudentMealVegType =
+  (typeof StudentMealVegType)[keyof typeof StudentMealVegType];
+
+export const StudentMealVegType = {
+  veg: "veg",
+  "non-veg": "non-veg",
+  egg: "egg",
+} as const;
+
+export type StudentMealSpiceLevel =
+  | (typeof StudentMealSpiceLevel)[keyof typeof StudentMealSpiceLevel]
+  | null;
+
+export const StudentMealSpiceLevel = {
+  mild: "mild",
+  medium: "medium",
+  hot: "hot",
+} as const;
+
+export interface StudentMeal {
+  id: string;
+  name: string;
+  shortDescription?: string | null;
+  category?: string | null;
+  vegType: StudentMealVegType;
+  spiceLevel?: StudentMealSpiceLevel;
+  calories?: number | null;
+  storagePath?: string | null;
+  lunchAvailable: boolean;
+  dinnerAvailable: boolean;
+}
+
+export type StudentRestaurantDetailRatingsBreakdown = {
+  totalReviews?: number;
+  overall?: number | null;
+  foodQuality?: number | null;
+  packaging?: number | null;
+  delivery?: number | null;
+  valueForMoney?: number | null;
+  hygiene?: number | null;
+} | null;
+
+export type StudentRestaurantDetail = StudentRestaurant & {
+  packages: StudentPackage[];
+  meals: StudentMeal[];
+  ratingsBreakdown?: StudentRestaurantDetailRatingsBreakdown;
+};
+
+export interface RateRestaurantBody {
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  foodQuality: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  packaging: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  delivery: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  valueForMoney: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  hygiene: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  communication?: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  overall: number;
+  note?: string | null;
+}
+
+export type StudentSubscriptionSlot =
+  (typeof StudentSubscriptionSlot)[keyof typeof StudentSubscriptionSlot];
+
+export const StudentSubscriptionSlot = {
+  lunch: "lunch",
+  dinner: "dinner",
+  both: "both",
+} as const;
+
+export type StudentSubscriptionStatus =
+  (typeof StudentSubscriptionStatus)[keyof typeof StudentSubscriptionStatus];
+
+export const StudentSubscriptionStatus = {
+  active: "active",
+  paused: "paused",
+  cancelled: "cancelled",
+  completed: "completed",
+  refund_requested: "refund_requested",
+} as const;
+
+export interface StudentSubscription {
+  id: string;
+  restaurantId: string;
+  restaurantName: string;
+  packageId?: string | null;
+  packageName: string;
+  slot: StudentSubscriptionSlot;
+  totalDays: number;
+  usedDays: number;
+  remainingDays: number;
+  pricePerDay: number;
+  totalPaid: number;
+  startDate: string;
+  endDate: string;
+  status: StudentSubscriptionStatus;
+  pausedUntil?: string | null;
+  lateCancellationFees: number;
+  createdAt: string;
+}
+
+export interface CreateSubscriptionBody {
+  restaurantId: string;
+  packageId: string;
+  /** YYYY-MM-DD, defaults to today */
+  startDate?: string;
+}
+
+export interface CreateSubscriptionResponse {
+  subscription: StudentSubscription;
+  ordersCreated: number;
+  message: string;
+}
+
+export type StudentOrderMealSlot =
+  (typeof StudentOrderMealSlot)[keyof typeof StudentOrderMealSlot];
+
+export const StudentOrderMealSlot = {
+  lunch: "lunch",
+  dinner: "dinner",
+} as const;
+
+export type StudentOrderStatus =
+  (typeof StudentOrderStatus)[keyof typeof StudentOrderStatus];
+
+export const StudentOrderStatus = {
+  scheduled: "scheduled",
+  locked: "locked",
+  accepted: "accepted",
+  preparing: "preparing",
+  ready: "ready",
+  delivered: "delivered",
+  cancelled: "cancelled",
+  no_show: "no_show",
+} as const;
+
+export type StudentOrderCancelStatus =
+  (typeof StudentOrderCancelStatus)[keyof typeof StudentOrderCancelStatus];
+
+export const StudentOrderCancelStatus = {
+  free: "free",
+  late: "late",
+  full: "full",
+  none: "none",
+} as const;
+
+export interface StudentOrder {
+  id: string;
+  subscriptionId: string;
+  restaurantId: string;
+  packageName: string;
+  mealSlot: StudentOrderMealSlot;
+  scheduledDate: string;
+  status: StudentOrderStatus;
+  pricePerDay: number;
+  freeCancelUntil: string;
+  isLocked: boolean;
+  cancelStatus: StudentOrderCancelStatus;
+}
+
+export type CancelOrderResponseType =
+  (typeof CancelOrderResponseType)[keyof typeof CancelOrderResponseType];
+
+export const CancelOrderResponseType = {
+  free: "free",
+  late: "late",
+  full: "full",
+} as const;
+
+export interface CancelOrderResponse {
+  type: CancelOrderResponseType;
+  fee: number;
+  refund: number;
+  message: string;
+}
+
+export type LedgerEntryType =
+  (typeof LedgerEntryType)[keyof typeof LedgerEntryType];
+
+export const LedgerEntryType = {
+  subscription_purchase: "subscription_purchase",
+  meal_used: "meal_used",
+  free_cancel: "free_cancel",
+  late_cancel: "late_cancel",
+  full_charge: "full_charge",
+  refund: "refund",
+  wallet_topup: "wallet_topup",
+  subscription_cancel_refund: "subscription_cancel_refund",
+} as const;
+
+export interface LedgerEntry {
+  id: string;
+  subscriptionId?: string | null;
+  restaurantName?: string | null;
+  type: LedgerEntryType;
+  description: string;
+  amountDelta: number;
+  createdAt: string;
+}
+
 export type GetRestaurantOverviewParams = {
   dateFrom?: string;
   dateTo?: string;
@@ -527,3 +859,55 @@ export const ExportRestaurantReportMealSlot = {
   lunch: "lunch",
   dinner: "dinner",
 } as const;
+
+export type StudentSendOtp200 = {
+  message?: string;
+  devNote?: string;
+};
+
+export type ListStudentRestaurantsParams = {
+  campusId?: string;
+  slot?: ListStudentRestaurantsSlot;
+};
+
+export type ListStudentRestaurantsSlot =
+  (typeof ListStudentRestaurantsSlot)[keyof typeof ListStudentRestaurantsSlot];
+
+export const ListStudentRestaurantsSlot = {
+  lunch: "lunch",
+  dinner: "dinner",
+  both: "both",
+} as const;
+
+export type RateRestaurant201 = {
+  id?: string;
+  message?: string;
+};
+
+export type CancelStudentSubscriptionBody = {
+  reason?: string;
+};
+
+export type CancelStudentSubscription200 = {
+  message: string;
+  refundAmount: number;
+};
+
+export type PauseStudentSubscriptionBody = {
+  /**
+   * @minimum 1
+   * @maximum 30
+   */
+  pauseDays: number;
+};
+
+export type PauseStudentSubscription200 = {
+  message: string;
+  pausedUntil: string;
+};
+
+export type ListStudentOrdersParams = {
+  from?: string;
+  to?: string;
+  status?: string;
+};

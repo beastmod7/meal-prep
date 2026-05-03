@@ -41,11 +41,11 @@ export default function CheckoutScreen() {
   const params = useLocalSearchParams<{
     restaurantId: string;
     restaurantName: string;
+    packageId: string;
     slot: string;
     days: string;
     pricePerDay: string;
     totalPrice: string;
-    mealId: string;
     mealName: string;
   }>();
   const router = useRouter();
@@ -82,12 +82,7 @@ export default function CheckoutScreen() {
     try {
       await subscribe({
         restaurantId: params.restaurantId,
-        restaurantName: params.restaurantName,
-        slot,
-        days,
-        pricePerDay,
-        defaultMealId: params.mealId,
-        defaultMealName: params.mealName,
+        packageId: params.packageId,
       });
 
       const hasPermission = await requestNotificationPermissions();

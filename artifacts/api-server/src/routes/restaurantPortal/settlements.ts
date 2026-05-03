@@ -12,7 +12,7 @@ const router = Router({ mergeParams: true });
 router.use(requirePortalAuth, requireRestaurantAccess);
 
 router.get("/", async (req, res) => {
-  const { restaurantId } = req.params;
+  const restaurantId = (req.params as Record<string, string>)["restaurantId"]!;
   const { dateFrom, dateTo, status } = req.query as {
     dateFrom?: string;
     dateTo?: string;

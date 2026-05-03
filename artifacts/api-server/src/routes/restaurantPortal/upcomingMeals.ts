@@ -12,7 +12,7 @@ const router = Router({ mergeParams: true });
 router.use(requirePortalAuth, requireRestaurantAccess);
 
 router.get("/", async (req, res) => {
-  const { restaurantId } = req.params;
+  const restaurantId = (req.params as Record<string, string>)["restaurantId"]!;
   const { date, mealSlot, status } = req.query as {
     date?: string;
     mealSlot?: string;
@@ -79,7 +79,7 @@ router.get("/", async (req, res) => {
 });
 
 router.get("/counts", async (req, res) => {
-  const { restaurantId } = req.params;
+  const restaurantId = (req.params as Record<string, string>)["restaurantId"]!;
   const { dateFrom, dateTo } = req.query as { dateFrom?: string; dateTo?: string };
 
   const today = new Date().toISOString().split("T")[0]!;
@@ -126,7 +126,8 @@ router.get("/counts", async (req, res) => {
 });
 
 router.patch("/:orderId/status", async (req, res) => {
-  const { restaurantId, orderId } = req.params;
+  const restaurantId = (req.params as Record<string, string>)["restaurantId"]!;
+  const orderId = (req.params as Record<string, string>)["orderId"]!;
   const { status, note } = req.body as { status: string; note?: string };
 
   const validStatuses = ["accepted", "preparing", "ready", "delivered", "no_show"];

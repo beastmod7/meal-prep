@@ -1,8 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -14,15 +15,16 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import RestaurantCard from "@/components/RestaurantCard";
-import { RESTAURANTS } from "@/constants/mockData";
+import { getRestaurants, ApiRestaurant } from "@/services/api";
+import { toCardRestaurant } from "@/utils/restaurants";
 import { useColors } from "@/hooks/useColors";
+import { useApp } from "@/context/AppContext";
 
 const FILTERS = [
   { key: "all", label: "All" },
   { key: "veg", label: "Veg" },
   { key: "lunch", label: "Lunch" },
   { key: "dinner", label: "Dinner" },
-  { key: "nearby", label: "Nearby" },
   { key: "top-rated", label: "Top rated" },
 ];
 
@@ -30,22 +32,34 @@ export default function MealsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user } = useApp();
   const [activeFilter, setActiveFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [restaurants, setRestaurants] = useState<ApiRestaurant[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = RESTAURANTS.filter((r) => {
-    if (
-      search &&
-      !r.name.toLowerCase().includes(search.toLowerCase()) &&
-      !r.cuisine.toLowerCase().includes(search.toLowerCase())
-    )
-      return false;
-    if (activeFilter === "veg" && !r.isVeg) return false;
-    if (activeFilter === "lunch" && !r.lunchAvailable) return false;
-    if (activeFilter === "dinner" && !r.dinnerAvailable) return false;
-    if (activeFilter === "top-rated" && r.rating < 4.3) return false;
-    return true;
-  });
+  useEffect(() => {
+    getRestaurants(user?.campusId ? { campusId: user.campusId } : undefined)
+      .then(setRestaurants)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [user?.campusId]);
+
+  const filtered = restaurants
+    .map(toCardRestaurant)
+    .filter((r) => {
+      if (
+        search &&
+        !r.name.toLowerCase().includes(search.toLowerCase()) &&
+        !r.cuisine.toLowerCase().includes(search.toLowerCase())
+      )
+        return false;
+      if (activeFilter === "veg" && !r.isVeg) return false;
+      if (activeFilter === "lunch" && !r.lunchAvailable) return false;
+      if (activeFilter === "dinner" && !r.dinnerAvailable) return false;
+      if (activeFilter === "top-rated" && r.rating < 4.3) return false;
+      return true;
+    });
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -91,22 +105,15 @@ export default function MealsScreen() {
             style={[
               styles.filterChip,
               {
-                backgroundColor:
-                  activeFilter === f.key ? colors.primary : colors.card,
-                borderColor:
-                  activeFilter === f.key ? colors.primary : colors.border,
+                backgroundColor: activeFilter === f.key ? colors.primary : colors.card,
+                borderColor: activeFilter === f.key ? colors.primary : colors.border,
               },
             ]}
           >
             <Text
               style={[
                 styles.filterText,
-                {
-                  color:
-                    activeFilter === f.key
-                      ? colors.primaryForeground
-                      : colors.mutedForeground,
-                },
+                { color: activeFilter === f.key ? colors.primaryForeground : colors.mutedForeground },
               ]}
             >
               {f.label}
@@ -119,22 +126,22 @@ export default function MealsScreen() {
         style={styles.list}
         contentContainerStyle={[
           styles.listContent,
-          {
-            paddingBottom:
-              insets.bottom + (Platform.OS === "web" ? 34 : 0) + 90,
-          },
+          { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 90 },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* How it works banner */}
         <View style={[styles.howItWorks, { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" }]}>
           <Feather name="info" size={14} color="#2563EB" />
           <Text style={styles.howItWorksText}>
-            Subscribe to a restaurant for <Text style={{ fontFamily: "Inter_700Bold" }}>10, 20, or 30 days</Text> — choose lunch or dinner. Every meal is auto-scheduled for you daily.
+            Subscribe to a restaurant for{" "}
+            <Text style={{ fontFamily: "Inter_700Bold" }}>10, 20, or 30 days</Text>
+            {" "}— choose lunch or dinner. Every meal is auto-scheduled for you daily.
           </Text>
         </View>
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <ActivityIndicator color="#3B82F6" style={{ marginTop: 40 }} />
+        ) : filtered.length === 0 ? (
           <View style={styles.empty}>
             <Feather name="search" size={32} color={colors.mutedForeground} />
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
@@ -142,9 +149,7 @@ export default function MealsScreen() {
             </Text>
           </View>
         ) : (
-          filtered.map((r) => (
-            <RestaurantCard key={r.id} restaurant={r} showSubscribeCta />
-          ))
+          filtered.map((r) => <RestaurantCard key={r.id} restaurant={r} showSubscribeCta />)
         )}
       </ScrollView>
     </View>
@@ -153,64 +158,19 @@ export default function MealsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  title: {
-    fontSize: 26,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-    marginBottom: 2,
-  },
-  subtitle: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.75)",
-    marginBottom: 14,
-  },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    height: 44,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.2)",
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: "#FFFFFF",
-  },
+  header: { paddingHorizontal: 20, paddingBottom: 20 },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold", color: "#FFFFFF", marginBottom: 2 },
+  subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)", marginBottom: 14 },
+  searchBar: { flexDirection: "row", alignItems: "center", gap: 8, height: 44, paddingHorizontal: 14, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.2)" },
+  searchInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: "#FFFFFF" },
   filtersScroll: { flexGrow: 0, marginVertical: 10 },
   filtersContent: { paddingHorizontal: 16, gap: 8 },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 100,
-    borderWidth: 1,
-  },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 100, borderWidth: 1 },
   filterText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   list: { flex: 1 },
   listContent: { paddingHorizontal: 16, paddingTop: 4 },
-  howItWorks: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
-    marginBottom: 12,
-  },
-  howItWorksText: {
-    flex: 1,
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: "#1E3A8A",
-    lineHeight: 17,
-  },
+  howItWorks: { flexDirection: "row", alignItems: "flex-start", gap: 8, borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 12 },
+  howItWorksText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", color: "#1E3A8A", lineHeight: 17 },
   empty: { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyText: { fontSize: 15, fontFamily: "Inter_400Regular" },
 });

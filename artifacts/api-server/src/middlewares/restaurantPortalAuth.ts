@@ -11,11 +11,6 @@ export interface PortalTokenPayload {
   restaurantIds: string[];
 }
 
-declare module "express" {
-  interface Request {
-    portalUser?: PortalTokenPayload;
-  }
-}
 
 export function requirePortalAuth(
   req: Request,
@@ -49,7 +44,7 @@ export function requireRestaurantAccess(
     return;
   }
 
-  const restaurantId = req.params["restaurantId"];
+  const restaurantId = req.params["restaurantId"] as string | undefined;
   if (user.role === "admin" || user.role === "super_admin") {
     next();
     return;

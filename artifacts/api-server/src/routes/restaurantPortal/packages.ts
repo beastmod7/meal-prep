@@ -28,7 +28,7 @@ const toResponse = (p: typeof subscriptionPackagesTable.$inferSelect) => ({
 });
 
 router.get("/", async (req, res) => {
-  const { restaurantId } = req.params;
+  const restaurantId = (req.params as Record<string, string>)["restaurantId"]!;
   const { status } = req.query as { status?: string };
 
   const conditions = [eq(subscriptionPackagesTable.restaurantId, restaurantId)];
@@ -54,7 +54,7 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const { restaurantId } = req.params;
+  const restaurantId = (req.params as Record<string, string>)["restaurantId"]!;
   const body = req.body as {
     name: string;
     mealSlot: "lunch" | "dinner" | "both";
@@ -94,7 +94,8 @@ router.post("/", async (req, res) => {
 });
 
 router.put("/:packageId", async (req, res) => {
-  const { restaurantId, packageId } = req.params;
+  const restaurantId = (req.params as Record<string, string>)["restaurantId"]!;
+  const packageId = (req.params as Record<string, string>)["packageId"]!;
   const body = req.body as {
     name?: string;
     mealSlot?: "lunch" | "dinner" | "both";
@@ -140,7 +141,8 @@ router.put("/:packageId", async (req, res) => {
 });
 
 router.delete("/:packageId", async (req, res) => {
-  const { restaurantId, packageId } = req.params;
+  const restaurantId = (req.params as Record<string, string>)["restaurantId"]!;
+  const packageId = (req.params as Record<string, string>)["packageId"]!;
 
   const [existing] = await db
     .select()

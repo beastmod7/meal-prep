@@ -557,3 +557,415 @@ export const ExportRestaurantReportResponse = zod.object({
   rows: zod.array(zod.array(zod.string())),
   totalRows: zod.number(),
 });
+
+/**
+ * @summary List all active campuses (public, no auth)
+ */
+export const ListCampusesResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  city: zod.string(),
+  area: zod.string().nullish(),
+});
+export const ListCampusesResponse = zod.array(ListCampusesResponseItem);
+
+/**
+ * @summary Send OTP to phone number
+ */
+export const StudentSendOtpBody = zod.object({
+  phone: zod.string(),
+});
+
+export const StudentSendOtpResponse = zod.object({
+  message: zod.string().optional(),
+  devNote: zod.string().optional(),
+});
+
+/**
+ * @summary Verify OTP and get auth token
+ */
+export const StudentVerifyOtpBody = zod.object({
+  phone: zod.string(),
+  otp: zod.string(),
+});
+
+export const StudentVerifyOtpResponse = zod.object({
+  token: zod.string(),
+  student: zod.object({
+    id: zod.string(),
+    phone: zod.string(),
+    name: zod.string(),
+    campusId: zod.string().nullish(),
+    campusName: zod.string().nullish(),
+    foodPreference: zod.enum(["veg", "non-veg", "egg", "jain"]),
+    address: zod.string().nullish(),
+    walletBalance: zod.number(),
+    isProfileComplete: zod.boolean(),
+    createdAt: zod.string().optional(),
+  }),
+});
+
+/**
+ * @summary Get own profile
+ */
+export const GetStudentProfileResponse = zod.object({
+  id: zod.string(),
+  phone: zod.string(),
+  name: zod.string(),
+  campusId: zod.string().nullish(),
+  campusName: zod.string().nullish(),
+  foodPreference: zod.enum(["veg", "non-veg", "egg", "jain"]),
+  address: zod.string().nullish(),
+  walletBalance: zod.number(),
+  isProfileComplete: zod.boolean(),
+  createdAt: zod.string().optional(),
+});
+
+/**
+ * @summary Update own profile
+ */
+export const UpdateStudentProfileBody = zod.object({
+  name: zod.string().optional(),
+  campusId: zod.string().optional(),
+  campusName: zod.string().optional(),
+  foodPreference: zod.enum(["veg", "non-veg", "egg", "jain"]).optional(),
+  address: zod.string().optional(),
+});
+
+export const UpdateStudentProfileResponse = zod.object({
+  id: zod.string(),
+  phone: zod.string(),
+  name: zod.string(),
+  campusId: zod.string().nullish(),
+  campusName: zod.string().nullish(),
+  foodPreference: zod.enum(["veg", "non-veg", "egg", "jain"]),
+  address: zod.string().nullish(),
+  walletBalance: zod.number(),
+  isProfileComplete: zod.boolean(),
+  createdAt: zod.string().optional(),
+});
+
+/**
+ * @summary List active restaurants
+ */
+export const ListStudentRestaurantsQueryParams = zod.object({
+  campusId: zod.coerce.string().optional(),
+  slot: zod.enum(["lunch", "dinner", "both"]).optional(),
+});
+
+export const ListStudentRestaurantsResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  tagline: zod.string().nullish(),
+  description: zod.string().nullish(),
+  address: zod.string().nullish(),
+  cuisineType: zod.string().nullish(),
+  campusId: zod.string().nullish(),
+  isVeg: zod.boolean(),
+  lunchAvailable: zod.boolean(),
+  dinnerAvailable: zod.boolean(),
+  operatingDays: zod.array(zod.string()),
+  maxCapacity: zod.number().nullish(),
+  accentColor: zod.string().nullish(),
+  lunchStartPrice: zod.number().nullish(),
+  dinnerStartPrice: zod.number().nullish(),
+  cancelCutoffHour: zod.number(),
+  deliveryTime: zod.string().nullish(),
+  distanceLabel: zod.string().nullish(),
+  rating: zod.number().nullish(),
+  reviewCount: zod.number(),
+});
+export const ListStudentRestaurantsResponse = zod.array(
+  ListStudentRestaurantsResponseItem,
+);
+
+/**
+ * @summary Get restaurant detail with packages and meals
+ */
+export const GetStudentRestaurantParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const GetStudentRestaurantResponse = zod
+  .object({
+    id: zod.string(),
+    name: zod.string(),
+    tagline: zod.string().nullish(),
+    description: zod.string().nullish(),
+    address: zod.string().nullish(),
+    cuisineType: zod.string().nullish(),
+    campusId: zod.string().nullish(),
+    isVeg: zod.boolean(),
+    lunchAvailable: zod.boolean(),
+    dinnerAvailable: zod.boolean(),
+    operatingDays: zod.array(zod.string()),
+    maxCapacity: zod.number().nullish(),
+    accentColor: zod.string().nullish(),
+    lunchStartPrice: zod.number().nullish(),
+    dinnerStartPrice: zod.number().nullish(),
+    cancelCutoffHour: zod.number(),
+    deliveryTime: zod.string().nullish(),
+    distanceLabel: zod.string().nullish(),
+    rating: zod.number().nullish(),
+    reviewCount: zod.number(),
+  })
+  .and(
+    zod.object({
+      packages: zod.array(
+        zod.object({
+          id: zod.string(),
+          name: zod.string(),
+          description: zod.string().nullish(),
+          durationDays: zod.number(),
+          mealSlot: zod.enum(["lunch", "dinner", "both"]),
+          pricePerDay: zod.number(),
+          totalPrice: zod.number(),
+          discountPercent: zod.number(),
+          mealsPerDay: zod.number(),
+        }),
+      ),
+      meals: zod.array(
+        zod.object({
+          id: zod.string(),
+          name: zod.string(),
+          shortDescription: zod.string().nullish(),
+          category: zod.string().nullish(),
+          vegType: zod.enum(["veg", "non-veg", "egg"]),
+          spiceLevel: zod.enum(["mild", "medium", "hot"]).nullish(),
+          calories: zod.number().nullish(),
+          storagePath: zod.string().nullish(),
+          lunchAvailable: zod.boolean(),
+          dinnerAvailable: zod.boolean(),
+        }),
+      ),
+      ratingsBreakdown: zod
+        .object({
+          totalReviews: zod.number().optional(),
+          overall: zod.number().nullish(),
+          foodQuality: zod.number().nullish(),
+          packaging: zod.number().nullish(),
+          delivery: zod.number().nullish(),
+          valueForMoney: zod.number().nullish(),
+          hygiene: zod.number().nullish(),
+        })
+        .nullish(),
+    }),
+  );
+
+/**
+ * @summary Submit a rating for a restaurant
+ */
+export const RateRestaurantParams = zod.object({
+  restaurantId: zod.coerce.string(),
+});
+
+export const rateRestaurantBodyFoodQualityMax = 5;
+
+export const rateRestaurantBodyPackagingMax = 5;
+
+export const rateRestaurantBodyDeliveryMax = 5;
+
+export const rateRestaurantBodyValueForMoneyMax = 5;
+
+export const rateRestaurantBodyHygieneMax = 5;
+
+export const rateRestaurantBodyCommunicationMax = 5;
+
+export const rateRestaurantBodyOverallMax = 5;
+
+export const RateRestaurantBody = zod.object({
+  foodQuality: zod.number().min(1).max(rateRestaurantBodyFoodQualityMax),
+  packaging: zod.number().min(1).max(rateRestaurantBodyPackagingMax),
+  delivery: zod.number().min(1).max(rateRestaurantBodyDeliveryMax),
+  valueForMoney: zod.number().min(1).max(rateRestaurantBodyValueForMoneyMax),
+  hygiene: zod.number().min(1).max(rateRestaurantBodyHygieneMax),
+  communication: zod
+    .number()
+    .min(1)
+    .max(rateRestaurantBodyCommunicationMax)
+    .optional(),
+  overall: zod.number().min(1).max(rateRestaurantBodyOverallMax),
+  note: zod.string().nullish(),
+});
+
+/**
+ * @summary List own subscriptions
+ */
+export const ListStudentSubscriptionsResponseItem = zod.object({
+  id: zod.string(),
+  restaurantId: zod.string(),
+  restaurantName: zod.string(),
+  packageId: zod.string().nullish(),
+  packageName: zod.string(),
+  slot: zod.enum(["lunch", "dinner", "both"]),
+  totalDays: zod.number(),
+  usedDays: zod.number(),
+  remainingDays: zod.number(),
+  pricePerDay: zod.number(),
+  totalPaid: zod.number(),
+  startDate: zod.string(),
+  endDate: zod.string(),
+  status: zod.enum([
+    "active",
+    "paused",
+    "cancelled",
+    "completed",
+    "refund_requested",
+  ]),
+  pausedUntil: zod.string().nullish(),
+  lateCancellationFees: zod.number(),
+  createdAt: zod.string(),
+});
+export const ListStudentSubscriptionsResponse = zod.array(
+  ListStudentSubscriptionsResponseItem,
+);
+
+/**
+ * @summary Purchase a subscription
+ */
+export const CreateStudentSubscriptionBody = zod.object({
+  restaurantId: zod.string(),
+  packageId: zod.string(),
+  startDate: zod.string().optional().describe("YYYY-MM-DD, defaults to today"),
+});
+
+/**
+ * @summary Get a subscription by ID
+ */
+export const GetStudentSubscriptionParams = zod.object({
+  subscriptionId: zod.coerce.string(),
+});
+
+export const GetStudentSubscriptionResponse = zod.object({
+  id: zod.string(),
+  restaurantId: zod.string(),
+  restaurantName: zod.string(),
+  packageId: zod.string().nullish(),
+  packageName: zod.string(),
+  slot: zod.enum(["lunch", "dinner", "both"]),
+  totalDays: zod.number(),
+  usedDays: zod.number(),
+  remainingDays: zod.number(),
+  pricePerDay: zod.number(),
+  totalPaid: zod.number(),
+  startDate: zod.string(),
+  endDate: zod.string(),
+  status: zod.enum([
+    "active",
+    "paused",
+    "cancelled",
+    "completed",
+    "refund_requested",
+  ]),
+  pausedUntil: zod.string().nullish(),
+  lateCancellationFees: zod.number(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Cancel a subscription
+ */
+export const CancelStudentSubscriptionParams = zod.object({
+  subscriptionId: zod.coerce.string(),
+});
+
+export const CancelStudentSubscriptionBody = zod.object({
+  reason: zod.string().optional(),
+});
+
+export const CancelStudentSubscriptionResponse = zod.object({
+  message: zod.string(),
+  refundAmount: zod.number(),
+});
+
+/**
+ * @summary Pause a subscription for N days
+ */
+export const PauseStudentSubscriptionParams = zod.object({
+  subscriptionId: zod.coerce.string(),
+});
+
+export const pauseStudentSubscriptionBodyPauseDaysMax = 30;
+
+export const PauseStudentSubscriptionBody = zod.object({
+  pauseDays: zod.number().min(1).max(pauseStudentSubscriptionBodyPauseDaysMax),
+});
+
+export const PauseStudentSubscriptionResponse = zod.object({
+  message: zod.string(),
+  pausedUntil: zod.string(),
+});
+
+/**
+ * @summary List meal orders
+ */
+export const ListStudentOrdersQueryParams = zod.object({
+  from: zod.date().optional(),
+  to: zod.date().optional(),
+  status: zod.coerce.string().optional(),
+});
+
+export const ListStudentOrdersResponseItem = zod.object({
+  id: zod.string(),
+  subscriptionId: zod.string(),
+  restaurantId: zod.string(),
+  packageName: zod.string(),
+  mealSlot: zod.enum(["lunch", "dinner"]),
+  scheduledDate: zod.string(),
+  status: zod.enum([
+    "scheduled",
+    "locked",
+    "accepted",
+    "preparing",
+    "ready",
+    "delivered",
+    "cancelled",
+    "no_show",
+  ]),
+  pricePerDay: zod.number(),
+  freeCancelUntil: zod.string(),
+  isLocked: zod.boolean(),
+  cancelStatus: zod.enum(["free", "late", "full", "none"]),
+});
+export const ListStudentOrdersResponse = zod.array(
+  ListStudentOrdersResponseItem,
+);
+
+/**
+ * @summary Cancel a single meal order
+ */
+export const CancelStudentOrderParams = zod.object({
+  orderId: zod.coerce.string(),
+});
+
+export const CancelStudentOrderResponse = zod.object({
+  type: zod.enum(["free", "late", "full"]),
+  fee: zod.number(),
+  refund: zod.number(),
+  message: zod.string(),
+});
+
+/**
+ * @summary Get student transaction ledger
+ */
+export const ListStudentLedgerResponseItem = zod.object({
+  id: zod.string(),
+  subscriptionId: zod.string().nullish(),
+  restaurantName: zod.string().nullish(),
+  type: zod.enum([
+    "subscription_purchase",
+    "meal_used",
+    "free_cancel",
+    "late_cancel",
+    "full_charge",
+    "refund",
+    "wallet_topup",
+    "subscription_cancel_refund",
+  ]),
+  description: zod.string(),
+  amountDelta: zod.number(),
+  createdAt: zod.string(),
+});
+export const ListStudentLedgerResponse = zod.array(
+  ListStudentLedgerResponseItem,
+);

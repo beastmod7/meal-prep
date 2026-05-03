@@ -27,6 +27,7 @@ export const subscriptionPackagesTable = pgTable("subscription_packages", {
     .notNull()
     .references(() => restaurantsTable.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  description: text("description"),
   mealSlot: packageSlotEnum("meal_slot").notNull(),
   validityDays: integer("validity_days").notNull(),
   pricePerDay: numeric("price_per_day", { precision: 10, scale: 2 }).notNull(),

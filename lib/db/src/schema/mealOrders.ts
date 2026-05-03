@@ -19,6 +19,9 @@ export const mealOrderStatusEnum = pgEnum("meal_order_status", [
   "ready",
   "delivered",
   "cancelled",
+  "cancelled_free",
+  "cancelled_late",
+  "cancelled_full",
   "no_show",
 ]);
 
@@ -27,16 +30,23 @@ export const mealOrdersTable = pgTable("meal_orders", {
   restaurantId: text("restaurant_id")
     .notNull()
     .references(() => restaurantsTable.id, { onDelete: "cascade" }),
+  // studentId is nullable to keep backward compat with seeded data;
+  // all real orders created via student API will have it set.
+  // RLS template (Supabase):
+  //   CREATE POLICY "orders_owner" ON meal_orders
+  //   FOR SELECT USING (student_id = auth.uid());
+  studentId: text("student_id"),
   subscriptionId: text("subscription_id").notNull(),
   packageId: text("package_id").notNull(),
   packageName: text("package_name").notNull(),
+  // Denormalized for kitchen display — avoids joins on hot path
   studentName: text("student_name").notNull(),
   studentPhoneMasked: text("student_phone_masked").notNull(),
   mealSlot: mealSlotEnum("meal_slot").notNull(),
-  scheduledDate: text("scheduled_date").notNull(),
+  scheduledDate: text("scheduled_date").notNull(), // YYYY-MM-DD IST
   status: mealOrderStatusEnum("status").notNull().default("scheduled"),
   pricePerDay: numeric("price_per_day", { precision: 10, scale: 2 }).notNull(),
-  freeCancelUntil: text("free_cancel_until").notNull(),
+  freeCancelUntil: text("free_cancel_until").notNull(), // ISO timestamp
   isLocked: boolean("is_locked").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
