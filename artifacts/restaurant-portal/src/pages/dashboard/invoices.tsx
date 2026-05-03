@@ -11,6 +11,7 @@ import { useState } from "react";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { inr } from "@/lib/fmt";
 import { useToast } from "@/hooks/use-toast";
+import { downloadCsv } from "@/lib/download";
 
 // ─── Mock invoice data ────────────────────────────────────────────────────────
 
@@ -35,18 +36,6 @@ const CREDIT_NOTES = [
   { id: "CN-2025-0009", date: FMT(subMonths(TODAY, 0)), linkedInvoice: "INV-2025-0038", reason: "Refund for unused meals after plan cancellation", mealsUnused: 14, taxableValue: -1778, gstAdj: -89, total: -1867, status: "issued" },
   { id: "CN-2025-0008", date: FMT(subMonths(TODAY, 1)), linkedInvoice: "INV-2025-0034", reason: "Refund for unused meals after plan cancellation", mealsUnused: 7, taxableValue: -889, gstAdj: -44, total: -933, status: "issued" },
 ];
-
-function downloadCsv(headers: string[], rows: string[][], filename: string) {
-  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
-  const lines = [headers.map(escape).join(","), ...rows.map((r) => r.map(escape).join(","))];
-  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 function exportCustomerInvoicesCsv() {
   const headers = ["Invoice No", "Date", "Customer", "Package", "Taxable Value", "CGST (2.5%)", "SGST (2.5%)", "Total", "Status"];

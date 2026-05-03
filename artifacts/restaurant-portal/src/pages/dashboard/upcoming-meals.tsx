@@ -40,6 +40,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { inr } from "@/lib/fmt";
+import { downloadCsv } from "@/lib/download";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -120,18 +121,6 @@ const statusLabel: Record<string, string> = {
   locked: "Locked",
   accepted: "Accepted",
 };
-
-function downloadCsv(headers: string[], rows: string[][], filename: string) {
-  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
-  const lines = [headers.map(escape).join(","), ...rows.map((r) => r.map(escape).join(","))];
-  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 // ─── OTP Input ────────────────────────────────────────────────────────────────
 
