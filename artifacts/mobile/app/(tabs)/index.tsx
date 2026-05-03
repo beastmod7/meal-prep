@@ -152,6 +152,10 @@ export default function HomeScreen() {
         </LinearGradient>
 
         <View style={styles.content}>
+          {freeTrialEligible && (
+            <FreeMealBanner onPress={() => router.push("/free-meal")} />
+          )}
+
           {todaysMeals.length > 0 && (
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Today's meals</Text>
@@ -176,10 +180,6 @@ export default function HomeScreen() {
               </View>
               {upcomingOrders.map((order) => <MealOrderCard key={order.id} order={order} onCancel={setCancelTarget} />)}
             </View>
-          )}
-
-          {freeTrialEligible && (
-            <FreeMealBanner onPress={() => router.push("/free-meal")} />
           )}
 
           {activeSubs.length === 0 && !freeTrialEligible && (

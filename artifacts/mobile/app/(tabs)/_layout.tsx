@@ -5,6 +5,7 @@ import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
 export default function TabLayout() {
@@ -14,6 +15,9 @@ export default function TabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const insets = useSafeAreaInsets();
+  const { orders } = useApp();
+
+  const preparingCount = orders.filter((o) => o.status === "preparing").length;
 
   return (
     <Tabs
@@ -59,6 +63,8 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <Feather name="home" size={22} color={color} />
           ),
+          tabBarBadge: preparingCount > 0 ? preparingCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: "#F59E0B", fontSize: 10 },
         }}
       />
       <Tabs.Screen
