@@ -526,6 +526,22 @@ paths:
           schema:
             type: string
             enum: [all, scheduled, locked, delivered, cancelled, no_show]
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Filter by student name or masked phone
+        - name: preset
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month, last30]
+          description: Date preset (overrides dateFrom/dateTo)
+        - name: exportAll
+          in: query
+          schema:
+            type: boolean
+          description: Return all matching rows (up to 1000) without pagination
         - name: page
           in: query
           schema:
@@ -1600,11 +1616,20 @@ components:
               type: integer
             grossDeliveredValue:
               type: number
+            avgMealValue:
+              type: number
+            todayDelivered:
+              type: integer
+            todayExpected:
+              type: integer
           required:
             - totalDelivered
             - totalScheduled
             - totalCancelled
             - grossDeliveredValue
+            - avgMealValue
+            - todayDelivered
+            - todayExpected
         pagination:
           type: object
           properties:
@@ -1651,6 +1676,12 @@ components:
           type: integer
         totalDays:
           type: integer
+          nullable: true
+        settlementStatus:
+          type: string
+          nullable: true
+        settlementPeriodId:
+          type: string
           nullable: true
         markedBy:
           type: string

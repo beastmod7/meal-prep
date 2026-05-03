@@ -543,6 +543,18 @@ export const GetRestaurantRedemptionsQueryParams = zod.object({
   status: zod
     .enum(["all", "scheduled", "locked", "delivered", "cancelled", "no_show"])
     .optional(),
+  search: zod.coerce
+    .string()
+    .optional()
+    .describe("Filter by student name or masked phone"),
+  preset: zod
+    .enum(["today", "week", "month", "last30"])
+    .optional()
+    .describe("Date preset (overrides dateFrom\/dateTo)"),
+  exportAll: zod.coerce
+    .boolean()
+    .optional()
+    .describe("Return all matching rows (up to 1000) without pagination"),
   page: zod.coerce.number().default(getRestaurantRedemptionsQueryPageDefault),
   limit: zod.coerce.number().default(getRestaurantRedemptionsQueryLimitDefault),
 });
@@ -553,6 +565,9 @@ export const GetRestaurantRedemptionsResponse = zod.object({
     totalScheduled: zod.number(),
     totalCancelled: zod.number(),
     grossDeliveredValue: zod.number(),
+    avgMealValue: zod.number(),
+    todayDelivered: zod.number(),
+    todayExpected: zod.number(),
   }),
   pagination: zod.object({
     page: zod.number(),
@@ -573,6 +588,8 @@ export const GetRestaurantRedemptionsResponse = zod.object({
       pricePerDay: zod.number(),
       mealNumber: zod.number(),
       totalDays: zod.number().nullish(),
+      settlementStatus: zod.string().nullish(),
+      settlementPeriodId: zod.string().nullish(),
       markedBy: zod.string().nullish(),
       scanMethod: zod.string().nullish(),
       updatedAt: zod.string(),

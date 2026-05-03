@@ -363,6 +363,9 @@ export type RedemptionLedgerDataSummary = {
   totalScheduled: number;
   totalCancelled: number;
   grossDeliveredValue: number;
+  avgMealValue: number;
+  todayDelivered: number;
+  todayExpected: number;
 };
 
 export type RedemptionLedgerDataPagination = {
@@ -384,6 +387,8 @@ export interface RedemptionItem {
   pricePerDay: number;
   mealNumber: number;
   totalDays?: number | null;
+  settlementStatus?: string | null;
+  settlementPeriodId?: string | null;
   markedBy?: string | null;
   scanMethod?: string | null;
   updatedAt: string;
@@ -875,6 +880,18 @@ export type GetRestaurantRedemptionsParams = {
   dateTo?: string;
   mealSlot?: GetRestaurantRedemptionsMealSlot;
   status?: GetRestaurantRedemptionsStatus;
+  /**
+   * Filter by student name or masked phone
+   */
+  search?: string;
+  /**
+   * Date preset (overrides dateFrom/dateTo)
+   */
+  preset?: GetRestaurantRedemptionsPreset;
+  /**
+   * Return all matching rows (up to 1000) without pagination
+   */
+  exportAll?: boolean;
   page?: number;
   limit?: number;
 };
@@ -898,6 +915,16 @@ export const GetRestaurantRedemptionsStatus = {
   delivered: "delivered",
   cancelled: "cancelled",
   no_show: "no_show",
+} as const;
+
+export type GetRestaurantRedemptionsPreset =
+  (typeof GetRestaurantRedemptionsPreset)[keyof typeof GetRestaurantRedemptionsPreset];
+
+export const GetRestaurantRedemptionsPreset = {
+  today: "today",
+  week: "week",
+  month: "month",
+  last30: "last30",
 } as const;
 
 export type ExportRestaurantReportParams = {
