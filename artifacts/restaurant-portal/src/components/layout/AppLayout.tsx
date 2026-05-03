@@ -14,7 +14,7 @@ import {
   SidebarTrigger,
   SidebarHeader
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Package, UtensilsCrossed, XCircle, DollarSign, LogOut, Loader2, ChefHat } from "lucide-react";
+import { LayoutDashboard, Package, UtensilsCrossed, XCircle, DollarSign, LogOut, Loader2, ChefHat, FileText, ShieldCheck } from "lucide-react";
 import { useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,8 @@ const menuItems = [
   { title: "Daily Prep", url: "/dashboard/upcoming-meals", icon: UtensilsCrossed },
   { title: "Cancellations", url: "/dashboard/cancellations", icon: XCircle },
   { title: "Settlements", url: "/dashboard/settlements", icon: DollarSign },
+  { title: "Invoices & GST", url: "/dashboard/invoices", icon: FileText },
+  { title: "Compliance", url: "/dashboard/compliance", icon: ShieldCheck },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {

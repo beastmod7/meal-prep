@@ -1,7 +1,7 @@
 import { useAuth } from "@/lib/auth";
 import { useGetRestaurantSettlements, getGetRestaurantSettlementsQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, IndianRupee, TrendingUp, ReceiptText, Download } from "lucide-react";
+import { Loader2, IndianRupee, TrendingUp, ReceiptText, Download, ArrowDown, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -124,6 +124,70 @@ export default function Settlements() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Settlement waterfall — based on the most recent pending period */}
+          {(() => {
+            const pending = data.periods.find((p) => p.status === "payable" || p.status === "pending" || p.status === "processing");
+            const ref = pending ?? data.periods[0];
+            if (!ref) return null;
+            const refundDeductions = 0; // not yet in API — shown as placeholder
+            const disputeHolds = 0;
+            return (
+              <Card className="bg-card border-primary/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ArrowDown className="w-4 h-4 text-primary" />
+                    Settlement Breakdown
+                    {pending ? (
+                      <Badge variant="outline" className="ml-1 bg-orange-50 text-orange-700 border-orange-200">Current period</Badge>
+                    ) : (
+                      <Badge variant="outline" className="ml-1 bg-slate-50 text-slate-600 border-slate-200">Most recent</Badge>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between py-1.5">
+                      <span className="text-muted-foreground">Gross meal consumption value</span>
+                      <span className="font-medium">{inr(ref.grossValue)}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 text-destructive">
+                      <span>Less platform commission (12%)</span>
+                      <span className="font-medium">-{inr(ref.commission)}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 text-destructive">
+                      <span>Less refund adjustments</span>
+                      <span className="font-medium text-muted-foreground">{refundDeductions === 0 ? "—" : `-${inr(refundDeductions)}`}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 text-destructive">
+                      <span>Less dispute holds</span>
+                      <span className="font-medium text-muted-foreground">{disputeHolds === 0 ? "—" : `-${inr(disputeHolds)}`}</span>
+                    </div>
+                    <div className="border-t border-border pt-2 mt-1 flex justify-between">
+                      <span className="font-bold text-foreground">Net settlement</span>
+                      <span className="font-bold text-primary text-base">{inr(ref.netPayable)}</span>
+                    </div>
+                    {ref.payoutDate && (
+                      <div className="flex justify-between pt-1 text-xs text-muted-foreground">
+                        <span>Paid on</span>
+                        <span>{format(new Date(ref.payoutDate), "d MMM yyyy")}</span>
+                      </div>
+                    )}
+                    {ref.status === "paid" && (
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>UTR / Reference</span>
+                        <span className="font-mono">—</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 flex-shrink-0" />
+                    Refund and dispute hold figures appear once the settlement period is finalised by the platform.
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           <Card className="bg-card">
             <CardHeader>

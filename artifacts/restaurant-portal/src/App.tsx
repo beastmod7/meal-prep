@@ -13,6 +13,8 @@ import UpcomingMeals from "@/pages/dashboard/upcoming-meals";
 import Cancellations from "@/pages/dashboard/cancellations";
 import Settlements from "@/pages/dashboard/settlements";
 import Menu from "@/pages/dashboard/menu";
+import InvoicesGst from "@/pages/dashboard/invoices";
+import CompliancePage from "@/pages/dashboard/compliance";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +56,12 @@ function Router() {
       </Route>
       <Route path="/dashboard/settlements">
         <DashboardPage component={Settlements} />
+      </Route>
+      <Route path="/dashboard/invoices">
+        <DashboardPage component={InvoicesGst} />
+      </Route>
+      <Route path="/dashboard/compliance">
+        <DashboardPage component={CompliancePage} />
       </Route>
       <Route component={NotFound} />
     </Switch>

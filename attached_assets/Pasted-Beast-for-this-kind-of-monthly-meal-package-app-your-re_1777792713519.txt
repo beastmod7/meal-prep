@@ -1,0 +1,552 @@
+Beast, for this kind of monthly meal-package app, your restaurant partner UI should be built like a **mini GST + settlement command center**, not just “orders and payouts.” If you build it clean from day one, your CA will love you and your future audit will not turn into a horror movie.
+
+Important: I’m not your CA/lawyer, but this is the product structure I’d design before getting it reviewed.
+
+## First: decide your GST role clearly
+
+For food delivery through an e-commerce operator, India has a specific rule: **restaurant services supplied through an e-commerce operator are covered under Section 9(5), where the e-commerce operator is liable to pay GST on restaurant services supplied through it**. CBIC Circular No. 167/23/2021 clarified that ECOs are liable to pay GST on restaurant services supplied through them, including supplies by unregistered restaurants. It also clarified that ECOs are not required to collect TCS under Section 52 for those restaurant services where the ECO pays tax under Section 9(5). ([CBIC GST][1])
+
+So your accounting model should separate:
+
+1. **Meal service value** — likely GST liability on platform/ECO side under 9(5), depending on exact model.
+2. **Your commission/platform fee charged to restaurant** — your own supply/service to restaurant, usually separately invoiced with GST.
+3. **Refunds/cancellations** — credit-note/reversal logic.
+4. **Restaurant settlement** — net payable after commission, refunds, penalties, deductions, etc.
+
+That separation is the whole game.
+
+---
+
+# What the restaurant partner UI should contain
+
+## 1. Partner KYC + GST profile section
+
+Each restaurant profile should have:
+
+```text
+Legal business name
+Trade name
+GSTIN
+PAN
+FSSAI license number
+Registered address
+Place of supply/state
+Bank account details
+UPI ID, optional
+Restaurant branch ID
+Whether GST registered: Yes/No
+Composition taxpayer status, if applicable
+Restaurant type: normal restaurant / cloud kitchen / specified premises / other
+```
+
+Why this matters: CBIC clarified that ECO liability can apply even when restaurant suppliers are unregistered, but you still need correct partner classification for reporting, settlement, invoices, and audit trail. ([CBIC GST][1])
+
+Add a warning if GSTIN is missing:
+
+> “GSTIN not provided. Tax treatment may differ. Contact support before activating payouts.”
+
+Not fancy. Just clean.
+
+---
+
+## 2. Package catalog with tax metadata
+
+For every meal package, restaurant should see:
+
+```text
+Package name: 30 Lunch Plan
+Package type: meal subscription
+Meals included: 30
+Gross customer price: ₹3,999
+Tax treatment: Restaurant service via ECO
+GST rate applied: 5% / as configured by tax admin
+Refund policy: Pro-rata unused meals
+Validity: 30 days
+Restaurant payout formula: Gross value - platform commission - adjustments
+```
+
+Do **not** let restaurants freely edit tax rates unless you want chaos in production. Let your admin configure tax logic; restaurants can view it.
+
+Also keep a field for:
+
+```text
+HSN/SAC / service classification
+```
+
+Your CA should confirm the exact code/classification, but the system should support it.
+
+---
+
+## 3. Order and meal-consumption ledger
+
+This is the most important accounting screen.
+
+Restaurants should see every package purchase and every meal redemption separately.
+
+### Package purchase table
+
+```text
+Order ID
+Customer masked name/phone
+Package name
+Purchase date
+Total meals
+Package price
+GST component
+Net package value
+Payment status
+Invoice status
+Cancellation/refund status
+```
+
+### Meal consumption table
+
+```text
+Meal redemption ID
+Order ID
+Meal number: 7/30
+Date and time consumed
+Meal type: breakfast/lunch/dinner
+Outlet/branch
+Marked by: restaurant staff / QR scan / OTP
+Status: consumed / reversed / disputed
+Settlement status: pending / settled / held
+```
+
+This gives you an audit trail. Without it, later you’ll be stuck trying to explain why ₹3,999 became ₹2,666 became ₹1,742. Nightmare fuel.
+
+---
+
+## 4. Refund and cancellation module
+
+Since your model allows refund after 2–3 meals, build a clear refund flow.
+
+Restaurant should see:
+
+```text
+Package price
+Meals consumed
+Meals unused
+Refundable value
+Cancellation fee, if any
+Discount adjustment, if any
+GST adjustment
+Final refund amount
+Refund destination: original payment method
+Refund status
+Credit note status
+```
+
+Use wording like:
+
+> “Refund for unused meals after plan cancellation.”
+
+Avoid:
+
+> “Wallet withdrawal”
+> “Balance withdrawal”
+> “Cashout”
+
+For GST alignment, refund events should generate credit-note style records where applicable. GSTN has also been improving invoice/credit-note handling through its Invoice Management System, so your internal records should treat cancellations and credit notes as first-class objects, not random support refunds. ([The Economic Times][2])
+
+---
+
+## 5. Settlement dashboard
+
+This is the restaurant’s money screen.
+
+Show:
+
+```text
+Opening payable
+Gross meal value
+Platform commission
+GST/TCS/TDS adjustments, if applicable
+Refund deductions
+Cancellation deductions
+Dispute holds
+Other adjustments
+Net payable
+Settlement date
+UTR/reference number
+Bank account paid to
+```
+
+Breakdown example:
+
+```text
+Gross package consumption value: ₹80,000
+Less platform commission: ₹8,000
+Less refunds adjusted: ₹5,000
+Less penalties/holds: ₹500
+Net settlement: ₹66,500
+```
+
+Do not mix **customer invoice GST** and **restaurant payout GST** in one messy line. Keep separate tabs:
+
+```text
+Customer tax
+Platform commission tax
+Restaurant settlement
+Refund adjustments
+```
+
+That keeps your books non-cursed.
+
+---
+
+## 6. Invoice and document center
+
+Restaurant portal should have downloadable documents:
+
+```text
+Customer invoice summary
+Platform commission invoice
+Settlement statement
+Refund statement
+Credit note summary
+Monthly GST report
+Order-level CSV
+Meal consumption CSV
+Payout CSV
+```
+
+For restaurant services through ECO, CBIC guidance says ECOs are liable to pay GST on the restaurant service under Section 9(5), and secondary sources summarize that invoices for notified 9(5) services are typically issued by the ECO. You should have your CA verify your exact invoice format before launch. ([CBIC GST][1])
+
+At minimum, your system should be able to generate:
+
+### A. Customer-facing tax invoice / bill
+
+```text
+Invoice number
+Date
+Customer details, if required
+Restaurant/service details
+Package details
+Taxable value
+GST amount
+Total amount
+Platform/ECO details
+Restaurant details
+Place of supply
+```
+
+### B. Restaurant settlement statement
+
+```text
+Settlement period
+Orders included
+Meals consumed
+Refunds
+Commission
+Net payable
+Payment reference
+```
+
+### C. Platform commission invoice to restaurant
+
+```text
+Your company name/GSTIN
+Restaurant GSTIN
+Commission amount
+GST on commission
+Total invoice amount
+```
+
+This one matters because your commission/platform fee is your own service to the restaurant, separate from the food/meal service.
+
+---
+
+## 7. GST reconciliation screen
+
+Add a screen called **Tax & Reconciliation**.
+
+It should show:
+
+```text
+Total taxable restaurant service value
+GST payable by platform under applicable rule
+Restaurant-reported value
+Refunds/credit notes
+Mismatch amount
+Unsettled orders
+Disputed orders
+Export for CA
+```
+
+Include filters:
+
+```text
+Date range
+Restaurant
+Branch
+Package
+Meal type
+GSTIN
+Invoice status
+Refund status
+Settlement status
+```
+
+Your internal admin should have a stronger version of this across all restaurants.
+
+---
+
+## 8. Restaurant accounting export formats
+
+Make exports compatible with CA workflows.
+
+Export options:
+
+```text
+CSV
+Excel
+Tally-friendly format
+Zoho Books-friendly CSV
+QuickBooks-style CSV
+PDF statement
+```
+
+Columns should include:
+
+```text
+Order ID
+Invoice number
+Invoice date
+Customer state
+Restaurant GSTIN
+Taxable value
+CGST
+SGST
+IGST
+Total GST
+Gross value
+Refund value
+Credit note number
+Commission
+GST on commission
+Net settlement
+Settlement UTR
+```
+
+Even if you do not integrate with Tally on day one, design your columns like you will.
+
+---
+
+## 9. Dispute and adjustment module
+
+Restaurants will say:
+
+> “This meal was delivered.”
+> “Customer cancelled after eating.”
+> “Refund should not be deducted.”
+> “Wrong package count.”
+
+So give them:
+
+```text
+Raise dispute
+Attach proof
+Meal redemption evidence
+QR/OTP logs
+Admin decision
+Adjustment applied
+Settlement impact
+```
+
+Every adjustment should have:
+
+```text
+Reason code
+Created by
+Approved by
+Timestamp
+Linked order/refund/settlement
+```
+
+No manual “minus ₹500 bro” entries without reason codes. That is how books become garbage.
+
+---
+
+## 10. Compliance settings visible to restaurant
+
+Add a “Compliance Info” tab:
+
+```text
+GSTIN verification status
+FSSAI license status
+Bank verification status
+PAN status
+Agreement signed status
+Last KYC update
+Tax classification
+Invoice responsibility
+Settlement cycle
+Refund policy
+```
+
+Also show warnings:
+
+```text
+GSTIN expired/invalid
+FSSAI license missing
+Bank verification pending
+Agreement not signed
+Invoices blocked until profile completed
+Payouts paused
+```
+
+Restaurants may ignore email, but they will notice “payout paused.” Ancient business truth.
+
+---
+
+# What your admin panel should contain
+
+Restaurant UI is only half. Your company needs an admin compliance panel.
+
+## Admin tax configuration
+
+```text
+GST treatment per service type
+Restaurant service GST rate
+Platform fee GST rate
+Refund GST reversal rules
+Credit note numbering
+Invoice numbering
+State-wise tax split: CGST/SGST/IGST
+Section 9(5) flag
+TCS applicability flag for non-restaurant items
+```
+
+CBIC guidance clarifies that for restaurant services notified under Section 9(5), ECOs are not required to collect TCS under Section 52 for those supplies, but TCS can still matter for other goods/services not covered under 9(5). ([National Academy of Customs][3])
+
+So build flexibility. Today it is meals. Tomorrow you may sell snacks, groceries, tiffin boxes, merchandise, delivery fees, packaging fees, premium subscriptions, ads, etc. Each can have different tax treatment.
+
+---
+
+# Critical product rule
+
+Do not let the restaurant dashboard imply that the restaurant has already received money when it is only “earned but unsettled.”
+
+Use statuses:
+
+```text
+Booked
+Consumed
+Eligible for settlement
+Settlement processing
+Settled
+Refunded
+Disputed
+On hold
+```
+
+This prevents future fights.
+
+---
+
+# Recommended restaurant portal tabs
+
+Clean structure:
+
+```text
+1. Overview
+2. Packages
+3. Meal Redemptions
+4. Orders
+5. Refunds & Cancellations
+6. Settlements
+7. Invoices & GST
+8. Disputes
+9. Compliance Profile
+10. Reports
+```
+
+## Overview should show
+
+```text
+Active packages
+Meals scheduled today
+Meals consumed this month
+Refunds this month
+Gross sales
+Net settlement due
+Next payout date
+Compliance alerts
+```
+
+## Invoices & GST should show
+
+```text
+Customer invoices
+Commission invoices
+Credit notes
+GST summary
+Export for CA
+```
+
+---
+
+# Data tables you should build in backend
+
+At minimum:
+
+```text
+restaurants
+restaurant_branches
+restaurant_kyc
+restaurant_bank_accounts
+meal_packages
+customer_package_purchases
+meal_redemptions
+refunds
+invoices
+invoice_line_items
+credit_notes
+platform_commission_invoices
+settlements
+settlement_line_items
+tax_config
+tax_ledger
+adjustments
+disputes
+audit_logs
+```
+
+Most founders skip the ledger and regret it. Don’t.
+
+---
+
+# The clean accounting flow
+
+For a 30-meal package:
+
+```text
+1. Customer buys 30-meal package.
+2. System creates package purchase + invoice record.
+3. Each consumed meal creates redemption record.
+4. Restaurant earns settlement only for eligible consumed/locked meals, depending on your contract.
+5. If user cancels, system calculates unused meal refund.
+6. Refund goes to original payment method.
+7. Credit note/refund adjustment is generated.
+8. Restaurant settlement is reduced if needed.
+9. Monthly GST/accounting exports are generated.
+```
+
+This is sane.
+
+---
+
+# Final blunt recommendation
+
+Build the restaurant portal around **three ledgers**:
+
+1. **Meal ledger** — what was bought, consumed, refunded.
+2. **Tax ledger** — invoice, GST, credit notes, tax treatment.
+3. **Settlement ledger** — what restaurant earned, what you deducted, what you paid.
+
+Do not just build “orders dashboard.” That’s amateur hour. For this business, accounting is the product’s skeleton. Without it, the whole thing walks weird.
+
+[1]: https://cbic-gst.gov.in/pdf/Circular-167-17-12-2021-GST.pdf?utm_source=chatgpt.com "Circular No. 167 / 23 /2021"
+[2]: https://m.economictimes.com/news/economy/policy/gstn-issues-advisory-on-new-invoice-management-system/articleshow/124075078.cms?utm_source=chatgpt.com "GSTN issues advisory on new Invoice management system"
+[3]: https://www.nacin.gov.in/ZCVisakhapatnam/Images/Documents/EBooks/e-Book%20on%20e-Commerce%20Operators%20and%20GST%20-%20NACIN%20Vizag%20%28September%2C%202024%29.pdf?utm_source=chatgpt.com "e-Book on e-Commerce Operators & GST"
