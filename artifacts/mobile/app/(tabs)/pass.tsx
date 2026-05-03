@@ -263,6 +263,75 @@ export default function PlansScreen() {
         </LinearGradient>
 
         <View style={styles.content}>
+          {/* Meal pass balance card */}
+          {activeSubs.length > 0 && (() => {
+            const totalMeals = activeSubs.reduce(
+              (sum, sub) => sum + sub.remainingDays * (sub.slot === "both" ? 2 : 1),
+              0,
+            );
+            return (
+              <View style={[styles.balanceCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                {/* Header row */}
+                <View style={styles.balanceHeader}>
+                  <Text style={styles.balanceEmoji}>🍔</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.balanceTitle, { color: colors.foreground }]}>Meal Pass Balance</Text>
+                    <Text style={[styles.balanceSubtitle, { color: colors.mutedForeground }]}>Across all active plans</Text>
+                  </View>
+                  <View style={styles.balanceTotalWrap}>
+                    <Text style={styles.balanceTotalNum}>{totalMeals}</Text>
+                    <Text style={[styles.balanceTotalLabel, { color: colors.mutedForeground }]}>meals</Text>
+                  </View>
+                </View>
+
+                {/* Per-restaurant rows */}
+                <View style={[styles.balanceRows, { borderTopColor: colors.border }]}>
+                  {activeSubs.map((sub, i) => {
+                    const meals = sub.remainingDays * (sub.slot === "both" ? 2 : 1);
+                    const slotEmoji = sub.slot === "lunch" ? "☀️" : sub.slot === "dinner" ? "🌙" : "🍽️";
+                    const slotLabel = sub.slot === "lunch" ? "Lunch" : sub.slot === "dinner" ? "Dinner" : "Lunch + Dinner";
+                    const validUntil = new Date(sub.endDate + "T12:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+                    return (
+                      <View
+                        key={sub.id}
+                        style={[
+                          styles.balanceRow,
+                          i > 0 && { borderTopWidth: 1, borderTopColor: colors.border },
+                        ]}
+                      >
+                        <View style={styles.balanceRowLeft}>
+                          <Text style={[styles.balanceRestName, { color: colors.foreground }]}>
+                            {slotEmoji} {sub.restaurantName}
+                          </Text>
+                          <Text style={[styles.balanceRowMeta, { color: colors.mutedForeground }]}>
+                            {slotLabel} · Valid until {validUntil}
+                          </Text>
+                        </View>
+                        <View style={styles.balanceMealPill}>
+                          <Text style={styles.balanceMealPillText}>{meals} meals</Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                {/* Disclaimer strip */}
+                <View style={[styles.balanceDisclaimer, { borderTopColor: colors.border, backgroundColor: colors.muted }]}>
+                  {[
+                    { icon: "x-circle" as const, text: "Non-transferable" },
+                    { icon: "slash" as const, text: "No cash value or withdrawal" },
+                    { icon: "check-square" as const, text: "Redeemable only within this meal plan" },
+                  ].map((item) => (
+                    <View key={item.text} style={styles.disclaimerRow}>
+                      <Feather name={item.icon} size={12} color={colors.mutedForeground} />
+                      <Text style={[styles.disclaimerText, { color: colors.mutedForeground }]}>{item.text}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            );
+          })()}
+
           {/* Policy reminder */}
           <View style={[styles.policyBox, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
             <Feather name="info" size={14} color="#1E3A8A" />
@@ -400,6 +469,24 @@ const styles = StyleSheet.create({
   newSubBtnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
   addSubBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 14, borderWidth: 1.5, borderStyle: "dashed" },
   addSubText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  balanceCard: { borderRadius: 16, borderWidth: 1, overflow: "hidden" },
+  balanceHeader: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16 },
+  balanceEmoji: { fontSize: 32 },
+  balanceTitle: { fontSize: 15, fontFamily: "Inter_700Bold", marginBottom: 1 },
+  balanceSubtitle: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  balanceTotalWrap: { alignItems: "flex-end" },
+  balanceTotalNum: { fontSize: 32, fontFamily: "Inter_700Bold", color: "#3B82F6", lineHeight: 34 },
+  balanceTotalLabel: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "right" },
+  balanceRows: { borderTopWidth: 1 },
+  balanceRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 11 },
+  balanceRowLeft: { flex: 1, marginRight: 10 },
+  balanceRestName: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+  balanceRowMeta: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  balanceMealPill: { backgroundColor: "#EFF6FF", borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 },
+  balanceMealPillText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#2563EB" },
+  balanceDisclaimer: { borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12, gap: 6 },
+  disclaimerRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  disclaimerText: { fontSize: 11, fontFamily: "Inter_400Regular" },
   ledgerCard: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   ledgerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 14, paddingTop: 14, paddingBottom: 4 },
   ledgerTitle: { fontSize: 15, fontFamily: "Inter_700Bold" },

@@ -101,6 +101,11 @@ export default function HomeScreen() {
   const firstName = user?.name?.split(" ")[0] ?? "there";
   const cancelStatus = cancelTarget ? getOrderCancelStatus(cancelTarget) : null;
 
+  const totalMeals = activeSubs.reduce(
+    (sum, sub) => sum + sub.remainingDays * (sub.slot === "both" ? 2 : 1),
+    0,
+  );
+
   async function confirmCancel() {
     if (!cancelTarget) return;
     setCancelLoading(true);
@@ -131,13 +136,30 @@ export default function HomeScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 90 }}>
         <LinearGradient colors={["#3B82F6", "#2563EB"]} style={[styles.header, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) + 16 }]}>
           <View style={styles.headerContent}>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.greeting}>{getGreeting()}, {firstName}</Text>
               <Text style={styles.subLine}>{activeSubs.length === 0 ? "No active subscriptions" : `${activeSubs.length} active subscription${activeSubs.length > 1 ? "s" : ""}`}</Text>
             </View>
-            <Pressable onPress={() => router.push("/(tabs)/profile")} style={styles.avatar}>
-              <Text style={styles.avatarText}>{firstName.charAt(0).toUpperCase()}</Text>
-            </Pressable>
+            <View style={styles.headerRight}>
+              {totalMeals > 0 && (
+                <Pressable
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push("/(tabs)/pass");
+                  }}
+                  style={({ pressed }) => [styles.mealChip, pressed && { opacity: 0.8 }]}
+                >
+                  <Text style={styles.mealChipEmoji}>🍔</Text>
+                  <View>
+                    <Text style={styles.mealChipCount}>{totalMeals}</Text>
+                    <Text style={styles.mealChipLabel}>meals left</Text>
+                  </View>
+                </Pressable>
+              )}
+              <Pressable onPress={() => router.push("/(tabs)/profile")} style={styles.avatar}>
+                <Text style={styles.avatarText}>{firstName.charAt(0).toUpperCase()}</Text>
+              </Pressable>
+            </View>
           </View>
           {activeSubs.length > 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.subPillsScroll} contentContainerStyle={styles.subPillsContent}>
@@ -245,6 +267,19 @@ const styles = StyleSheet.create({
   subPill: { backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 },
   subPillName: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#FFFFFF", marginBottom: 1 },
   subPillDetail: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)" },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
+  mealChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  mealChipEmoji: { fontSize: 22 },
+  mealChipCount: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFFFFF", lineHeight: 18 },
+  mealChipLabel: { fontSize: 10, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.8)" },
   content: { paddingHorizontal: 16, paddingTop: 16, gap: 16 },
   section: {},
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
