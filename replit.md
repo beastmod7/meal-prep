@@ -34,7 +34,7 @@ pnpm workspace monorepo using TypeScript. Student Meal Pass Marketplace — a mo
 - React + Vite web app at `/portal`
 - Role-based auth (restaurant_owner, restaurant_staff, admin, super_admin)
 - JWT auth via `Authorization: Bearer <token>`
-- Pages: Login, Overview, Packages, Daily Prep (Upcoming Meals), Cancellations, Settlements, Invoices & GST, Compliance Profile
+- Pages: Login, Overview, Packages, Daily Prep (Upcoming Meals), Cancellations, Settlements, Invoices & GST, Disputes, Compliance Profile
 - Invoices & GST: customer tax invoices (5% GST under Sec 9(5)), commission invoices (18% GST), credit notes, CA export CSV
 - Compliance Profile: KYC fields (GSTIN, PAN, FSSAI, bank), payout-paused warning banner if fields missing, tax classification display
 
