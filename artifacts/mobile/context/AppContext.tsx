@@ -251,8 +251,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const pauseSubscription = useCallback(
-    async (_subscriptionId: string, _pauseDays: number) => {
-      // Stub — pause feature planned for next sprint
+    async (subscriptionId: string, pauseDays: number) => {
+      await api.request(`/subscriptions/${subscriptionId}/pause`, {
+        method: "POST",
+        body: JSON.stringify({ pauseDays }),
+      });
+      const subs = await api.getSubscriptions();
+      setSubscriptions(subs.map(mapApiSub));
     },
     [],
   );
@@ -292,7 +297,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       valueForMoney: params.ratings.valueForMoney,
       hygiene: params.ratings.hygiene,
       communication: params.ratings.communication,
-      overall: params.ratings.overall,
       note: params.ratings.note,
     });
     const rating: RestaurantRating = {

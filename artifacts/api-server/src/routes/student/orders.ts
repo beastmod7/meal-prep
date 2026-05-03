@@ -5,8 +5,9 @@ import {
   cancellationsTable,
   subscriptionsTable,
   ledgerEntriesTable,
+  studentsTable,
 } from "@workspace/db";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { requireStudentAuth } from "../../middlewares/studentAuth.js";
 
@@ -64,9 +65,18 @@ function formatOrder(o: OrderWithRestaurant) {
   };
 }
 
-// GET /api/student/orders?from=&to=&status=
+// GET /api/student/orders?from=&to=&status=&page=&limit=
 router.get("/", async (req, res) => {
-  const { from, to, status } = req.query as { from?: string; to?: string; status?: string };
+  const { from, to, status } = req.query as {
+    from?: string;
+    to?: string;
+    status?: string;
+  };
+
+  const page = Math.max(1, parseInt((req.query.page as string) ?? "1", 10));
+  const limit = Math.min(100, Math.max(1, parseInt((req.query.limit as string) ?? "50", 10)));
+  const offset = (page - 1) * limit;
+
   const studentId = req.student!.studentId;
 
   const conditions = [eq(mealOrdersTable.studentId, studentId)];
@@ -96,14 +106,21 @@ router.get("/", async (req, res) => {
     .from(mealOrdersTable)
     .leftJoin(subscriptionsTable, eq(mealOrdersTable.subscriptionId, subscriptionsTable.id))
     .where(and(...conditions))
-    .orderBy(desc(mealOrdersTable.scheduledDate));
+    .orderBy(desc(mealOrdersTable.scheduledDate))
+    .limit(limit)
+    .offset(offset);
 
   const filtered =
     status && status !== "all"
       ? rows.filter((o) => o.status === status)
       : rows;
 
-  res.json(filtered.map(formatOrder));
+  res.json({
+    data: filtered.map(formatOrder),
+    page,
+    limit,
+    hasMore: rows.length === limit,
+  });
 });
 
 // POST /api/student/orders/:orderId/cancel
@@ -158,7 +175,7 @@ router.post("/:orderId/cancel", async (req, res) => {
 
   const feePercent = cancelType === "free" ? 0 : cancelType === "late" ? 0.5 : 1;
   const fee = Math.round(pricePerDay * feePercent * 100) / 100;
-  const refund = pricePerDay - fee;
+  const refund = Math.round((pricePerDay - fee) * 100) / 100;
 
   const cancellationType =
     cancelType === "free"
@@ -203,6 +220,15 @@ router.post("/:orderId/cancel", async (req, res) => {
         description: `Cancellation fee — ${orderRow.packageName} ${orderRow.mealSlot} on ${orderRow.scheduledDate}`,
         amountDelta: String(-fee),
       });
+
+      // Deduct fee from wallet
+      await tx
+        .update(studentsTable)
+        .set({
+          walletBalance: sql`${studentsTable.walletBalance} - ${fee}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(studentsTable.id, studentId));
     }
 
     if (refund > 0) {
@@ -215,8 +241,18 @@ router.post("/:orderId/cancel", async (req, res) => {
         description: `Cancellation refund — ${orderRow.packageName} ${orderRow.mealSlot} on ${orderRow.scheduledDate}`,
         amountDelta: String(refund),
       });
+
+      // Refund to wallet
+      await tx
+        .update(studentsTable)
+        .set({
+          walletBalance: sql`${studentsTable.walletBalance} + ${refund}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(studentsTable.id, studentId));
     }
 
+    // For free cancellations, decrement remainingDays
     if (cancelType === "free") {
       const [sub] = await tx
         .select()

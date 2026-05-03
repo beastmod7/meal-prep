@@ -8,7 +8,7 @@ import {
   ledgerEntriesTable,
   studentsTable,
 } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, between, desc, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { requireStudentAuth } from "../../middlewares/studentAuth.js";
 
@@ -16,33 +16,36 @@ const router = Router();
 router.use(requireStudentAuth);
 
 function dateStr(d: Date) {
-  // Always compute dates in IST (UTC+5:30)
   const ist = new Date(d.getTime() + 5.5 * 60 * 60 * 1000);
   return ist.toISOString().split("T")[0]!;
 }
 
+function addDays(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d!) + days * 86400000)
+    .toISOString()
+    .split("T")[0]!;
+}
+
 function freeCancelUntilForDate(scheduledDateStr: string): string {
-  // Free cancellation until 10 PM IST the day before
   const [year, month, day] = scheduledDateStr.split("-").map(Number);
-  const prevDay = new Date(Date.UTC(year!, month! - 1, day! - 1, 16, 30, 0)); // 16:30 UTC = 22:00 IST
+  const prevDay = new Date(Date.UTC(year!, month! - 1, day! - 1, 16, 30, 0));
   return prevDay.toISOString();
 }
 
-function generateOrdersForSubscription(
-  sub: {
-    id: string;
-    studentId: string;
-    restaurantId: string;
-    packageId: string;
-    packageName: string;
-    studentName: string;
-    studentPhoneMasked: string;
-    mealSlot: string;
-    totalDays: number;
-    pricePerDay: number;
-    startDate: string;
-  },
-): Array<typeof mealOrdersTable.$inferInsert> {
+function generateOrdersForSubscription(sub: {
+  id: string;
+  studentId: string;
+  restaurantId: string;
+  packageId: string;
+  packageName: string;
+  studentName: string;
+  studentPhoneMasked: string;
+  mealSlot: string;
+  totalDays: number;
+  pricePerDay: number;
+  startDate: string;
+}): Array<typeof mealOrdersTable.$inferInsert> {
   const orders: Array<typeof mealOrdersTable.$inferInsert> = [];
   const pricePerMeal =
     sub.mealSlot === "both"
@@ -51,14 +54,15 @@ function generateOrdersForSubscription(
 
   for (let i = 0; i < sub.totalDays; i++) {
     const [y, m, d] = sub.startDate.split("-").map(Number);
-    const dateMs =
-      Date.UTC(y!, m! - 1, d!) + i * 86400000;
+    const dateMs = Date.UTC(y!, m! - 1, d!) + i * 86400000;
     const scheduled = new Date(dateMs);
     const scheduledDate = scheduled.toISOString().split("T")[0]!;
     const freeCancelUntil = freeCancelUntilForDate(scheduledDate);
 
     const slots: ("lunch" | "dinner")[] =
-      sub.mealSlot === "both" ? ["lunch", "dinner"] : [sub.mealSlot as "lunch" | "dinner"];
+      sub.mealSlot === "both"
+        ? ["lunch", "dinner"]
+        : [sub.mealSlot as "lunch" | "dinner"];
 
     for (const slot of slots) {
       orders.push({
@@ -125,7 +129,9 @@ router.post("/", async (req, res) => {
   };
 
   if (!restaurantId || !packageId) {
-    res.status(400).json({ error: "Bad Request", message: "restaurantId and packageId required" });
+    res
+      .status(400)
+      .json({ error: "Bad Request", message: "restaurantId and packageId required" });
     return;
   }
 
@@ -219,13 +225,22 @@ router.post("/", async (req, res) => {
     amountDelta: String(-totalPaid),
   };
 
-  // Atomic insert: subscription + all orders + ledger entry
+  // Atomic insert: subscription + all orders + ledger entry + wallet debit
   await db.transaction(async (tx) => {
     await tx.insert(subscriptionsTable).values(subscription);
     if (orders.length > 0) {
       await tx.insert(mealOrdersTable).values(orders);
     }
     await tx.insert(ledgerEntriesTable).values(ledgerEntry);
+
+    // Debit wallet balance
+    await tx
+      .update(studentsTable)
+      .set({
+        walletBalance: sql`${studentsTable.walletBalance} - ${totalPaid}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(studentsTable.id, studentId));
 
     // Increment active subscriber count on package
     await tx
@@ -299,10 +314,27 @@ router.post("/:subId/cancel", async (req, res) => {
     return;
   }
 
-  // Cancel all future scheduled (unlocked) orders
   const today = dateStr(new Date());
 
+  // Count future unlocked scheduled orders to compute accurate refund
+  const futureOrders = await db
+    .select({ id: mealOrdersTable.id, pricePerDay: mealOrdersTable.pricePerDay })
+    .from(mealOrdersTable)
+    .where(
+      and(
+        eq(mealOrdersTable.subscriptionId, sub.id),
+        eq(mealOrdersTable.status, "scheduled"),
+        eq(mealOrdersTable.isLocked, false),
+      ),
+    );
+
+  const refundAmount = futureOrders.reduce(
+    (sum, o) => sum + parseFloat(o.pricePerDay),
+    0,
+  );
+
   await db.transaction(async (tx) => {
+    // Cancel all future unlocked scheduled orders
     await tx
       .update(mealOrdersTable)
       .set({ status: "cancelled", updatedAt: new Date() })
@@ -323,18 +355,26 @@ router.post("/:subId/cancel", async (req, res) => {
       })
       .where(eq(subscriptionsTable.id, sub.id));
 
-    // Simple refund: remaining days × price per day (no partial-day logic for now)
-    const refundAmount = sub.remainingDays * parseFloat(sub.pricePerDay);
+    if (refundAmount > 0) {
+      await tx.insert(ledgerEntriesTable).values({
+        id: randomUUID(),
+        studentId: req.student!.studentId,
+        subscriptionId: sub.id,
+        restaurantName: sub.restaurantName,
+        type: "subscription_cancel_refund",
+        description: `Refund: ${sub.restaurantName} ${sub.mealSlot} subscription cancelled`,
+        amountDelta: String(refundAmount),
+      });
 
-    await tx.insert(ledgerEntriesTable).values({
-      id: randomUUID(),
-      studentId: req.student!.studentId,
-      subscriptionId: sub.id,
-      restaurantName: sub.restaurantName,
-      type: "subscription_cancel_refund",
-      description: `Refund: ${sub.restaurantName} ${sub.mealSlot} subscription cancelled`,
-      amountDelta: String(refundAmount),
-    });
+      // Credit wallet back
+      await tx
+        .update(studentsTable)
+        .set({
+          walletBalance: sql`${studentsTable.walletBalance} + ${refundAmount}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(studentsTable.id, req.student!.studentId));
+    }
 
     // Decrement subscriber count
     const [pkg] = await tx
@@ -354,8 +394,11 @@ router.post("/:subId/cancel", async (req, res) => {
     }
   });
 
-  const remaining = sub.remainingDays * parseFloat(sub.pricePerDay);
-  res.json({ message: "Subscription cancelled", refundAmount: remaining });
+  res.json({
+    message: "Subscription cancelled",
+    refundAmount,
+    ordersRefunded: futureOrders.length,
+  });
 });
 
 // POST /api/student/subscriptions/:subId/pause
@@ -384,19 +427,89 @@ router.post("/:subId/pause", async (req, res) => {
   }
 
   if (sub.status !== "active") {
-    res.status(400).json({ error: "Bad Request", message: "Only active subscriptions can be paused" });
+    res
+      .status(400)
+      .json({ error: "Bad Request", message: "Only active subscriptions can be paused" });
     return;
   }
 
-  const pauseUntilMs = Date.now() + pauseDays * 86400000;
-  const pausedUntil = new Date(pauseUntilMs).toISOString().split("T")[0]!;
+  const today = dateStr(new Date());
+  const pausedUntil = addDays(today, pauseDays);
+  // Extend end date by the number of paused days
+  const newEndDate = addDays(sub.endDate, pauseDays);
+
+  await db.transaction(async (tx) => {
+    // Cancel unlocked scheduled orders that fall within the pause window
+    const pauseOrders = await tx
+      .select({ id: mealOrdersTable.id })
+      .from(mealOrdersTable)
+      .where(
+        and(
+          eq(mealOrdersTable.subscriptionId, sub.id),
+          eq(mealOrdersTable.status, "scheduled"),
+          eq(mealOrdersTable.isLocked, false),
+          between(mealOrdersTable.scheduledDate, today, pausedUntil),
+        ),
+      );
+
+    if (pauseOrders.length > 0) {
+      await tx
+        .update(mealOrdersTable)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(
+          and(
+            eq(mealOrdersTable.subscriptionId, sub.id),
+            eq(mealOrdersTable.status, "scheduled"),
+            eq(mealOrdersTable.isLocked, false),
+            between(mealOrdersTable.scheduledDate, today, pausedUntil),
+          ),
+        );
+    }
+
+    await tx
+      .update(subscriptionsTable)
+      .set({
+        status: "paused",
+        pausedUntil,
+        endDate: newEndDate,
+        remainingDays: Math.max(0, sub.remainingDays - pauseOrders.length),
+        updatedAt: new Date(),
+      })
+      .where(eq(subscriptionsTable.id, sub.id));
+  });
+
+  res.json({ message: "Subscription paused", pausedUntil, newEndDate });
+});
+
+// POST /api/student/subscriptions/:subId/resume
+router.post("/:subId/resume", async (req, res) => {
+  const [sub] = await db
+    .select()
+    .from(subscriptionsTable)
+    .where(
+      and(
+        eq(subscriptionsTable.id, req.params.subId),
+        eq(subscriptionsTable.studentId, req.student!.studentId),
+      ),
+    )
+    .limit(1);
+
+  if (!sub) {
+    res.status(404).json({ error: "Not Found", message: "Subscription not found" });
+    return;
+  }
+
+  if (sub.status !== "paused") {
+    res.status(400).json({ error: "Bad Request", message: "Only paused subscriptions can be resumed" });
+    return;
+  }
 
   await db
     .update(subscriptionsTable)
-    .set({ status: "paused", pausedUntil, updatedAt: new Date() })
+    .set({ status: "active", pausedUntil: null, updatedAt: new Date() })
     .where(eq(subscriptionsTable.id, sub.id));
 
-  res.json({ message: "Subscription paused", pausedUntil });
+  res.json({ message: "Subscription resumed" });
 });
 
 export default router;

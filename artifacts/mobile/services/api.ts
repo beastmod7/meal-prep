@@ -21,7 +21,7 @@ export async function clearToken(): Promise<void> {
   await AsyncStorage.removeItem(TOKEN_KEY);
 }
 
-async function request<T>(
+export async function request<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
@@ -196,13 +196,12 @@ export async function rateRestaurant(
     valueForMoney: number;
     hygiene: number;
     communication: number;
-    overall: number;
     note?: string;
   },
 ): Promise<void> {
-  await request(`/restaurants/${restaurantId}/rate`, {
+  await request(`/ratings`, {
     method: "POST",
-    body: JSON.stringify(ratings),
+    body: JSON.stringify({ restaurantId, ...ratings }),
   });
 }
 
@@ -269,17 +268,28 @@ export interface ApiOrder {
   cancelStatus: "free" | "late" | "full" | "none";
 }
 
+export interface OrdersPage {
+  data: ApiOrder[];
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}
+
 export async function getOrders(params?: {
   from?: string;
   to?: string;
   status?: string;
+  page?: number;
+  limit?: number;
 }): Promise<ApiOrder[]> {
   const qs = new URLSearchParams();
   if (params?.from) qs.set("from", params.from);
   if (params?.to) qs.set("to", params.to);
   if (params?.status) qs.set("status", params.status);
-  const q = qs.toString();
-  return request<ApiOrder[]>(`/orders${q ? `?${q}` : ""}`);
+  qs.set("page", String(params?.page ?? 1));
+  qs.set("limit", String(params?.limit ?? 100));
+  const result = await request<OrdersPage>(`/orders?${qs.toString()}`);
+  return result.data;
 }
 
 export async function cancelOrder(

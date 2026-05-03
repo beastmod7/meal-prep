@@ -1,23 +1,40 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { studentsTable, campusesTable } from "@workspace/db";
+import { studentsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { signStudentToken } from "../../middlewares/studentAuth.js";
 import { randomUUID } from "crypto";
+import rateLimit from "express-rate-limit";
 
 const router = Router();
+
+// 10 OTP requests per phone per 15 minutes
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: { error: "Too Many Requests", message: "Too many OTP requests. Please wait 15 minutes." },
+});
+
+// 20 verify attempts per IP per 15 minutes
+const verifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  message: { error: "Too Many Requests", message: "Too many verification attempts. Please wait 15 minutes." },
+});
 
 /**
  * POST /api/student/auth/send-otp
  *
  * Dev-mode stub: always accepts any phone number and "sends" OTP 123456.
- *
- * Supabase migration:
- *   DELETE this route entirely. The mobile client calls:
- *   supabase.auth.signInWithOtp({ phone: '+91XXXXXXXXXX' })
- *   Supabase handles OTP delivery via Twilio/MessageBird.
+ * Production: replace with Twilio / MSG91 / Supabase Auth OTP.
  */
-router.post("/send-otp", async (req, res) => {
+router.post("/send-otp", otpLimiter, async (req, res) => {
   const { phone } = req.body as { phone?: string };
 
   if (!phone || !/^\+?[0-9]{10,13}$/.test(phone.replace(/\s/g, ""))) {
@@ -25,8 +42,6 @@ router.post("/send-otp", async (req, res) => {
     return;
   }
 
-  // In production this would send an SMS via Twilio / Supabase Auth.
-  // In dev, OTP is always 123456.
   req.log.info({ phone }, "OTP send requested (dev stub)");
   res.json({ message: "OTP sent", devNote: "Use OTP 123456 in development" });
 });
@@ -35,14 +50,9 @@ router.post("/send-otp", async (req, res) => {
  * POST /api/student/auth/verify-otp
  *
  * Dev-mode stub: accepts phone + otp=123456, upserts student, returns JWT.
- *
- * Supabase migration:
- *   DELETE this route. The mobile client calls:
- *   supabase.auth.verifyOtp({ phone, token, type: 'sms' })
- *   The returned Supabase JWT is passed as Bearer token to all /api/student/* routes.
- *   Replace requireStudentAuth middleware to verify Supabase JWT instead.
+ * Production: replace with real OTP verification (Twilio / MSG91 / Supabase Auth).
  */
-router.post("/verify-otp", async (req, res) => {
+router.post("/verify-otp", verifyLimiter, async (req, res) => {
   const { phone, otp } = req.body as { phone?: string; otp?: string };
 
   if (!phone || !otp) {
@@ -57,7 +67,6 @@ router.post("/verify-otp", async (req, res) => {
 
   const normalised = phone.replace(/\s/g, "");
 
-  // Upsert: create student if first login
   let [student] = await db
     .select()
     .from(studentsTable)
