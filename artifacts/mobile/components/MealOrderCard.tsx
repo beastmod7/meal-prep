@@ -1,11 +1,12 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useRef, useState } from "react";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import StatusBadge from "@/components/StatusBadge";
 import { MealOrder, useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { useRatedOrders } from "@/hooks/useRatedOrders";
 
 interface MealOrderCardProps {
   order: MealOrder;
@@ -35,6 +36,118 @@ function formatCancelTime(isoString: string): string {
   });
 }
 
+// ─── Inline star rating ────────────────────────────────────────────────────────
+
+type RatingState = "idle" | "submitting" | "done";
+
+function InlineRating({
+  order,
+  onDone,
+}: {
+  order: MealOrder;
+  onDone: () => void;
+}) {
+  const colors = useColors();
+  const { rateRestaurant } = useApp();
+  const [hovered, setHovered] = useState(0);
+  const [selected, setSelected] = useState(0);
+  const [state, setState] = useState<RatingState>("idle");
+  const thankAnim = useRef(new Animated.Value(0)).current;
+  const starAnims = useRef([1, 2, 3, 4, 5].map(() => new Animated.Value(1))).current;
+
+  async function handleTap(star: number) {
+    if (state !== "idle") return;
+    setSelected(star);
+    setState("submitting");
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    // Animate the tapped star
+    Animated.sequence([
+      Animated.timing(starAnims[star - 1]!, { toValue: 1.35, duration: 120, useNativeDriver: true }),
+      Animated.spring(starAnims[star - 1]!, { toValue: 1, useNativeDriver: true, damping: 8 }),
+    ]).start();
+
+    try {
+      await rateRestaurant({
+        restaurantId: order.restaurantId,
+        restaurantName: order.restaurantName,
+        ratings: {
+          foodQuality: star,
+          packaging: star,
+          delivery: star,
+          valueForMoney: star,
+          hygiene: star,
+          communication: star,
+          overall: star,
+          note: "",
+        },
+      });
+    } catch {
+      // Still mark done — don't pester the user again
+    }
+
+    setState("done");
+    Animated.timing(thankAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+    setTimeout(onDone, 1800);
+  }
+
+  return (
+    <View style={[ir.wrap, { borderTopColor: colors.border }]}>
+      {state === "done" ? (
+        <Animated.View style={[ir.thankRow, { opacity: thankAnim }]}>
+          <Text style={ir.thankText}>Thanks for rating!</Text>
+          <Text style={ir.thankStars}>{"★".repeat(selected)}</Text>
+        </Animated.View>
+      ) : (
+        <>
+          <Text style={[ir.prompt, { color: colors.mutedForeground }]}>How was your meal?</Text>
+          <View style={ir.starsRow}>
+            {[1, 2, 3, 4, 5].map((star) => {
+              const filled = star <= (hovered || selected);
+              return (
+                <Animated.View key={star} style={{ transform: [{ scale: starAnims[star - 1]! }] }}>
+                  <Pressable
+                    onPress={() => handleTap(star)}
+                    onPressIn={() => setHovered(star)}
+                    onPressOut={() => setHovered(0)}
+                    hitSlop={6}
+                    style={ir.starBtn}
+                  >
+                    <Feather
+                      name="star"
+                      size={22}
+                      color={filled ? "#F59E0B" : "#D4D4D8"}
+                    />
+                  </Pressable>
+                </Animated.View>
+              );
+            })}
+          </View>
+        </>
+      )}
+    </View>
+  );
+}
+
+const ir = StyleSheet.create({
+  wrap: {
+    borderTopWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  prompt: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  starsRow: { flexDirection: "row", gap: 2 },
+  starBtn: { padding: 3 },
+  thankRow: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  thankText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#16A34A" },
+  thankStars: { fontSize: 14, color: "#F59E0B", letterSpacing: 1 },
+});
+
+// ─── Main component ────────────────────────────────────────────────────────────
+
 export default function MealOrderCard({
   order,
   onCancel,
@@ -43,12 +156,20 @@ export default function MealOrderCard({
   const colors = useColors();
   const { getOrderCancelStatus } = useApp();
   const router = useRouter();
+  const { isRated, markRated } = useRatedOrders();
+  const [ratingDismissed, setRatingDismissed] = useState(false);
 
   const cancelStatus = getOrderCancelStatus(order);
   const isActive = !["delivered", "cancelled_free", "cancelled_late", "cancelled_full"].includes(order.status);
   const isCancelled = ["cancelled_free", "cancelled_late", "cancelled_full"].includes(order.status);
+  const isDelivered = order.status === "delivered";
 
   const accentColor = order.slot === "lunch" ? "#F59E0B" : "#8B5CF6";
+
+  const showRating =
+    isDelivered &&
+    !ratingDismissed &&
+    !isRated(order.id);
 
   function getBadgeVariant() {
     if (order.status === "delivered") return "delivered";
@@ -117,7 +238,7 @@ export default function MealOrderCard({
         </View>
 
         {showActions && isActive && onCancel && (
-          <View style={[styles.actionsRow, { borderTopColor: colors.border }]}> 
+          <View style={[styles.actionsRow, { borderTopColor: colors.border }]}>
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -144,6 +265,16 @@ export default function MealOrderCard({
               <Text style={[styles.trackBtnText, { color: "#3B82F6" }]}>Track</Text>
             </Pressable>
           </View>
+        )}
+
+        {showRating && (
+          <InlineRating
+            order={order}
+            onDone={() => {
+              markRated(order.id);
+              setRatingDismissed(true);
+            }}
+          />
         )}
       </View>
     </Pressable>
